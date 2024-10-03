@@ -13,9 +13,11 @@ import Pantograph.Utility (assertM, todo, unimplemented)
 
 defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
 defaultPropagRules = pure >>> apply
-  [ defaultDownPropagRule
-  , defaultUpPropagRule
-  ]
+  ( [ defaultDownPropagRule
+    , defaultUpPropagRule
+    ]
+      # List.fromFoldable
+  )
 
 defaultDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
 defaultDownPropagRule derivRules = PropagRule "DefaultDown" \_mb_th -> case _ of

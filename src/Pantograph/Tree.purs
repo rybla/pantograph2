@@ -2,6 +2,7 @@ module Pantograph.Tree where
 
 import Prelude
 
+import Control.MonadPlus (class Plus, empty)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (class Foldable, fold, foldl, intercalate)
 import Data.Generic.Rep (class Generic)
@@ -9,6 +10,7 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
+import Data.Tuple.Nested (type (/\), (/\))
 import Pantograph.Pretty (class Pretty, parens, pretty)
 import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
@@ -36,6 +38,12 @@ instance Pretty a => Pretty (Tree a) where
 derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
+
+getTeeth :: forall a. Tree a -> List (Tooth a /\ Tree a)
+getTeeth (Tree a ts) = go mempty mempty ts # RevList.toList
+  where
+  go ths _ Nil = ths
+  go ths ts_l (t : ts_r) = go (ths `RevList.snoc` (Tooth a ts_l ts_r /\ t)) (ts_l `RevList.snoc` t) ts_r
 
 --------------------------------------------------------------------------------
 -- Tooth
@@ -86,6 +94,13 @@ instance Pretty a => Pretty (Path a) where
 
 instance Eq a => Eq (Path a) where
   eq x = genericEq x
+
+stepPath :: forall a. Path a -> Tooth a -> Path a
+stepPath (Path ths) th = Path (th : ths)
+
+unstepPath :: forall f a. Plus f => Applicative f => Path a -> f (Path a /\ Tooth a)
+unstepPath (Path Nil) = empty
+unstepPath (Path (th : ths)) = pure (Path ths /\ th)
 
 --------------------------------------------------------------------------------
 -- Change

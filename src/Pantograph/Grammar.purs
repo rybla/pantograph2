@@ -207,5 +207,5 @@ type PropagDerivPath d s = Path (PropagDerivLabel d s)
 
 data PropagRule d s = PropagRule String (Maybe (PropagDerivTooth d s) -> PropagDeriv d s -> Maybe (PropagDeriv d s))
 
-type PropagRules d s = Array (PropagRule d s)
+type PropagRules d s = List (PropagRule d s)
 

@@ -25,6 +25,12 @@ derive instance Functor RevList
 derive instance Foldable RevList
 derive instance Traversable RevList
 
+instance Semigroup (RevList a) where
+  append (RevList xs) (RevList ys) = RevList (xs <> ys)
+
+instance Monoid (RevList a) where
+  mempty = RevList mempty
+
 fromList :: List ~> RevList
 fromList = List.reverse >>> RevList
 

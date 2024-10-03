@@ -16,7 +16,7 @@ derivRules :: DerivRules D S
 derivRules _ = unimplemented "derivRules"
 
 propagRules :: PropagRules D S
-propagRules = []
+propagRules = mempty
 
 canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
 canonicalDerivOfSort _ = unimplemented "canonicalDerivOfSort"

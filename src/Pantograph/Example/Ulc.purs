@@ -74,7 +74,7 @@ propagRules =
       -- simply remove boundary
       Boundary _ _ ◃ (kid : Nil) -> pure kid
       _ -> empty
-  ]
+  ] # List.fromFoldable
 
 canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
 canonicalDerivOfSort (Inject_SortLabel String_S ◃ Nil) = pure (DerivLabel (String_D "") Map.empty ◃ Nil)
