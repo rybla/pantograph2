@@ -1,0 +1,16 @@
+{
+  "name": "pantograph2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "spago build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "purescript": "0.15.16-4",
+    "spago": "^0.93.39"
+  }
+}
