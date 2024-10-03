@@ -28,9 +28,6 @@ data D
 
 --------------------------------------------------------------------------------
 
-deriv :: Deriv D S
-deriv = Tree (DerivLabel Hole_D Map.empty) mempty
-
 derivRules :: DerivRules D S
 derivRules =
   let
