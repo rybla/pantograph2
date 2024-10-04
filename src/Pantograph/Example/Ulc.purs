@@ -2,6 +2,7 @@
 module Pantograph.Example.Ulc where
 
 import Pantograph.Grammar
+import Pantograph.Tree
 import Prelude
 
 import Control.Plus (empty)
@@ -11,8 +12,6 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe)
-import Data.Set as Set
-import Pantograph.Tree (Tree(..), (◃))
 import Pantograph.Utility (bug)
 
 data S
@@ -34,31 +33,31 @@ derivRules =
     ruleString =
       mkDerivRule "String"
         []
-        (mkTree (Right (Inject_SortLabel Term_S)) [ mkTree (Right (Inject_SortLabel String_S)) [] ])
+        (Right (Inject_SortLabel Term_S) ◃* [ Right (Inject_SortLabel String_S) ◃* [] ])
 
     ruleVar =
       mkDerivRule "Var"
-        [ mkTree (Right (Inject_SortLabel String_S)) [] ]
-        (mkTree (Right (Inject_SortLabel Term_S)) [])
+        [ Congruence (pure (Inject_SortLabel String_S)) ◃* [] ]
+        (Right (Inject_SortLabel Term_S) ◃* [])
 
     ruleLam =
       mkDerivRule "Lam"
-        [ mkTree (Right (Inject_SortLabel String_S)) []
-        , mkTree (Right (Inject_SortLabel Term_S)) []
+        [ Congruence (pure (Inject_SortLabel String_S)) ◃* []
+        , Congruence (pure (Inject_SortLabel Term_S)) ◃* []
         ]
-        (mkTree (Right (Inject_SortLabel Term_S)) [])
+        (Right (Inject_SortLabel Term_S) ◃* [])
 
     ruleApp =
       mkDerivRule "App"
-        [ mkTree (Right (Inject_SortLabel Term_S)) []
-        , mkTree (Right (Inject_SortLabel Term_S)) []
+        [ Congruence (pure (Inject_SortLabel Term_S)) ◃* []
+        , Congruence (pure (Inject_SortLabel Term_S)) ◃* []
         ]
-        (mkTree (Right (Inject_SortLabel Term_S)) [])
+        (Right (Inject_SortLabel Term_S) ◃* [])
 
     ruleHole =
       mkDerivRule "Hole"
         []
-        (mkTree (Right (Inject_SortLabel Term_S)) [])
+        (Right (Inject_SortLabel Term_S) ◃* [])
 
   in
     case _ of
@@ -89,11 +88,13 @@ canonicalDerivOfSort (Inject_SortLabel Term_S ◃ _) = bug "invalid sort"
 mkTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
 mkTree a = Tree a <<< List.fromFoldable
 
+infix 0 mkTree as ◃*
+
 mkDerivRule
   :: forall s f
    . Foldable f
   => String
-  -> f (RulialSort s)
+  -> f (RulialSortChange s)
   -> RulialSort s
   -> DerivRule s
 mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort

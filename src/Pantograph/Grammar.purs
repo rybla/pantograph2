@@ -135,7 +135,11 @@ type DerivChange d s = Change (DerivLabel d s)
 --------------------------------------------------------------------------------
 
 type DerivRule s = DerivRule' (Rulial (SortLabel s))
-data DerivRule' s = DerivRule String (List (Tree s)) (Tree s)
+data DerivRule' s =
+  DerivRule
+    String -- name
+    (List (Change s)) -- for each kid, sort change oriented from kid to parent
+    (Tree s) -- parent sort
 
 derive instance Generic (DerivRule' s) _
 

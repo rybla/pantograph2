@@ -1,6 +1,7 @@
 module Pantograph.Example.Template where
 
 import Pantograph.Grammar
+import Pantograph.Tree
 import Prelude
 
 import Data.Maybe (Maybe)

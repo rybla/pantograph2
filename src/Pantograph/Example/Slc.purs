@@ -2,6 +2,7 @@
 module Pantograph.Example.Slc where
 
 import Pantograph.Grammar
+import Pantograph.Tree
 import Prelude
 
 import Control.MonadPlus (empty)
@@ -10,10 +11,8 @@ import Data.Foldable (class Foldable)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe)
-import Data.Set as Set
 import Pantograph.RevList (RevList(..))
-import Pantograph.Tree (ChangeLabel(..), Tooth(..), Tree(..), (◃))
-import Pantograph.Utility (bug, todo, unimplemented)
+import Pantograph.Utility (unimplemented)
 
 data S
   = Ctx_S -- Sort
@@ -45,7 +44,7 @@ derivRules Zero_D =
 
 derivRules Suc_D =
   mkDerivRule "Suc"
-    [ pure (Inject_SortLabel Var_S) ◃ ((Left gamma ◃ Nil) : Nil) ]
+    [ Plus (Tooth (pure (Inject_SortLabel Var_S)) (RevList Nil) Nil) ◃ ((Congruence (Left gamma) ◃ Nil) : Nil) ]
     ----
     (pure (Inject_SortLabel Var_S) ◃ ((pure (Inject_SortLabel Cons_S) ◃ ((Left gamma ◃ Nil) : Nil)) : Nil))
   where
@@ -55,7 +54,7 @@ derivRules Suc_D =
 
 derivRules Var_D =
   mkDerivRule "Var"
-    [ pure (Inject_SortLabel Var_S) ◃ ((Left gamma ◃ Nil) : Nil) ]
+    [ Replace (pure (Inject_SortLabel Var_S) ◃ ((Left gamma ◃ Nil) : Nil)) (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil)) ◃ Nil ]
     ----
     (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil))
   where
@@ -63,7 +62,7 @@ derivRules Var_D =
 
 derivRules Lam_D =
   mkDerivRule "Lam"
-    [ pure (Inject_SortLabel Term_S) ◃ ((pure (Inject_SortLabel Cons_S) ◃ ((Left gamma ◃ Nil) : Nil)) : Nil) ]
+    [ Minus (Tooth (pure (Inject_SortLabel Var_S)) (RevList Nil) Nil) ◃ ((Congruence (Left gamma) ◃ Nil) : Nil) ]
     ----
     (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil))
   where
@@ -71,8 +70,8 @@ derivRules Lam_D =
 
 derivRules App_D =
   mkDerivRule "App"
-    [ pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil)
-    , pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil)
+    [ Congruence (pure (Inject_SortLabel Term_S)) ◃ ((Congruence (Left gamma) ◃ Nil) : Nil)
+    , Congruence (pure (Inject_SortLabel Term_S)) ◃ ((Congruence (Left gamma) ◃ Nil) : Nil)
     ]
     ----
     (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil))
@@ -106,7 +105,7 @@ mkDerivRule
   :: forall s f
    . Foldable f
   => String
-  -> f (RulialSort s)
+  -> f (RulialSortChange s)
   -> RulialSort s
   -> DerivRule s
 mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
