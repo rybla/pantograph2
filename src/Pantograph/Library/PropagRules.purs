@@ -33,7 +33,7 @@ defaultDownPropagRule derivRules = PropagRule "DefaultDown" \_mb_th -> case _ of
     ~~>
     {( d , sigma_d , ... {kid_i}↓{sigma_uni kid_rule_i} ... )}↑{ch_uni}
     -}
-    let DerivRule _name _params kids_rule sort_rule = derivRules d
+    let DerivRule _name kids_rule sort_rule = derivRules d
     let sort = applyRulialVarSubst sigma_d (sort_rule # map (map pure)) :: MetaSort s
     assertM "a Boundary's Change's left endpoint must match the Sort of the inner Deriv"
       (leftEndpoint ch == sort)

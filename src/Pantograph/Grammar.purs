@@ -135,7 +135,7 @@ type DerivChange d s = Change (DerivLabel d s)
 --------------------------------------------------------------------------------
 
 type DerivRule s = DerivRule' (Rulial (SortLabel s))
-data DerivRule' s = DerivRule String (Set.Set RulialVar) (List (Tree s)) (Tree s)
+data DerivRule' s = DerivRule String (List (Tree s)) (Tree s)
 
 derive instance Generic (DerivRule' s) _
 
@@ -143,8 +143,8 @@ instance Show s => Show (DerivRule s) where
   show x = genericShow x
 
 instance Pretty s => Pretty (DerivRule s) where
-  pretty (DerivRule name rvs kids sort) =
-    [ [ "DerivRule " <> name <> " " <> pretty rvs <> "\n" ]
+  pretty (DerivRule name kids sort) =
+    [ [ "DerivRule " <> name <> "\n" ]
     , if (kids # length) == 0 then [] else kids # map (pretty >>> ("  " <> _)) # Array.fromFoldable
     , [ "  ---------------------------------------------" ]
     , [ "  " <> (sort # pretty) ]

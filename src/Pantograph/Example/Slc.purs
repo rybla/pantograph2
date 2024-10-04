@@ -36,7 +36,7 @@ derivRules :: DerivRules D S
 -- Var
 
 derivRules Zero_D =
-  mkDerivRule "Zero" []
+  mkDerivRule "Zero"
     []
     ----
     (pure (Inject_SortLabel Var_S) ◃ ((pure (Inject_SortLabel Cons_S) ◃ ((Left gamma ◃ Nil) : Nil)) : Nil))
@@ -44,7 +44,7 @@ derivRules Zero_D =
   gamma = RulialVar "gamma"
 
 derivRules Suc_D =
-  mkDerivRule "Suc" []
+  mkDerivRule "Suc"
     [ pure (Inject_SortLabel Var_S) ◃ ((Left gamma ◃ Nil) : Nil) ]
     ----
     (pure (Inject_SortLabel Var_S) ◃ ((pure (Inject_SortLabel Cons_S) ◃ ((Left gamma ◃ Nil) : Nil)) : Nil))
@@ -54,7 +54,7 @@ derivRules Suc_D =
 -- Term
 
 derivRules Var_D =
-  mkDerivRule "Var" [ gamma ]
+  mkDerivRule "Var"
     [ pure (Inject_SortLabel Var_S) ◃ ((Left gamma ◃ Nil) : Nil) ]
     ----
     (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil))
@@ -62,7 +62,7 @@ derivRules Var_D =
   gamma = RulialVar "gamma"
 
 derivRules Lam_D =
-  mkDerivRule "Lam" [ gamma ]
+  mkDerivRule "Lam"
     [ pure (Inject_SortLabel Term_S) ◃ ((pure (Inject_SortLabel Cons_S) ◃ ((Left gamma ◃ Nil) : Nil)) : Nil) ]
     ----
     (pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil))
@@ -70,7 +70,7 @@ derivRules Lam_D =
   gamma = RulialVar "gamma"
 
 derivRules App_D =
-  mkDerivRule "App" [ gamma ]
+  mkDerivRule "App"
     [ pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil)
     , pure (Inject_SortLabel Term_S) ◃ ((Left gamma ◃ Nil) : Nil)
     ]
@@ -103,13 +103,11 @@ mkTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
 mkTree a = Tree a <<< List.fromFoldable
 
 mkDerivRule
-  :: forall s f1 f2
-   . Foldable f1
-  => Foldable f2
+  :: forall s f
+   . Foldable f
   => String
-  -> f1 RulialVar
-  -> f2 (RulialSort s)
+  -> f (RulialSort s)
   -> RulialSort s
   -> DerivRule s
-mkDerivRule label params args sort = DerivRule label (Set.fromFoldable params) (List.fromFoldable args) sort
+mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
 

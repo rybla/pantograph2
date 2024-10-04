@@ -32,31 +32,31 @@ derivRules :: DerivRules D S
 derivRules =
   let
     ruleString =
-      mkDerivRule "String" []
+      mkDerivRule "String"
         []
         (mkTree (Right (Inject_SortLabel Term_S)) [ mkTree (Right (Inject_SortLabel String_S)) [] ])
 
     ruleVar =
-      mkDerivRule "Var" []
+      mkDerivRule "Var"
         [ mkTree (Right (Inject_SortLabel String_S)) [] ]
         (mkTree (Right (Inject_SortLabel Term_S)) [])
 
     ruleLam =
-      mkDerivRule "Lam" []
+      mkDerivRule "Lam"
         [ mkTree (Right (Inject_SortLabel String_S)) []
         , mkTree (Right (Inject_SortLabel Term_S)) []
         ]
         (mkTree (Right (Inject_SortLabel Term_S)) [])
 
     ruleApp =
-      mkDerivRule "App" []
+      mkDerivRule "App"
         [ mkTree (Right (Inject_SortLabel Term_S)) []
         , mkTree (Right (Inject_SortLabel Term_S)) []
         ]
         (mkTree (Right (Inject_SortLabel Term_S)) [])
 
     ruleHole =
-      mkDerivRule "Hole" []
+      mkDerivRule "Hole"
         []
         (mkTree (Right (Inject_SortLabel Term_S)) [])
 
@@ -90,13 +90,11 @@ mkTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
 mkTree a = Tree a <<< List.fromFoldable
 
 mkDerivRule
-  :: forall s f1 f2
-   . Foldable f1
-  => Foldable f2
+  :: forall s f
+   . Foldable f
   => String
-  -> f1 RulialVar
-  -> f2 (RulialSort s)
+  -> f (RulialSort s)
   -> RulialSort s
   -> DerivRule s
-mkDerivRule label params args sort = DerivRule label (Set.fromFoldable params) (List.fromFoldable args) sort
+mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
 
