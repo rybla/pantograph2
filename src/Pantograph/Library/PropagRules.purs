@@ -21,6 +21,20 @@ defaultPropagRules = pure >>> apply
 
 defaultDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
 defaultDownPropagRule derivRules = PropagRule "DefaultDown" \_mb_th -> case _ of
+  Tree (Boundary Down ch) (Tree (Inject_PropagDerivLabel dl@(DerivLabel d sigma_d)) kids : Nil) -> do
+    {-
+    DerivRule d
+      ... ch_rule_kid_i ...
+      ------------------------
+      sort_rule
+
+    --------------------------------------------------
+    { (d , sigma_d) ◃ ... kid_i ... }↓{ch}
+    ~~>
+    { (d, sigma_d) ◃ ... {kid_i}↓{TODO} }↑{TODO}
+
+    -}
+    todo ""
   -- Tree (Boundary Down ch) (Tree (Inject_PropagDerivLabel dl@(DerivLabel d sigma_d)) kids : Nil) -> do
   --   {-
   --   DerivRule d:
