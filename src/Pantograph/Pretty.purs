@@ -49,8 +49,8 @@ instance Pretty a => Pretty (Maybe a) where
   pretty (Just x) = "Just " <> pretty x
 
 instance (Pretty e, Pretty a) => Pretty (Either e a) where
-  pretty (Left x) = "Left " <> pretty x
-  pretty (Right x) = "Right " <> pretty x
+  pretty (Left x) = pretty x
+  pretty (Right x) = pretty x
 
 instance (Pretty e, Pretty a) => Pretty (Tuple e a) where
   pretty (x /\ y) = pretty x <> ", " <> pretty y

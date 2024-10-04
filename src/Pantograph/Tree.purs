@@ -4,7 +4,7 @@ import Prelude
 
 import Control.MonadPlus (class Plus, empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldl, intercalate)
+import Data.Foldable (class Foldable, fold, foldl, intercalate, length)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -33,6 +33,7 @@ instance Eq a => Eq (Tree a) where
   eq x = genericEq x
 
 instance Pretty a => Pretty (Tree a) where
+  pretty (a ◃ Nil) = parens $ pretty a
   pretty (a ◃ kids) = parens $ pretty a <> " ◃ " <> (kids # map pretty # intercalate " ")
 
 derive instance Functor Tree

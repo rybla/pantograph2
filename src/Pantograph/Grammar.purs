@@ -148,10 +148,11 @@ instance Show s => Show (DerivRule s) where
 
 instance Pretty s => Pretty (DerivRule s) where
   pretty (DerivRule name kids sort) =
-    [ [ "DerivRule " <> name <> "\n" ]
+    [ [ "(DerivRule " <> name ]
     , if (kids # length) == 0 then [] else kids # map (pretty >>> ("  " <> _)) # Array.fromFoldable
     , [ "  ---------------------------------------------" ]
     , [ "  " <> (sort # pretty) ]
+    , [ ")" ]
     ]
       # fold >>> intercalate "\n"
 

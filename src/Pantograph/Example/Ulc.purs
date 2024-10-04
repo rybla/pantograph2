@@ -8,15 +8,27 @@ import Prelude
 import Control.Plus (empty)
 import Data.Either (Either(..))
 import Data.Foldable (class Foldable)
+import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe)
+import Data.Show.Generic (genericShow)
+import Pantograph.Pretty (class Pretty, parens)
 import Pantograph.Utility (bug)
 
 data S
   = String_S
   | Term_S
+
+derive instance Generic S _
+
+instance Show S where
+  show x = genericShow x
+
+instance Pretty S where
+  pretty String_S = "String"
+  pretty Term_S = "Term"
 
 data D
   = String_D String
@@ -24,6 +36,18 @@ data D
   | Lam_D -- String, Term
   | App_D -- Term, Term
   | Hole_D
+
+derive instance Generic D _
+
+instance Show D where
+  show x = genericShow x
+
+instance Pretty D where
+  pretty (String_D str) = "String " <> show str
+  pretty Var_D = "Var"
+  pretty Lam_D = "Lam"
+  pretty App_D = "App"
+  pretty Hole_D = "Hole"
 
 --------------------------------------------------------------------------------
 
