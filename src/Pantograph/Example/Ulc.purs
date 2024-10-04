@@ -14,7 +14,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
-import Pantograph.Pretty (class Pretty, parens)
+import Pantograph.Pretty (class Pretty)
 import Pantograph.Utility (bug)
 
 data S
@@ -61,12 +61,12 @@ derivRules =
 
     ruleVar =
       mkDerivRule "Var"
-        [ Congruence (pure (Inject_SortLabel String_S)) ◃* [] ]
+        [ Replace (pure (Inject_SortLabel String_S) ◃* []) (pure (Inject_SortLabel Term_S) ◃* []) ◃* [] ]
         (Right (Inject_SortLabel Term_S) ◃* [])
 
     ruleLam =
       mkDerivRule "Lam"
-        [ Congruence (pure (Inject_SortLabel String_S)) ◃* []
+        [ Replace (pure (Inject_SortLabel String_S) ◃* []) (pure (Inject_SortLabel Term_S) ◃* []) ◃* []
         , Congruence (pure (Inject_SortLabel Term_S)) ◃* []
         ]
         (Right (Inject_SortLabel Term_S) ◃* [])
