@@ -17,7 +17,6 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe')
 import Data.Ord.Generic (genericCompare)
-import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
@@ -99,9 +98,8 @@ type RulialSortTooth s = Tooth (Rulial s)
 --------------------------------------------------------------------------------
 
 type DerivLabel d s = DerivLabel' d (Meta s)
-data DerivLabel' d s
-  = DerivLabel d (RulialVarSubst (Tree s))
-  | Boundary (Change s)
+
+data DerivLabel' d s = DerivLabel d (RulialVarSubst (Tree s))
 
 derive instance Generic (DerivLabel' d s) _
 
@@ -109,8 +107,7 @@ instance (Show s, Show d) => Show (DerivLabel' d s) where
   show x = genericShow x
 
 instance (Pretty s, Pretty d) => Pretty (DerivLabel' d s) where
-  pretty (DerivLabel d sigma) = "⦇ " <> pretty d <> ", " <> pretty sigma <> " ⦈"
-  pretty (Boundary ch) = "⦃ " <> pretty ch <> "⦄ "
+  pretty (DerivLabel d sigma) = pretty d <> " " <> pretty sigma
 
 instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
   eq x = genericEq x
@@ -119,6 +116,8 @@ derive instance Functor (DerivLabel' d)
 
 type Deriv d s = Tree (DerivLabel d s)
 type DerivChange d s = Change (DerivLabel d s)
+type DerivTooth d s = Tooth (DerivLabel d s)
+type DerivPath d s = Path (DerivLabel d s)
 
 --------------------------------------------------------------------------------
 -- DerivRule
@@ -152,6 +151,17 @@ instance Eq s => Eq (DerivRule s) where
 derive instance Functor DerivRule'
 
 type DerivRules d s = d -> DerivRule s
+
+--------------------------------------------------------------------------------
+-- Insertion
+--------------------------------------------------------------------------------
+
+data Insertion d s =
+  Insertion
+    String -- name
+    (DerivPath d s) -- path to insert
+    (MetaSortChange s) -- outward change at outside of insert
+    (MetaSortChange s) -- inward  change at inside of insert
 
 --------------------------------------------------------------------------------
 -- PropagDeriv

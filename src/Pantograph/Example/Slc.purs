@@ -15,6 +15,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Pantograph.EitherF (EitherF(..))
 import Pantograph.Pretty (class Pretty)
 import Pantograph.Utility (unimplemented)
 
@@ -74,28 +75,20 @@ instance Eq D where
 
 -- sorts
 
-ctx :: RulialSort S
 ctx = pure Ctx_S ▵* []
 
-nil :: RulialSort S
 nil = pure Nil_S ▵* []
 
-ext :: RulialSort S -> RulialSort S
 ext gamma = pure Ext_S ▵* [ gamma ]
 
-ext_0 :: RulialSortTooth S
 ext_0 = pure Ext_S ▵< ([] /\ [])
 
-var :: RulialSort S -> RulialSort S
 var gamma = pure Var_S ▵* [ gamma ]
 
-var' :: RulialSortChange S -> RulialSortChange S
 var' gamma = pure Var_S ▵∂. [ gamma ]
 
-term :: RulialSort S -> RulialSort S
 term gamma = pure Term_S ▵* [ gamma ]
 
-term' :: RulialSortChange S -> RulialSortChange S
 term' gamma = pure Term_S ▵∂. [ gamma ]
 
 -- derivs
@@ -106,17 +99,35 @@ zero gamma = DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
 suc :: MetaSort S -> Deriv D S -> Deriv D S
 suc gamma x = DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
 
+zero' :: MetaSort S -> PropagDeriv D S
+zero' gamma = RightF (DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
+
+suc' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
+suc' gamma x = RightF (DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
+
 ref :: MetaSort S -> Deriv D S -> Deriv D S
 ref gamma x = DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
+
+ref' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
+ref' gamma x = RightF (DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
 
 lam :: MetaSort S -> Deriv D S -> Deriv D S
 lam gamma b = DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ b ]
 
+lam' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
+lam' gamma b = RightF (DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ b ]
+
 app :: MetaSort S -> Deriv D S -> Deriv D S -> Deriv D S
-app gamma f a = DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ f, a ]
+app gamma f a = DerivLabel App_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ f, a ]
+
+app' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S -> PropagDeriv D S
+app' gamma f a = RightF (DerivLabel (App_D) (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ f, a ]
 
 hole :: MetaSort S -> Deriv D S
 hole gamma = DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
+
+hole' :: MetaSort S -> PropagDeriv D S
+hole' gamma = RightF (DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
 
 --------------------------------------------------------------------------------
 -- semantics

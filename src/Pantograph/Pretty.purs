@@ -46,7 +46,7 @@ instance Pretty a => Pretty (Set a) where
 
 instance Pretty a => Pretty (Maybe a) where
   pretty Nothing = "Nothing"
-  pretty (Just x) = "Just " <> pretty x
+  pretty (Just x) = pretty x
 
 instance (Pretty e, Pretty a) => Pretty (Either e a) where
   pretty (Left x) = pretty x
