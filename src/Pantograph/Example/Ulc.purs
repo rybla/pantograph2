@@ -1,125 +1,143 @@
 -- | Untyped lambda calculus
 module Pantograph.Example.Ulc where
 
-import Pantograph.Grammar
-import Pantograph.Tree
-import Prelude
+-- import Pantograph.Grammar
+-- import Pantograph.Tree
+-- import Prelude
 
-import Control.Plus (empty)
-import Data.Either (Either(..))
-import Data.Foldable (class Foldable)
-import Data.Generic.Rep (class Generic)
-import Data.List (List(..), (:))
-import Data.List as List
-import Data.Map as Map
-import Data.Maybe (Maybe)
-import Data.Show.Generic (genericShow)
-import Pantograph.Pretty (class Pretty)
-import Pantograph.Utility (bug)
+-- import Control.Plus (empty)
+-- import Data.Either (Either(..))
+-- import Data.Eq.Generic (genericEq)
+-- import Data.Foldable (class Foldable)
+-- import Data.Generic.Rep (class Generic)
+-- import Data.List (List(..), (:))
+-- import Data.List as List
+-- import Data.Map as Map
+-- import Data.Maybe (Maybe)
+-- import Data.Show.Generic (genericShow)
+-- import Pantograph.Pretty (class Pretty)
+-- import Pantograph.Utility (bug)
 
-data S
-  = String_S
-  | Term_S
+-- --------------------------------------------------------------------------------
+-- -- types
+-- --------------------------------------------------------------------------------
 
-derive instance Generic S _
+-- data S
+--   = String_S
+--   | Term_S
 
-instance Show S where
-  show x = genericShow x
+-- derive instance Generic S _
 
-instance Pretty S where
-  pretty String_S = "String"
-  pretty Term_S = "Term"
+-- instance Show S where
+--   show x = genericShow x
 
-data D
-  = String_D String
-  | Var_D -- String
-  | Lam_D -- String, Term
-  | App_D -- Term, Term
-  | Hole_D
+-- instance Pretty S where
+--   pretty String_S = "String"
+--   pretty Term_S = "Term"
 
-derive instance Generic D _
+-- instance Eq S where
+--   eq x = genericEq x
 
-instance Show D where
-  show x = genericShow x
+-- data D
+--   = String_D String
+--   | Var_D -- String
+--   | Lam_D -- String, Term
+--   | App_D -- Term, Term
+--   | Hole_D
 
-instance Pretty D where
-  pretty (String_D str) = "String " <> show str
-  pretty Var_D = "Var"
-  pretty Lam_D = "Lam"
-  pretty App_D = "App"
-  pretty Hole_D = "Hole"
+-- derive instance Generic D _
 
---------------------------------------------------------------------------------
+-- instance Show D where
+--   show x = genericShow x
 
-derivRules :: DerivRules D S
-derivRules =
-  let
-    ruleString =
-      mkDerivRule "String"
-        []
-        (Right (Inject_SortLabel Term_S) ◃* [ Right (Inject_SortLabel String_S) ◃* [] ])
+-- instance Pretty D where
+--   pretty (String_D str) = "String " <> show str
+--   pretty Var_D = "Var"
+--   pretty Lam_D = "Lam"
+--   pretty App_D = "App"
+--   pretty Hole_D = "Hole"
 
-    ruleVar =
-      mkDerivRule "Var"
-        [ Replace (pure (Inject_SortLabel String_S) ◃* []) (pure (Inject_SortLabel Term_S) ◃* []) ◃* [] ]
-        (Right (Inject_SortLabel Term_S) ◃* [])
+-- instance Eq D where
+--   eq x = genericEq x
 
-    ruleLam =
-      mkDerivRule "Lam"
-        [ Replace (pure (Inject_SortLabel String_S) ◃* []) (pure (Inject_SortLabel Term_S) ◃* []) ◃* []
-        , Congruence (pure (Inject_SortLabel Term_S)) ◃* []
-        ]
-        (Right (Inject_SortLabel Term_S) ◃* [])
+-- --------------------------------------------------------------------------------
+-- -- smart constructors
+-- --------------------------------------------------------------------------------
 
-    ruleApp =
-      mkDerivRule "App"
-        [ Congruence (pure (Inject_SortLabel Term_S)) ◃* []
-        , Congruence (pure (Inject_SortLabel Term_S)) ◃* []
-        ]
-        (Right (Inject_SortLabel Term_S) ◃* [])
+-- mkString_S :: Sort S
+-- mkString_S = (String_S ▵* [])
 
-    ruleHole =
-      mkDerivRule "Hole"
-        []
-        (Right (Inject_SortLabel Term_S) ◃* [])
+-- mkTerm_S :: Sort S
+-- mkTerm_S = (Term_S ▵* [])
 
-  in
-    case _ of
-      String_D _ -> ruleString
-      Var_D -> ruleVar
-      Lam_D -> ruleLam
-      App_D -> ruleApp
-      Hole_D -> ruleHole
+-- --------------------------------------------------------------------------------
+-- -- semantics
+-- --------------------------------------------------------------------------------
 
-propagRules :: PropagRules D S
-propagRules =
-  [ PropagRule "trivial" \_th pl -> case pl of
-      -- simply remove boundary
-      Boundary _ _ ◃ (kid : Nil) -> pure kid
-      _ -> empty
-  ] # List.fromFoldable
+-- derivRules :: DerivRules D S
+-- derivRules =
+--   let
+--     ruleString =
+--       mkDerivRule "String"
+--         []
+--         (Right (Term_S) ▵* [ Right (String_S) ▵* [] ])
 
-canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
-canonicalDerivOfSort (Inject_SortLabel String_S ◃ Nil) = pure (DerivLabel (String_D "") Map.empty ◃ Nil)
-canonicalDerivOfSort (Inject_SortLabel String_S ◃ _) = bug "invalid sort"
-canonicalDerivOfSort (Inject_SortLabel Term_S ◃ Nil) = pure (DerivLabel Hole_D Map.empty ◃ Nil)
-canonicalDerivOfSort (Inject_SortLabel Term_S ◃ _) = bug "invalid sort"
+--     ruleVar =
+--       mkDerivRule "Var"
+--         [ Replace (pure (String_S) ▵* []) (pure (Term_S) ▵* []) ▵* [] ]
+--         (Right (Term_S) ▵* [])
 
---------------------------------------------------------------------------------
--- utilities
---------------------------------------------------------------------------------
+--     ruleLam =
+--       mkDerivRule "Lam"
+--         [ Replace (pure (String_S) ▵* []) (pure (Term_S) ▵* []) ▵* []
+--         , Congruence (pure (Term_S)) ▵* []
+--         ]
+--         (Right (Term_S) ▵* [])
 
-mkTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
-mkTree a = Tree a <<< List.fromFoldable
+--     ruleApp =
+--       mkDerivRule "App"
+--         [ Congruence (pure (Term_S)) ▵* []
+--         , Congruence (pure (Term_S)) ▵* []
+--         ]
+--         (Right (Term_S) ▵* [])
 
-infix 0 mkTree as ◃*
+--     ruleHole =
+--       mkDerivRule "Hole"
+--         []
+--         (Right (Term_S) ▵* [])
 
-mkDerivRule
-  :: forall s f
-   . Foldable f
-  => String
-  -> f (RulialSortChange s)
-  -> RulialSort s
-  -> DerivRule s
-mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
+--   in
+--     case _ of
+--       String_D _ -> ruleString
+--       Var_D -> ruleVar
+--       Lam_D -> ruleLam
+--       App_D -> ruleApp
+--       Hole_D -> ruleHole
+
+-- propagRules :: PropagRules D S
+-- propagRules =
+--   [ PropagRule "trivial" \_th pl -> case pl of
+--       -- simply remove boundary
+--       PropagBoundary _ _ ▵ (kid : Nil) -> pure kid
+--       _ -> empty
+--   ] # List.fromFoldable
+
+-- canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
+-- canonicalDerivOfSort (String_S ▵ Nil) = pure (DerivLabel (String_D "") Map.empty ▵ Nil)
+-- canonicalDerivOfSort (String_S ▵ _) = bug "invalid sort"
+-- canonicalDerivOfSort (Term_S ▵ Nil) = pure (DerivLabel Hole_D Map.empty ▵ Nil)
+-- canonicalDerivOfSort (Term_S ▵ _) = bug "invalid sort"
+
+-- --------------------------------------------------------------------------------
+-- -- utilities
+-- --------------------------------------------------------------------------------
+
+-- mkDerivRule
+--   :: forall s f
+--    . Foldable f
+--   => String
+--   -> f (RulialSortChange s)
+--   -> RulialSort s
+--   -> DerivRule s
+-- mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
 

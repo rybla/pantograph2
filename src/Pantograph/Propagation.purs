@@ -8,7 +8,20 @@ import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (snd)
 import Data.Tuple.Nested ((/\))
+import Pantograph.EitherF (EitherF(..))
 import Pantograph.Tree (getTeeth, stepPath, unstepPath)
+
+fromPropagDerivToDeriv :: forall d s. PropagDeriv d s -> Deriv d s
+fromPropagDerivToDeriv = map case _ of
+  LeftF (PropagBoundary _ ch) -> Boundary ch
+  RightF dl -> dl
+
+propagateFixpoint :: forall d s. PropagRules d s -> PropagDeriv d s -> PropagDeriv d s
+propagateFixpoint prs pd0 = go pd0
+  where
+  go pd = case propagateOnce prs mempty pd of
+    Nothing -> pd
+    Just pd' -> go pd'
 
 -- TODO: is there a better way of writing this short-circuited rather than
 -- expanded recursion over Lists?

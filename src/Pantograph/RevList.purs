@@ -34,6 +34,9 @@ instance Monoid (RevList a) where
 fromList :: List ~> RevList
 fromList = List.reverse >>> RevList
 
+fromFoldable :: forall a f. Foldable f => f a -> RevList a
+fromFoldable = fromList <<< List.fromFoldable
+
 toList :: RevList ~> List
 toList (RevList xs) = xs # List.reverse
 

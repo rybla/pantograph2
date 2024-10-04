@@ -19,6 +19,7 @@ import Data.Maybe (Maybe, fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.Tree (Change, ChangeLabel, Path, Tooth, Tree(..))
 import Pantograph.Utility (bug)
@@ -83,36 +84,24 @@ applyMetaVarSubst sigma (Tree (Right sl) kids) = Tree sl (kids <#> applyMetaVarS
 -- Sort
 --------------------------------------------------------------------------------
 
-data SortLabel s = Inject_SortLabel s
+type Sort s = Tree s
+type SortChange s = Change s
 
-derive instance Generic (SortLabel s) _
+type MetaSort s = Tree (Meta s)
+type MetaSortChange s = Change (Meta s)
 
-instance Show s => Show (SortLabel s) where
-  show x = genericShow x
-
-instance Pretty s => Pretty (SortLabel s) where
-  pretty (Inject_SortLabel s) = pretty s
-
-instance Eq s => Eq (SortLabel s) where
-  eq x = genericEq x
-
-derive instance Functor SortLabel
-
-type Sort s = Tree (SortLabel s)
-type SortChange s = Change (SortLabel s)
-
-type MetaSort s = Tree (Meta (SortLabel s))
-type MetaSortChange s = Change (Meta (SortLabel s))
-
-type RulialSort s = Tree (Rulial (SortLabel s))
-type RulialSortChange s = Change (Rulial (SortLabel s))
+type RulialSort s = Tree (Rulial s)
+type RulialSortChange s = Change (Rulial s)
+type RulialSortTooth s = Tooth (Rulial s)
 
 --------------------------------------------------------------------------------
 -- Deriv
 --------------------------------------------------------------------------------
 
-type DerivLabel d s = DerivLabel' d s
-data DerivLabel' d s = DerivLabel d (RulialVarSubst (Tree s))
+type DerivLabel d s = DerivLabel' d (Meta s)
+data DerivLabel' d s
+  = DerivLabel d (RulialVarSubst (Tree s))
+  | Boundary (Change s)
 
 derive instance Generic (DerivLabel' d s) _
 
@@ -120,7 +109,8 @@ instance (Show s, Show d) => Show (DerivLabel' d s) where
   show x = genericShow x
 
 instance (Pretty s, Pretty d) => Pretty (DerivLabel' d s) where
-  pretty (DerivLabel d sigma) = pretty d <> " | " <> pretty sigma
+  pretty (DerivLabel d sigma) = "⦇ " <> pretty d <> ", " <> pretty sigma <> " ⦈"
+  pretty (Boundary ch) = "⦃ " <> pretty ch <> "⦄ "
 
 instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
   eq x = genericEq x
@@ -134,7 +124,7 @@ type DerivChange d s = Change (DerivLabel d s)
 -- DerivRule
 --------------------------------------------------------------------------------
 
-type DerivRule s = DerivRule' (Rulial (SortLabel s))
+type DerivRule s = DerivRule' (Rulial s)
 data DerivRule' s =
   DerivRule
     String -- name
@@ -167,39 +157,37 @@ type DerivRules d s = d -> DerivRule s
 -- PropagDeriv
 --------------------------------------------------------------------------------
 
-type PropagDerivLabel d s = PropagDerivLabel' d (Meta (SortLabel s))
-data PropagDerivLabel' d s
-  = Inject_PropagDerivLabel (DerivLabel' d s)
-  | Boundary BoundaryDirection (Tree (ChangeLabel s))
+type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (Meta s)
 
-derive instance Generic (PropagDerivLabel' d s) _
+data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
-instance (Show s, Show d) => Show (PropagDerivLabel' d s) where
+derive instance Generic (PropagDerivLabel' s) _
+
+instance Show s => Show (PropagDerivLabel' s) where
   show x = genericShow x
 
-instance (Pretty s, Pretty d) => Pretty (PropagDerivLabel' d s) where
-  pretty (Inject_PropagDerivLabel dl) = pretty dl
-  pretty (Boundary dir ch) = pretty dir <> " " <> pretty ch
+instance Pretty s => Pretty (PropagDerivLabel' s) where
+  pretty (PropagBoundary dir ch) = pretty dir <> " " <> pretty ch
 
-instance (Eq s, Eq d) => Eq (PropagDerivLabel' d s) where
+instance Eq s => Eq (PropagDerivLabel' s) where
   eq x = genericEq x
 
-derive instance Functor (PropagDerivLabel' d)
+derive instance Functor PropagDerivLabel'
 
-data BoundaryDirection
+data PropagBoundaryDirection
   = Up
   | Down
 
-derive instance Generic BoundaryDirection _
+derive instance Generic PropagBoundaryDirection _
 
-instance Show BoundaryDirection where
+instance Show PropagBoundaryDirection where
   show x = genericShow x
 
-instance Pretty BoundaryDirection where
+instance Pretty PropagBoundaryDirection where
   pretty Up = "↑"
   pretty Down = "↓"
 
-instance Eq BoundaryDirection where
+instance Eq PropagBoundaryDirection where
   eq x = genericEq x
 
 type PropagDeriv d s = Tree (PropagDerivLabel d s)
