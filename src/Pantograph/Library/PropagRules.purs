@@ -4,6 +4,7 @@ import Pantograph.Grammar
 import Prelude
 
 import Control.Plus (empty)
+import Data.Functor.Compose (Compose(..))
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe)
@@ -17,8 +18,7 @@ defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
 defaultPropagRules = pure >>> apply
   ( [ defaultDownPropagRule
     , defaultUpPropagRule
-    ]
-      # List.fromFoldable
+    ] # List.fromFoldable
   )
 
 defaultDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
@@ -35,21 +35,23 @@ defaultDownPropagRule derivRules = PropagRule "DefaultDown" \_mb_th -> case _ of
   { (d, sigma_d) ▵ ... {kid_i}↓{TODO} }↑{TODO}
 
   -}
-  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl@(DerivLabel d sigma_d)) kids : Nil) -> do
+  Tree (LeftF (Compose (PropagBoundary Down ch))) (Tree (RightF (Compose dl@(DerivLabel d sigma_d))) kids : Nil) -> do
     -- (1) for a d', matches wrap pattern if down change unifies with the
     -- reverse of the change to one of the kids (skip kid if the parent-kid
     -- change is id)
     todo ""
-  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl@(DerivLabel d sigma_d)) kids : Nil) -> do
+  Tree (LeftF (Compose (PropagBoundary Down ch))) (Tree (RightF (Compose dl@(DerivLabel d sigma_d))) kids : Nil) -> do
     -- (2) matches unwrap pattern if down change unifies with change to one of
     -- the kids (skip kid if the parent-kid change is id)
     todo ""
-  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl) kids : Nil) -> do
+  Tree (LeftF (Compose (PropagBoundary Down ch))) (Tree (RightF (Compose dl)) kids : Nil) -> do
     -- otherwise, use congruence pattern (unify with sort_rule, then compose
     -- with change from parent to kid and propagate that change as a boundary on
     -- each kid)
-    _ <- unifyMetaSorts (ch # innerEndpoint) (getParentMetaSortOfDerivLabel derivRules dl)
-    todo ""
+    -- getParentMetaSortOfDerivLabel :: ∀ d s. DerivRules d s → DerivLabel d s → MetaSort s
+    -- sigma <- unifyMetaSorts (ch # ?a # innerEndpoint) (dl # getParentMetaSortOfDerivLabel derivRules # ?a)
+    let ch' = ?ch # applyMetaVarSubst ?sigma
+    pure ?a
   _ -> empty
 
 defaultUpPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
