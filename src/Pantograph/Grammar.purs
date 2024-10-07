@@ -12,6 +12,7 @@ import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (fold, intercalate, length)
+import Data.Functor.Compose (Compose)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.Map (Map)
@@ -21,7 +22,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.Tree (Change, ChangeLabel, Path, Tooth, Tree(..), (▵))
+import Pantograph.Tree (Change, ChangeLabel(..), Path, Tooth, Tree(..), (▵))
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -76,9 +77,9 @@ type Meta = Either MetaVar
 
 type MetaVarSubst = Map MetaVar
 
-applyMetaVarSubst :: forall a. MetaVarSubst (Tree a) -> Tree (Meta a) -> Tree a
+applyMetaVarSubst :: forall a. MetaVarSubst (Tree (Meta a)) -> Tree (Meta a) -> Tree (Meta a)
 applyMetaVarSubst sigma (Tree (Left rv) _) = sigma # Map.lookup rv # fromMaybe' \_ -> bug "a MetaSort used a RuilialVar that wasn't substituted by the MetaVarSubst"
-applyMetaVarSubst sigma (Tree (Right sl) kids) = Tree sl (kids <#> applyMetaVarSubst sigma)
+applyMetaVarSubst sigma (Tree (Right sl) kids) = Tree (Right sl) (kids <#> applyMetaVarSubst sigma)
 
 --------------------------------------------------------------------------------
 -- Sort
@@ -88,10 +89,10 @@ type Sort s = Tree s
 type SortChange s = Change s
 
 type MetaSort s = Tree (Meta s)
-type MetaSortChange s = Change (Meta s)
+type MetaSortChange s = Tree (Meta (ChangeLabel s))
 
 type RulialSort s = Tree (Rulial s)
-type RulialSortChange s = Change (Rulial s)
+type RulialSortChange s = Tree (Rulial (ChangeLabel s))
 type RulialSortTooth s = Tooth (Rulial s)
 
 --------------------------------------------------------------------------------
@@ -124,15 +125,13 @@ type DerivPath d s = Path (DerivLabel d s)
 -- DerivRule
 --------------------------------------------------------------------------------
 
-type DerivRule s = DerivRule' (Rulial s)
-
-data DerivRule' s =
+data DerivRule s =
   DerivRule
     String -- name
-    (List (Change s)) -- for each kid, sort change oriented from kid to parent
-    (Tree s) -- parent sort
+    (List (Tree (Rulial (ChangeLabel s)))) -- for each kid, sort change oriented from kid to parent
+    (Tree (Rulial s)) -- parent sort
 
-derive instance Generic (DerivRule' s) _
+derive instance Generic (DerivRule s) _
 
 instance Show s => Show (DerivRule s) where
   show x = genericShow x
@@ -150,15 +149,23 @@ instance Pretty s => Pretty (DerivRule s) where
 instance Eq s => Eq (DerivRule s) where
   eq x = genericEq x
 
-derive instance Functor DerivRule'
+derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
 getParentMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> MetaSort s
 getParentMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
-  applyRulialVarSubst sigma (parentSort # map (map pure))
+  parentSort # map (map pure)
+    # applyRulialVarSubst sigma
   where
   DerivRule _name _kidChs parentSort = derivRules d
+
+getKidMetaSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSortChange s)
+getKidMetaSortChangesOfDerivLabel derivRules (DerivLabel d sigma) =
+  kidChs # map (map (map pure))
+    # map (applyRulialVarSubst (sigma # map (map (map Congruence))))
+  where
+  DerivRule _name kidChs _parentSort = derivRules d
 
 --------------------------------------------------------------------------------
 -- Insertion
@@ -177,22 +184,23 @@ data Insertion d s =
 
 -- TODO: eventually I'll have to deal with the cursor position being somewhere in the PropagDeriv
 
-type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (Meta s)
+data PropagDerivLabel d s
+  = Inject_PropagDerivLabel (DerivLabel d s)
+  | PropagBoundary PropagBoundaryDirection (Tree (Meta (ChangeLabel s)))
 
-data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
+derive instance Generic (PropagDerivLabel d s) _
 
-derive instance Generic (PropagDerivLabel' s) _
-
-instance Show s => Show (PropagDerivLabel' s) where
+instance (Show d, Show s) => Show (PropagDerivLabel d s) where
   show x = genericShow x
 
-instance Pretty s => Pretty (PropagDerivLabel' s) where
+instance (Pretty d, Pretty s) => Pretty (PropagDerivLabel d s) where
+  pretty (Inject_PropagDerivLabel dl) = pretty dl
   pretty (PropagBoundary dir ch) = pretty dir <> " " <> pretty ch
 
-instance Eq s => Eq (PropagDerivLabel' s) where
+instance (Eq d, Eq s) => Eq (PropagDerivLabel d s) where
   eq x = genericEq x
 
-derive instance Functor PropagDerivLabel'
+derive instance Functor (PropagDerivLabel d)
 
 data PropagBoundaryDirection
   = Up

@@ -11,7 +11,7 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe, fromMaybe')
 import Data.Show.Generic (genericShow)
-import Data.Traversable (class Traversable, traverse)
+import Data.Traversable (class Traversable, sequence, traverse)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Pantograph.Pretty (class Pretty, parens, pretty)
@@ -47,6 +47,17 @@ instance Pretty a => Pretty (Tree a) where
 derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
+
+instance Apply Tree where
+  apply (Tree f tfs) tx@(Tree x txs) = Tree (f x) (map (map f) txs <> map (_ <*> tx) tfs)
+
+instance Applicative Tree where
+  pure x = Tree x mempty
+
+instance Bind Tree where
+  bind (Tree x ts) f = let Tree x' ts' = f x in Tree x' (ts' <> map (_ >>= f) ts)
+
+instance Monad Tree
 
 getTeeth :: forall a. Tree a -> List (Tooth a /\ Tree a)
 getTeeth (Tree a ts) = go mempty mempty ts # RevList.toList
@@ -182,54 +193,54 @@ derive instance Functor ChangeLabel
 derive instance Foldable ChangeLabel
 derive instance Traversable ChangeLabel
 
-compose :: forall l. Eq l => Change l -> Change l -> Maybe (Change l)
+composeChanges :: forall l. Eq l => Change l -> Change l -> Maybe (Change l)
 
-compose c1 c2 | not (isValidChange c1 && isValidChange c2) = bug "invalid Change"
+composeChanges c1 c2 | not (isValidChange c1 && isValidChange c2) = bug "invalid Change"
 
-compose (Congruence l1 ▵ cs1) (Congruence l2 ▵ cs2) | l1 == l2 = do
-  cs <- List.zip cs1 cs2 # traverse (uncurry compose)
+composeChanges (Congruence l1 ▵ cs1) (Congruence l2 ▵ cs2) | l1 == l2 = do
+  cs <- List.zip cs1 cs2 # traverse (uncurry composeChanges)
   pure $ Congruence l1 ▵ cs
 
-compose (Congruence l1 ▵ cs1) (Plus (Tooth l2 l r) ▵ (c2 : Nil)) = do
+composeChanges (Congruence l1 ▵ cs1) (Plus (Tooth l2 l r) ▵ (c2 : Nil)) = do
   guard $ l1 == l2
   l' <-
-    traverse (uncurry compose) $
+    traverse (uncurry composeChanges) $
       RevList.zip
         (cs1 # List.take (length l) # RevList.fromList)
         (l # map id)
   c <-
-    compose
+    composeChanges
       (cs1 List.!! (length l + 1) # fromMaybe' \_ -> bug "cs1 isn't long enough")
       c2
   r' <-
-    traverse (uncurry compose) $
+    traverse (uncurry composeChanges) $
       List.zip
         (cs1 # List.takeEnd (length r))
         (r # map id)
   pure $ Plus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) ▵ (c : Nil)
 
-compose (Minus (Tooth l1 l r) ▵ (c1 : Nil)) (Congruence l2 ▵ cs2) = do
+composeChanges (Minus (Tooth l1 l r) ▵ (c1 : Nil)) (Congruence l2 ▵ cs2) = do
   guard $ l1 == l2
   l' <-
-    traverse (uncurry compose) $
+    traverse (uncurry composeChanges) $
       RevList.zip
         (l # map id)
         (cs2 # List.take (length l) # RevList.fromList)
   c <-
-    compose
+    composeChanges
       c1
       (cs2 List.!! (length l + 1) # fromMaybe' \_ -> bug "cs2 isn't long enough")
   r' <-
-    traverse (uncurry compose) $
+    traverse (uncurry composeChanges) $
       List.zip
         (r # map id)
         (cs2 # List.takeEnd (length r))
   pure $ Minus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) ▵ (c : Nil)
 
-compose c1_@(Minus (Tooth lbl1 l1 r1) ▵ (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r2) ▵ (c2 : Nil)) = do
+composeChanges c1_@(Minus (Tooth lbl1 l1 r1) ▵ (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r2) ▵ (c2 : Nil)) = do
   guard $ lbl1 == lbl2
   if l1 == l2 && r1 == r2 then do
-    c <- compose c1 c2
+    c <- composeChanges c1 c2
     pure $ Congruence lbl1 ▵ (c : Nil)
   else do
     guard $ (c2_ # outerEndpoint) == (c1_ # innerEndpoint)
@@ -237,23 +248,23 @@ compose c1_@(Minus (Tooth lbl1 l1 r1) ▵ (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r
     let t' = c1_ # outerEndpoint
     pure $ Replace t t' ▵ Nil
 
-compose c1 (Minus th2 ▵ (c2 : Nil)) = do
-  c <- compose c1 c2
+composeChanges c1 (Minus th2 ▵ (c2 : Nil)) = do
+  c <- composeChanges c1 c2
   pure $ Minus th2 ▵ (c : Nil)
 
-compose (Plus th ▵ (c1 : Nil)) c2 = do
-  c <- compose c1 c2
+composeChanges (Plus th ▵ (c1 : Nil)) c2 = do
+  c <- composeChanges c1 c2
   pure $ Plus th ▵ (c : Nil)
 
-compose c1 (Replace t2 t2' ▵ Nil) = do
-  c <- compose c1 (t2' # id)
+composeChanges c1 (Replace t2 t2' ▵ Nil) = do
+  c <- composeChanges c1 (t2' # id)
   pure $ Replace t2 (c # outerEndpoint) ▵ Nil
 
-compose (Replace t1 t1' ▵ Nil) c2 = do
-  c <- compose (t1 # id) c2
+composeChanges (Replace t1 t1' ▵ Nil) c2 = do
+  c <- composeChanges (t1 # id) c2
   pure $ Replace (c # innerEndpoint) t1' ▵ Nil
 
-compose _ _ = empty
+composeChanges _ _ = empty
 
 innerEndpoint :: forall l. Change l -> Tree l
 innerEndpoint c | not (isValidChange c) = bug "invalid Change"
@@ -263,6 +274,9 @@ innerEndpoint (Minus th ▵ (c : Nil)) = unTooth th (innerEndpoint c)
 innerEndpoint (Replace t _ ▵ Nil) = t
 innerEndpoint (_ ▵ _) = bug "impossible"
 
+innerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLabel l)) -> Tree (f l)
+innerEndpoint' = sequence >>> map innerEndpoint >>> sequence
+
 outerEndpoint :: forall l. Change l -> Tree l
 outerEndpoint c | not (isValidChange c) = bug "invalid Change"
 outerEndpoint (Congruence l ▵ cs) = Tree l (outerEndpoint <$> cs)
@@ -270,3 +284,6 @@ outerEndpoint (Plus th ▵ (c : Nil)) = unTooth th (outerEndpoint c)
 outerEndpoint (Minus _ ▵ (c : Nil)) = outerEndpoint c
 outerEndpoint (Replace t _ ▵ Nil) = t
 outerEndpoint (_ ▵ _) = bug "impossible"
+
+outerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLabel l)) -> Tree (f l)
+outerEndpoint' = sequence >>> map outerEndpoint >>> sequence

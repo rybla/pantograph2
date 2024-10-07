@@ -11,7 +11,7 @@ import Test.Spec (Spec, describe, it, pending)
 
 spec :: Spec Unit
 spec = describe "Slc" do
-  it "#1" do
+  it "trivial" do
     shouldEqual_pretty
       ( fromPropagDerivToDeriv $ propagateFixpoint propagRules
           (lam' nil (ref' (ext nil) (zero' nil)))
@@ -19,4 +19,5 @@ spec = describe "Slc" do
       ( pure $
           (lam nil (ref (ext nil) (zero nil)))
       )
-
+  it "one step" do
+    pure unit -- TODO
