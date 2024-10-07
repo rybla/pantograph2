@@ -7,6 +7,7 @@ module Pantograph.Grammar where
 
 import Prelude
 
+import Control.Applicative (pure)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
@@ -20,7 +21,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.Tree (Change, ChangeLabel, Path, Tooth, Tree(..))
+import Pantograph.Tree (Change, ChangeLabel, Path, Tooth, Tree(..), (▵))
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -124,6 +125,7 @@ type DerivPath d s = Path (DerivLabel d s)
 --------------------------------------------------------------------------------
 
 type DerivRule s = DerivRule' (Rulial s)
+
 data DerivRule' s =
   DerivRule
     String -- name
@@ -152,6 +154,12 @@ derive instance Functor DerivRule'
 
 type DerivRules d s = d -> DerivRule s
 
+getParentMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> MetaSort s
+getParentMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
+  applyRulialVarSubst sigma (parentSort # map (map pure))
+  where
+  DerivRule _name _kidChs parentSort = derivRules d
+
 --------------------------------------------------------------------------------
 -- Insertion
 --------------------------------------------------------------------------------
@@ -166,6 +174,8 @@ data Insertion d s =
 --------------------------------------------------------------------------------
 -- PropagDeriv
 --------------------------------------------------------------------------------
+
+-- TODO: eventually I'll have to deal with the cursor position being somewhere in the PropagDeriv
 
 type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (Meta s)
 

@@ -7,9 +7,11 @@ import Control.Plus (empty)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe)
-import Data.Tuple.Nested (type (/\), (/\))
-import Pantograph.Tree (ChangeLabel(..), Tree(..), leftEndpoint)
-import Pantograph.Utility (assertM, todo, unimplemented)
+import Data.Tuple.Nested (type (/\))
+import Pantograph.EitherF (EitherF(..))
+import Pantograph.Tree (Tree(..), id, innerEndpoint)
+import Pantograph.Unification (unifyMetaSorts)
+import Pantograph.Utility (todo, unimplemented)
 
 defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
 defaultPropagRules = pure >>> apply
@@ -21,45 +23,33 @@ defaultPropagRules = pure >>> apply
 
 defaultDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
 defaultDownPropagRule derivRules = PropagRule "DefaultDown" \_mb_th -> case _ of
-  -- Tree (PropagBoundary Down ch) (Tree (Inject_PropagDerivLabel dl@(DerivLabel d sigma_d)) kids : Nil) -> do
-  --   {-
-  --   DerivRule d
-  --     ... ch_rule_kid_i ...
-  --     ------------------------
-  --     sort_rule
+  {-
+  DerivRule d
+    ... ch_rule_kid_i ...
+    ------------------------
+    sort_rule
 
-  --   --------------------------------------------------
-  --   { (d , sigma_d) ▵ ... kid_i ... }↓{ch}
-  --   ~~>
-  --   { (d, sigma_d) ▵ ... {kid_i}↓{TODO} }↑{TODO}
+  --------------------------------------------------
+  { (d , sigma_d) ▵ ... kid_i ... }↓{ch}
+  ~~>
+  { (d, sigma_d) ▵ ... {kid_i}↓{TODO} }↑{TODO}
 
-  --   -}
-  --   todo ""
-  -- Tree (PropagBoundary Down ch) (Tree (Inject_PropagDerivLabel dl@(DerivLabel d sigma_d)) kids : Nil) -> do
-  --   {-
-  --   DerivRule d:
-  --     ... kid_rule_i ...
-  --     ------------------------
-  --     sort_rule
-
-  --   ---------------------------------------------------------------------
-  --   {( d , sigma_d , ... kid_i ... )}↓{ch}
-  --   ~~>
-  --   {( d , sigma_d , ... {kid_i}↓{sigma_uni kid_rule_i} ... )}↑{ch_uni}
-  --   -}
-  --   let DerivRule _name kids_rule sort_rule = derivRules d
-  --   let sort = applyRulialVarSubst sigma_d (sort_rule # map (map pure)) :: MetaSort s
-  --   assertM "a PropagBoundary's Change's left endpoint must match the Sort of the inner Deriv"
-  --     (leftEndpoint ch == sort)
-  --   sigma_uni /\ ch_uni <- divideMetaSortChangeByRulialSortChange (sort_rule # map Congruence) ch
-  --   pure
-  --     $ Tree (PropagBoundary Up ch_uni)
-  --     $ pure
-  --     $ Tree (Inject_PropagDerivLabel dl)
-  --     $ (\f -> List.zipWith f kids kids_rule)
-  --         \kid ruleKid ->
-  --           Tree (PropagBoundary Down (ruleKid # map (map (Congruence >>> map pure)) # applyRulialVarSubst sigma_uni))
-  --             (pure kid)
+  -}
+  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl@(DerivLabel d sigma_d)) kids : Nil) -> do
+    -- (1) for a d', matches wrap pattern if down change unifies with the
+    -- reverse of the change to one of the kids (skip kid if the parent-kid
+    -- change is id)
+    todo ""
+  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl@(DerivLabel d sigma_d)) kids : Nil) -> do
+    -- (2) matches unwrap pattern if down change unifies with change to one of
+    -- the kids (skip kid if the parent-kid change is id)
+    todo ""
+  Tree (LeftF (PropagBoundary Down ch)) (Tree (RightF dl) kids : Nil) -> do
+    -- otherwise, use congruence pattern (unify with sort_rule, then compose
+    -- with change from parent to kid and propagate that change as a boundary on
+    -- each kid)
+    _ <- unifyMetaSorts (ch # innerEndpoint) (getParentMetaSortOfDerivLabel derivRules dl)
+    todo ""
   _ -> empty
 
 defaultUpPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s

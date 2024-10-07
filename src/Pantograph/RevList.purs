@@ -10,6 +10,7 @@ import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
+import Data.Tuple.Nested (type (/\))
 
 data RevList a = RevList (List a)
 
@@ -46,3 +47,5 @@ snoc (RevList xs) x = (RevList (Cons x xs))
 unsnoc :: forall a. RevList a -> Maybe { init :: RevList a, last :: a }
 unsnoc (RevList xs) = List.uncons xs <#> \{ head, tail } -> { init: RevList tail, last: head }
 
+zip :: forall a. RevList a -> RevList a -> RevList (a /\ a)
+zip (RevList xs) (RevList ys) = RevList (List.zip xs ys)
