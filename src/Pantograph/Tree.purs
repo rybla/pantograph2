@@ -193,6 +193,9 @@ derive instance Functor ChangeLabel
 derive instance Foldable ChangeLabel
 derive instance Traversable ChangeLabel
 
+composeChanges' :: forall f l. Applicative f => Traversable f => Eq l => Tree (f (ChangeLabel l)) -> Tree (f (ChangeLabel l)) -> Maybe (Tree (f (ChangeLabel l)))
+composeChanges' _ _ = todo "composeChanges'"
+
 composeChanges :: forall l. Eq l => Change l -> Change l -> Maybe (Change l)
 
 composeChanges c1 c2 | not (isValidChange c1 && isValidChange c2) = bug "invalid Change"
@@ -265,6 +268,14 @@ composeChanges (Replace t1 t1' ▵ Nil) c2 = do
   pure $ Replace (c # innerEndpoint) t1' ▵ Nil
 
 composeChanges _ _ = empty
+
+invertChange :: forall l. Change l -> Change l
+invertChange c | not (isValidChange c) = bug "invalid Change"
+invertChange (Congruence l ▵ cs) = Congruence l ▵ (cs # map invertChange)
+invertChange (Plus th ▵ (c : Nil)) = Minus th ▵ ((c # invertChange) : Nil)
+invertChange (Minus th ▵ (c : Nil)) = Plus th ▵ ((c # invertChange) : Nil)
+invertChange (Replace t t' ▵ Nil) = Replace t' t ▵ Nil
+invertChange _ = bug "impossible"
 
 innerEndpoint :: forall l. Change l -> Tree l
 innerEndpoint c | not (isValidChange c) = bug "invalid Change"

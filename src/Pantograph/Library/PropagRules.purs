@@ -1,18 +1,42 @@
 module Pantograph.Library.PropagRules where
 
 import Pantograph.Grammar
+import Pantograph.Tree
 import Prelude
 
 import Control.Plus (empty)
-import Data.Either (either)
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.Maybe (Maybe)
-import Data.Tuple.Nested (type (/\))
-import Pantograph.EitherF (EitherF(..))
-import Pantograph.Tree (ChangeLabel(..), Tree(..), composeChanges, id, innerEndpoint, innerEndpoint')
-import Pantograph.Unification (unifyMetaSorts)
-import Pantograph.Utility (todo, unimplemented)
+import Data.Maybe (fromMaybe')
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested ((/\))
+import Pantograph.Unification (unifyMetaSortChanges)
+import Pantograph.Utility (bug)
+
+defaultCongruenceDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
+defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPropagRule" \_mb_th -> case _ of
+  PropagBoundary Down ch ▵ ((Inject_PropagDerivLabel dl ▵ kids) : Nil) -> do
+    let chs_kids = getKidMetaSortChangesOfDerivLabel derivRules dl
+    kids' <-
+      List.zip kids chs_kids # traverse \(kid /\ ch_kid) -> do
+        ch' <- ch `composeChanges'` ch_kid
+        pure $ PropagBoundary Down ch' ▵ (kid : Nil)
+    pure $ Inject_PropagDerivLabel dl ▵ kids'
+  _ -> empty
+
+defaultUnwrapDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
+defaultUnwrapDownPropagRule derivRules = PropagRule "defaultUnwrapDownPropagRule" \_mb_th -> case _ of
+  PropagBoundary Down ch ▵ ((Inject_PropagDerivLabel dl ▵ kids) : Nil) -> do
+    let chs_kids = getKidMetaSortChangesOfDerivLabel derivRules dl
+    -- match ch with an inverted ch_kid in chs_kids
+    (i_kid /\ ch_kid) /\ sigma_ch <- chs_kids # mapWithIndex Tuple # List.findMap (\(i /\ ch_kid) -> ((i /\ ch_kid) /\ _) <$> unifyMetaSortChanges ch ch_kid)
+    let kid = kids List.!! i_kid # fromMaybe' \_ -> bug "i_kid out of bounds"
+    let ch' = dl # getParentMetaSortOfDerivLabel derivRules # map (map Congruence) # applyMetaVarSubst sigma_ch
+    -- need to compose ch_kid with ch somehow, after applying sigma_ch to ch_kid
+    pure $ PropagBoundary Down ch' ▵ (kid : Nil)
+  _ -> empty
 
 -- defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
 -- defaultPropagRules = pure >>> apply

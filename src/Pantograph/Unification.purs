@@ -15,8 +15,8 @@ import Data.Tuple.Nested ((/\))
 import Pantograph.Tree ((▵))
 import Pantograph.Utility (bug, todo)
 
--- unifyMetaSortChanges :: forall s. MetaSortChange s -> MetaSortChange s -> Maybe (MetaVarSubst _)
--- unifyMetaSortChanges _ _ = ?a
+unifyMetaSortChanges :: forall s. MetaSortChange s -> MetaSortChange s -> Maybe (MetaVarSubst (MetaSortChange s))
+unifyMetaSortChanges _ _ = todo "unifyMetaSortChanges"
 
 unifyMetaSorts :: forall s. Eq s => MetaSort s -> MetaSort s -> Maybe (MetaVarSubst (MetaSort s))
 unifyMetaSorts m1_init m2_init = do

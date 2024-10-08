@@ -22,7 +22,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.Tree (Change, ChangeLabel(..), Path, Tooth, Tree(..), (▵))
+import Pantograph.Tree (Change, ChangeLabel(..), Path, Tooth, Tree(..), innerEndpoint', (▵))
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -125,6 +125,11 @@ type DerivPath d s = Path (DerivLabel d s)
 -- DerivRule
 --------------------------------------------------------------------------------
 
+-- TODO: need to _split_ kid changes into two changes -- an "input" change and
+-- an "output" change that compose to the entire change between the kid and
+-- parent. the "input" change will be matched against in the propagation rules,
+-- to see if the propagation rule applies. the "output" change will be result in
+-- the resulting change put on a kid/parent going in some direction. there might be an aspect 
 data DerivRule s =
   DerivRule
     String -- name
@@ -153,19 +158,30 @@ derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
+getKidMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSort s)
+getKidMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
+  kidChanges
+    # map
+        ( map (map pure)
+            >>> applyRulialVarSubst (sigma # map (map (map Congruence)))
+            >>> innerEndpoint'
+        )
+  where
+  DerivRule _name kidChanges _parentSort = derivRules d
+
 getParentMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> MetaSort s
 getParentMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
   parentSort # map (map pure)
     # applyRulialVarSubst sigma
   where
-  DerivRule _name _kidChs parentSort = derivRules d
+  DerivRule _name _kidChanges parentSort = derivRules d
 
 getKidMetaSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSortChange s)
 getKidMetaSortChangesOfDerivLabel derivRules (DerivLabel d sigma) =
-  kidChs # map (map (map pure))
+  kidChanges # map (map (map pure))
     # map (applyRulialVarSubst (sigma # map (map (map Congruence))))
   where
-  DerivRule _name kidChs _parentSort = derivRules d
+  DerivRule _name kidChanges _parentSort = derivRules d
 
 --------------------------------------------------------------------------------
 -- Insertion
