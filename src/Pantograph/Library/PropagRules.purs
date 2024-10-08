@@ -26,17 +26,18 @@ defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPr
     pure $ Inject_PropagDerivLabel dl ▵ kids'
   _ -> empty
 
-defaultUnwrapDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
-defaultUnwrapDownPropagRule derivRules = PropagRule "defaultUnwrapDownPropagRule" \_mb_th -> case _ of
-  PropagBoundary Down ch ▵ ((Inject_PropagDerivLabel dl ▵ kids) : Nil) -> do
-    let chs_kids = getKidMetaSortChangesOfDerivLabel derivRules dl
-    -- match ch with an inverted ch_kid in chs_kids
-    (i_kid /\ ch_kid) /\ sigma_ch <- chs_kids # mapWithIndex Tuple # List.findMap (\(i /\ ch_kid) -> ((i /\ ch_kid) /\ _) <$> unifyMetaSortChanges ch ch_kid)
-    let kid = kids List.!! i_kid # fromMaybe' \_ -> bug "i_kid out of bounds"
-    let ch' = dl # getParentMetaSortOfDerivLabel derivRules # map (map Congruence) # applyMetaVarSubst sigma_ch
-    -- need to compose ch_kid with ch somehow, after applying sigma_ch to ch_kid
-    pure $ PropagBoundary Down ch' ▵ (kid : Nil)
-  _ -> empty
+-- defaultUnwrapDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
+-- defaultUnwrapDownPropagRule derivRules = PropagRule "defaultUnwrapDownPropagRule" \_mb_th -> case _ of
+--   PropagBoundary Down ch ▵ ((Inject_PropagDerivLabel dl ▵ kids) : Nil) -> do
+--     let chs_kids = getKidMetaSortChangesOfDerivLabel derivRules dl
+--     -- match ch with an inverted ch_kid in chs_kids
+--     (i_kid /\ ch_kid) /\ sigma_ch <- chs_kids # mapWithIndex Tuple # List.findMap (\(i /\ ch_kid) -> ((i /\ ch_kid) /\ _) <$> unifyMetaSortChanges ch ch_kid)
+--     let kid = kids List.!! i_kid # fromMaybe' \_ -> bug "i_kid out of bounds"
+--     let ch' = dl # getParentMetaSortOfDerivLabel derivRules # map (map Congruence) # applyMetaVarSubst sigma_ch
+--     -- let ch'' =
+--     -- need to compose ch_kid with ch somehow, after applying sigma_ch to ch_kid
+--     pure $ PropagBoundary Down ch' ▵ (kid : Nil)
+--   _ -> empty
 
 -- defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
 -- defaultPropagRules = pure >>> apply

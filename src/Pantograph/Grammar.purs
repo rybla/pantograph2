@@ -158,8 +158,8 @@ derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
-getKidMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSort s)
-getKidMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
+getKidMetaSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSort s)
+getKidMetaSortsOfDerivLabel derivRules (DerivLabel d sigma) =
   kidChanges
     # map
         ( map (map pure)
