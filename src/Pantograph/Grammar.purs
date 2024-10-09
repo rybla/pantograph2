@@ -9,9 +9,9 @@ import Pantograph.Tree
 import Prelude
 
 import Data.Array as Array
-import Data.Either (Either(..), either)
+import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (fold, intercalate, length)
+import Data.Foldable (class Foldable, fold, intercalate, length)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.Map (Map)
@@ -19,8 +19,10 @@ import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
+import Data.Traversable (class Traversable)
+import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.Utility (bug, todo)
+import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
 -- RulialVar
@@ -66,18 +68,28 @@ applyRulialVarSubstToTooth sigma _ = bug "can't have rulialVar at Tooth"
 -- Sort
 --------------------------------------------------------------------------------
 
-type Sort s = Tree s
-type SortChange s = Change s
+data SortLabel s = SortLabel s
 
-type RulialSort s = Tree (Rulial s)
-type RulialSortChange s = Tree (Rulial (ChangeLabel s))
-type RulialSortTooth s = Tooth (Rulial s)
+derive instance Generic (SortLabel s) _
+
+instance Pretty s => Pretty (SortLabel s) where
+  pretty (SortLabel t) = pretty t
+
+instance Show s => Show (SortLabel s) where
+  show x = genericShow x
+
+instance Eq s => Eq (SortLabel s) where
+  eq x = genericEq x
+
+derive instance Functor SortLabel
+derive instance Foldable SortLabel
+derive instance Traversable SortLabel
 
 --------------------------------------------------------------------------------
 -- Deriv
 --------------------------------------------------------------------------------
 
-type DerivLabel d s = DerivLabel' d s
+type DerivLabel d s = DerivLabel' d (SortLabel s)
 
 data DerivLabel' d s = DerivLabel d (RulialVarSubst (Tree s))
 
@@ -94,11 +106,6 @@ instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
 
 derive instance Functor (DerivLabel' d)
 
-type Deriv d s = Tree (DerivLabel d s)
-type DerivChange d s = Change (DerivLabel d s)
-type DerivTooth d s = Tooth (DerivLabel d s)
-type DerivPath d s = Path (DerivLabel d s)
-
 --------------------------------------------------------------------------------
 -- DerivRule
 --------------------------------------------------------------------------------
@@ -111,8 +118,8 @@ type DerivPath d s = Path (DerivLabel d s)
 data DerivRule s =
   DerivRule
     String -- name
-    (List (Tree (ChangeLabel (Rulial s)))) -- for each kid, sort change oriented from kid to parent
-    (Tree (Rulial s)) -- parent sort
+    (List (Tree (ChangeLabel (Rulial (SortLabel s))))) -- for each kid, sort change oriented from kid to parent
+    (Tree (Rulial (SortLabel s))) -- parent sort
 
 derive instance Generic (DerivRule s) _
 
@@ -136,17 +143,17 @@ derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
-getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Sort s
+getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Tree (SortLabel s)
 getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
   where
   DerivRule _name _kidChanges parentSort = derivRules d
 
-getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (SortChange s)
+getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (ChangeLabel (SortLabel s)))
 getKidSortChangesOfDerivLabel derivRules (DerivLabel d sigma) = kidChanges # map (applyRulialVarSubstToChange sigma)
   where
   DerivRule _name kidChanges _parentSort = derivRules d
 
-getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Sort s)
+getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (SortLabel s))
 getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules dl # map innerEndpoint
 
 --------------------------------------------------------------------------------
@@ -156,33 +163,36 @@ getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules
 data Insertion d s =
   Insertion
     String -- name
-    (DerivPath d s) -- path to insert
-    (SortChange s) -- outward change at outside of insert
-    (SortChange s) -- inward  change at inside of insert
+    (Path (DerivLabel d s)) -- path to insert
+    (Tree (ChangeLabel (SortLabel s))) -- outward change at outside of insert
+    (Change (SortLabel s)) -- inward  change at inside of insert
 
 --------------------------------------------------------------------------------
 -- PropagDeriv
+-- TODO: eventually I'll have to deal with the cursor position being somewhere in the PropagDeriv
 --------------------------------------------------------------------------------
 
--- TODO: eventually I'll have to deal with the cursor position being somewhere in the PropagDeriv
+-- data PropagDerivLabel d s
+--   = Inject_PropagDerivLabel (DerivLabel d s)
+--   | PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
-data PropagDerivLabel d s
-  = Inject_PropagDerivLabel (DerivLabel d s)
-  | PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
+-- derive instance Generic (PropagDerivLabel d s) _
 
-derive instance Generic (PropagDerivLabel d s) _
+-- instance (Show d, Show s) => Show (PropagDerivLabel d s) where
+--   show x = genericShow x
 
-instance (Show d, Show s) => Show (PropagDerivLabel d s) where
-  show x = genericShow x
+-- instance (Pretty d, Pretty s) => Pretty (PropagDerivLabel d s) where
+--   pretty (Inject_PropagDerivLabel dl) = pretty dl
+--   pretty (PropagBoundary dir ch) = pretty dir <> " " <> pretty ch
 
-instance (Pretty d, Pretty s) => Pretty (PropagDerivLabel d s) where
-  pretty (Inject_PropagDerivLabel dl) = pretty dl
-  pretty (PropagBoundary dir ch) = pretty dir <> " " <> pretty ch
+-- instance (Eq d, Eq s) => Eq (PropagDerivLabel d s) where
+--   eq x = genericEq x
 
-instance (Eq d, Eq s) => Eq (PropagDerivLabel d s) where
-  eq x = genericEq x
+-- derive instance Functor (PropagDerivLabel d)
 
-derive instance Functor (PropagDerivLabel d)
+type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (SortLabel s)
+
+data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
 data PropagBoundaryDirection
   = Up

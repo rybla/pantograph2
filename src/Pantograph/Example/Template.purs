@@ -38,6 +38,6 @@ derivRules _ = unimplemented "derivRules"
 propagRules :: PropagRules D S
 propagRules = mempty
 
-canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
+canonicalDerivOfSort :: Tree (SortLabel S) -> Maybe (Tree (DerivLabel D S))
 canonicalDerivOfSort _ = unimplemented "canonicalDerivOfSort"
 

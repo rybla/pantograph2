@@ -3,23 +3,21 @@ module Test.Slc where
 import Pantograph.Example.Slc
 import Pantograph.Grammar
 import Pantograph.Tree
+import Pantograph.Propagation
 import Prelude hiding (zero)
 
-import Pantograph.Propagation (fromPropagDerivToDeriv, propagateFixpoint)
 import Test.Common (shouldEqual_pretty)
-import Test.Spec (Spec, describe, it, pending)
+import Test.Spec (Spec, describe, it)
 
 spec :: Spec Unit
 spec = describe "Slc" do
   it "trivial" do
     shouldEqual_pretty
-      ( fromPropagDerivToDeriv $ propagateFixpoint propagRules
-          -- (lam' nil (ref' (ext nil) (zero' nil)))
-          (lam' ?a ?a)
+      ( fromPropagDerivToDeriv $ propagateFixpoint propagRules $
+          lamₚ nil (refₚ (ext nil) (zeroₚ nil))
       )
       ( pure $
-          -- (lam nil (ref (ext nil) (zero nil)))
-          ?a
+          lam nil (ref (ext nil) (zero nil))
       )
   it "one step" do
     pure unit -- TODO

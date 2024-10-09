@@ -9,12 +9,13 @@ import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Data.Tuple (snd)
 import Data.Tuple.Nested ((/\))
-import Pantograph.Tree (getTeeth, stepPath, unstepPath)
+import Pantograph.EitherF (EitherF(..))
+import Pantograph.Tree (Tree, getTeeth, stepPath, unstepPath)
 
-fromPropagDerivToDeriv :: forall d s. PropagDeriv d s -> Maybe (Deriv d s)
+fromPropagDerivToDeriv :: forall d s. PropagDeriv d s -> Maybe (Tree (DerivLabel d s))
 fromPropagDerivToDeriv = traverse case _ of
-  Inject_PropagDerivLabel dl -> pure dl
-  PropagBoundary _ _ -> empty
+  RightF dl -> pure dl
+  LeftF (PropagBoundary _ _) -> empty
 
 propagateFixpoint :: forall d s. PropagRules d s -> PropagDeriv d s -> PropagDeriv d s
 propagateFixpoint prs pd0 = go pd0

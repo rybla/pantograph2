@@ -71,11 +71,54 @@ instance Eq D where
   eq x = genericEq x
 
 --------------------------------------------------------------------------------
+-- smart constructors
+--------------------------------------------------------------------------------
+
+-- sorts
+
+nil = SortLabel Nil ▵* []
+nilₐ = pure (SortLabel Nil) ▵* []
+
+ext ∷ Tree (SortLabel S) → Tree (SortLabel S)
+ext g = SortLabel Ext ▵* [ g ]
+
+extₐ g = pure (SortLabel Ext) ▵* [ g ]
+extᵪ g = pure (SortLabel Ext) ▵∂. [ g ]
+ext_0 = pure (SortLabel Ext) ▵< ([] /\ [])
+
+var g = SortLabel Var ▵* [ g ]
+varₐ g = pure (SortLabel Var) ▵* [ g ]
+varᵪ g = pure (SortLabel Var) ▵∂. [ g ]
+
+term g = SortLabel Term ▵* [ g ]
+termₐ g = pure (SortLabel Term) ▵* [ g ]
+termᵪ g = pure (SortLabel Term) ▵∂. [ g ]
+
+-- derivs
+
+zero gamma = DerivLabel Zero (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
+zeroₚ gamma = RightF (DerivLabel Zero (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
+
+suc gamma x = DerivLabel Suc (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
+sucₚ gamma x = RightF (DerivLabel Suc (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
+
+ref gamma x = DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
+refₚ gamma x = RightF (DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
+
+lam gamma b = DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ b ]
+lamₚ gamma b = RightF (DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ b ]
+
+app gamma f a = DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ f, a ]
+appₚ gamma f a = (DerivLabel Ref (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ f, a ]
+
+--------------------------------------------------------------------------------
 -- semantics
 --------------------------------------------------------------------------------
 
-gamma :: forall s. Tree (Rulial s)
-gamma = Left (RulialVar "gamma") ▵* []
+gamma_rv = RulialVar "gamma"
+
+gamma_rs :: Tree (Rulial (SortLabel S))
+gamma_rs = Left gamma_rv ▵* []
 
 derivRules :: DerivRules D S
 
@@ -83,52 +126,48 @@ derivRules :: DerivRules D S
 
 derivRules Zero =
   mkDerivRule "Zero"
-    []
-    ----
-    (pure Var ▵* [ pure Ext ▵* [ gamma ] ])
+    [] ----
+    (varₐ (extₐ gamma_rs))
 
 derivRules Suc =
   mkDerivRule "Suc"
-    [ (pure Ext ▵< ([] /\ [])) ▵∂+ id gamma ]
-    ----
-    (pure Var ▵* [ pure Ext ▵* [ gamma ] ])
+    [ ext_0 ▵∂+ id gamma_rs
+    ] ----
+    (varₐ (extₐ gamma_rs))
 
 -- Term
 
 derivRules Ref =
   mkDerivRule "Ref"
-    [ (pure Var ▵* [ gamma ]) ▵∂~> (pure Term ▵* [ gamma ]) ]
-    ----
-    (pure Term ▵* [ gamma ])
+    [ varₐ gamma_rs ▵∂~> termₐ gamma_rs
+    ] ----
+    (termₐ gamma_rs)
 
 derivRules Lam =
   mkDerivRule "Lam"
-    [ (pure Ext ▵< ([] /\ [])) ▵∂- id gamma ]
-    ----
-    (pure Term ▵* [ gamma ])
+    [ ext_0 ▵∂- id gamma_rs
+    ] ----
+    (termₐ gamma_rs)
 
 derivRules App =
   mkDerivRule "App"
-    [ pure Term ▵∂. [ id gamma ]
-    , pure Term ▵∂. [ id gamma ]
-    ]
-    ----
-    (pure Term ▵* [ gamma ])
+    [ termᵪ (id gamma_rs)
+    , termᵪ (id gamma_rs)
+    ] ----
+    (termₐ gamma_rs)
 
 derivRules Hole =
   mkDerivRule "Hole"
-    []
-    ----
-    (pure Term ▵* [ gamma ])
+    [] ----
+    (termₐ gamma_rs)
 
 propagRules :: PropagRules D S
 propagRules = defaultPropagRules derivRules <> customPropagRules
   where
   customPropagRules =
-    [
-    ] # List.fromFoldable
+    [] # List.fromFoldable
 
-canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
+canonicalDerivOfSort :: Tree (SortLabel S) -> Maybe (Tree (DerivLabel D S))
 canonicalDerivOfSort _ = unimplemented "canonicalDerivOfSort"
 
 --------------------------------------------------------------------------------

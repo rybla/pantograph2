@@ -1,10 +1,11 @@
 module Pantograph.EditorBackend where
 
 import Data.Maybe (Maybe)
-import Pantograph.Grammar (Deriv, DerivRules, PropagRules, Sort)
+import Pantograph.Grammar (DerivRules, PropagRules, SortLabel, DerivLabel)
+import Pantograph.Tree (Tree)
 
 newtype EditorBackend d s = EditorBackend
   { derivRules :: DerivRules d s
   , propagRules :: PropagRules d s
-  , canonicalDerivOfSort :: Sort s -> Maybe (Deriv d s)
+  , canonicalDerivOfSort :: Tree (SortLabel s) -> Maybe (Tree (DerivLabel d s))
   }
