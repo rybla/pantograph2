@@ -15,6 +15,12 @@ import Data.Tuple.Nested ((/\))
 import Pantograph.Unification (unifyMetaSortChanges)
 import Pantograph.Utility (bug)
 
+defaultPropagRules :: forall d s. Eq s => DerivRules d s -> PropagRules d s
+defaultPropagRules = pure >>> apply
+  ( [ defaultCongruenceDownPropagRule
+    ] # List.fromFoldable
+  )
+
 defaultCongruenceDownPropagRule :: forall d s. Eq s => DerivRules d s -> PropagRule d s
 defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPropagRule" \_mb_th -> case _ of
   PropagBoundary Down ch ▵ ((Inject_PropagDerivLabel dl ▵ kids) : Nil) -> do

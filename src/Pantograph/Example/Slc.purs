@@ -100,34 +100,34 @@ suc :: MetaSort S -> Deriv D S -> Deriv D S
 suc gamma x = DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
 
 zero' :: MetaSort S -> PropagDeriv D S
-zero' gamma = RightF (DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
+zero' gamma = Inject_PropagDerivLabel (DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
 
 suc' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-suc' gamma x = RightF (DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
+suc' gamma x = Inject_PropagDerivLabel (DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
 
 ref :: MetaSort S -> Deriv D S -> Deriv D S
 ref gamma x = DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
 
 ref' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-ref' gamma x = RightF (DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
+ref' gamma x = Inject_PropagDerivLabel (DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
 
 lam :: MetaSort S -> Deriv D S -> Deriv D S
 lam gamma b = DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ b ]
 
 lam' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-lam' gamma b = RightF (DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ b ]
+lam' gamma b = Inject_PropagDerivLabel (DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ b ]
 
 app :: MetaSort S -> Deriv D S -> Deriv D S -> Deriv D S
 app gamma f a = DerivLabel App_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ f, a ]
 
 app' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S -> PropagDeriv D S
-app' gamma f a = RightF (DerivLabel (App_D) (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ f, a ]
+app' gamma f a = Inject_PropagDerivLabel (DerivLabel (App_D) (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ f, a ]
 
 hole :: MetaSort S -> Deriv D S
 hole gamma = DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
 
 hole' :: MetaSort S -> PropagDeriv D S
-hole' gamma = RightF (DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
+hole' gamma = Inject_PropagDerivLabel (DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
 
 --------------------------------------------------------------------------------
 -- semantics
@@ -139,7 +139,7 @@ rv :: RulialVar -> RulialSort S
 rv x = Left x ▵* []
 
 rv' :: RulialVar -> RulialSortChange S
-rv' = rv >>> id
+rv' = rv >>> id'
 
 derivRules :: DerivRules D S
 

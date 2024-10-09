@@ -14,10 +14,12 @@ spec = describe "Slc" do
   it "trivial" do
     shouldEqual_pretty
       ( fromPropagDerivToDeriv $ propagateFixpoint propagRules
-          (lam' nil (ref' (ext nil) (zero' nil)))
+          -- (lam' nil (ref' (ext nil) (zero' nil)))
+          (lam' ?a ?a)
       )
       ( pure $
-          (lam nil (ref (ext nil) (zero nil)))
+          -- (lam nil (ref (ext nil) (zero nil)))
+          ?a
       )
   it "one step" do
     pure unit -- TODO

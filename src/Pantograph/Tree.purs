@@ -160,6 +160,9 @@ infix 1 mkCongruence as ▵∂.
 id :: forall l. Tree l -> Change l
 id = map Congruence
 
+id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeLabel l))
+id' = map (map Congruence)
+
 mkPlus :: forall l. Tooth l -> Change l -> Change l
 mkPlus l kid = Plus l ▵* [ kid ]
 
