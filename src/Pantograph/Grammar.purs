@@ -1,29 +1,26 @@
 -- | Grammar
 -- |
 -- | conventions:
--- |   - type variable `s` corresponds to type of specific sort labels
 -- |   - type variable `d` corresponds to type of specific derivation rule labels
+-- |   - type variable `s` corresponds to type of specific sort labels
 module Pantograph.Grammar where
 
+import Pantograph.Tree
 import Prelude
 
-import Control.Applicative (pure)
 import Data.Array as Array
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (fold, intercalate, length)
-import Data.Functor.Compose (Compose)
 import Data.Generic.Rep (class Generic)
-import Data.List (List)
+import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
-import Pantograph.EitherF (EitherF)
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.Tree (Change, ChangeLabel(..), Path, Tooth, Tree(..), innerEndpoint', (▵))
-import Pantograph.Utility (bug)
+import Pantograph.Utility (bug, todo)
 
 --------------------------------------------------------------------------------
 -- RulialVar
@@ -49,37 +46,21 @@ type Rulial = Either RulialVar
 
 type RulialVarSubst = Map RulialVar
 
-applyRulialVarSubst :: forall a. RulialVarSubst (Tree a) -> Tree (Rulial a) -> Tree a
-applyRulialVarSubst sigma (Tree (Left rv) _) = sigma # Map.lookup rv # fromMaybe' \_ -> bug "a RulialSort used a RuilialVar that wasn't substituted by the RulialVarSubst"
-applyRulialVarSubst sigma (Tree (Right sl) kids) = Tree sl (kids <#> applyRulialVarSubst sigma)
+applyRulialVarSubstToTree :: forall s. RulialVarSubst (Tree s) -> Tree (Rulial s) -> Tree s
+applyRulialVarSubstToTree sigma (Tree (Left x) _) = sigma # Map.lookup x # fromMaybe' \_ -> bug "a RulialSort used a RuilialVar that wasn't substituted by the RulialVarSubst"
+applyRulialVarSubstToTree sigma (Tree (Right sl) kids) = Tree sl (kids <#> applyRulialVarSubstToTree sigma)
 
---------------------------------------------------------------------------------
--- MetaVar
---------------------------------------------------------------------------------
+applyRulialVarSubstToChange :: forall s. RulialVarSubst (Tree s) -> Tree (ChangeLabel (Rulial s)) -> Tree (ChangeLabel s)
+applyRulialVarSubstToChange sigma (Congruence (Left x) ▵ Nil) = sigma # Map.lookup x # fromMaybe' (\_ -> bug "RulialVar was not substituted") # id
+applyRulialVarSubstToChange sigma (Congruence (Right s) ▵ kids) = Congruence s ▵ (kids # map (applyRulialVarSubstToChange sigma))
+applyRulialVarSubstToChange sigma (Plus th ▵ (kid : Nil)) = Plus (th # applyRulialVarSubstToTooth sigma) ▵ ((kid # applyRulialVarSubstToChange sigma) : Nil)
+applyRulialVarSubstToChange sigma (Minus th ▵ (kid : Nil)) = Minus (th # applyRulialVarSubstToTooth sigma) ▵ ((kid # applyRulialVarSubstToChange sigma) : Nil)
+applyRulialVarSubstToChange sigma (Replace t t' ▵ Nil) = Replace (t # applyRulialVarSubstToTree sigma) (t' # applyRulialVarSubstToTree sigma) ▵ Nil
+applyRulialVarSubstToChange _sigma _ = bug "invalid Change"
 
-data MetaVar = MetaVar String
-
-derive instance Generic MetaVar _
-
-instance Show MetaVar where
-  show x = genericShow x
-
-instance Pretty MetaVar where
-  pretty (MetaVar str) = "?" <> str
-
-instance Eq MetaVar where
-  eq x = genericEq x
-
-instance Ord MetaVar where
-  compare x = genericCompare x
-
-type Meta = Either MetaVar
-
-type MetaVarSubst = Map MetaVar
-
-applyMetaVarSubst :: forall a. MetaVarSubst (Tree (Meta a)) -> Tree (Meta a) -> Tree (Meta a)
-applyMetaVarSubst sigma (Tree (Left rv) _) = sigma # Map.lookup rv # fromMaybe' \_ -> bug "a MetaSort used a RuilialVar that wasn't substituted by the MetaVarSubst"
-applyMetaVarSubst sigma (Tree (Right sl) kids) = Tree (Right sl) (kids <#> applyMetaVarSubst sigma)
+applyRulialVarSubstToTooth :: forall s. RulialVarSubst (Tree s) -> Tooth (Rulial s) -> Tooth s
+applyRulialVarSubstToTooth sigma (Tooth (Right s) l r) = Tooth s (l # map (applyRulialVarSubstToTree sigma)) (r # map (applyRulialVarSubstToTree sigma))
+applyRulialVarSubstToTooth sigma _ = bug "can't have rulialVar at Tooth"
 
 --------------------------------------------------------------------------------
 -- Sort
@@ -87,9 +68,6 @@ applyMetaVarSubst sigma (Tree (Right sl) kids) = Tree (Right sl) (kids <#> apply
 
 type Sort s = Tree s
 type SortChange s = Change s
-
-type MetaSort s = Tree (Meta s)
-type MetaSortChange s = Tree (Meta (ChangeLabel s))
 
 type RulialSort s = Tree (Rulial s)
 type RulialSortChange s = Tree (Rulial (ChangeLabel s))
@@ -99,7 +77,7 @@ type RulialSortTooth s = Tooth (Rulial s)
 -- Deriv
 --------------------------------------------------------------------------------
 
-type DerivLabel d s = DerivLabel' d (Meta s)
+type DerivLabel d s = DerivLabel' d s
 
 data DerivLabel' d s = DerivLabel d (RulialVarSubst (Tree s))
 
@@ -133,7 +111,7 @@ type DerivPath d s = Path (DerivLabel d s)
 data DerivRule s =
   DerivRule
     String -- name
-    (List (Tree (Rulial (ChangeLabel s)))) -- for each kid, sort change oriented from kid to parent
+    (List (Tree (ChangeLabel (Rulial s)))) -- for each kid, sort change oriented from kid to parent
     (Tree (Rulial s)) -- parent sort
 
 derive instance Generic (DerivRule s) _
@@ -158,30 +136,18 @@ derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
-getKidMetaSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSort s)
-getKidMetaSortsOfDerivLabel derivRules (DerivLabel d sigma) =
-  kidChanges
-    # map
-        ( map (map pure)
-            >>> applyRulialVarSubst (sigma # map (map (map Congruence)))
-            >>> innerEndpoint'
-        )
-  where
-  DerivRule _name kidChanges _parentSort = derivRules d
-
-getParentMetaSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> MetaSort s
-getParentMetaSortOfDerivLabel derivRules (DerivLabel d sigma) =
-  parentSort # map (map pure)
-    # applyRulialVarSubst sigma
+getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Sort s
+getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
   where
   DerivRule _name _kidChanges parentSort = derivRules d
 
-getKidMetaSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (MetaSortChange s)
-getKidMetaSortChangesOfDerivLabel derivRules (DerivLabel d sigma) =
-  kidChanges # map (map (map pure))
-    # map (applyRulialVarSubst (sigma # map (map (map Congruence))))
+getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (SortChange s)
+getKidSortChangesOfDerivLabel derivRules (DerivLabel d sigma) = kidChanges # map (applyRulialVarSubstToChange sigma)
   where
   DerivRule _name kidChanges _parentSort = derivRules d
+
+getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Sort s)
+getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules dl # map innerEndpoint
 
 --------------------------------------------------------------------------------
 -- Insertion
@@ -191,8 +157,8 @@ data Insertion d s =
   Insertion
     String -- name
     (DerivPath d s) -- path to insert
-    (MetaSortChange s) -- outward change at outside of insert
-    (MetaSortChange s) -- inward  change at inside of insert
+    (SortChange s) -- outward change at outside of insert
+    (SortChange s) -- inward  change at inside of insert
 
 --------------------------------------------------------------------------------
 -- PropagDeriv
@@ -202,7 +168,7 @@ data Insertion d s =
 
 data PropagDerivLabel d s
   = Inject_PropagDerivLabel (DerivLabel d s)
-  | PropagBoundary PropagBoundaryDirection (Tree (Meta (ChangeLabel s)))
+  | PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
 derive instance Generic (PropagDerivLabel d s) _
 

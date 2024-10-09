@@ -16,19 +16,20 @@ import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Pantograph.EitherF (EitherF(..))
+import Pantograph.Library.PropagRules (defaultPropagRules)
 import Pantograph.Pretty (class Pretty)
-import Pantograph.Utility (unimplemented)
+import Pantograph.Utility (todo, unimplemented)
 
 --------------------------------------------------------------------------------
 -- types
 --------------------------------------------------------------------------------
 
 data S
-  = Ctx_S -- Sort
-  | Nil_S -- Sort
-  | Ext_S -- Sort -> Sort
-  | Var_S -- Sort -> Sort
-  | Term_S -- Sort -> Sort
+  = Ctx -- Sort
+  | Nil -- Sort
+  | Ext -- Sort -> Sort
+  | Var -- Sort -> Sort
+  | Term -- Sort -> Sort
 
 derive instance Generic S _
 
@@ -36,22 +37,22 @@ instance Show S where
   show x = genericShow x
 
 instance Pretty S where
-  pretty Ctx_S = "Ctx"
-  pretty Nil_S = "Nil"
-  pretty Ext_S = "Ext"
-  pretty Var_S = "Var"
-  pretty Term_S = "Term"
+  pretty Ctx = "Ctx"
+  pretty Nil = "Nil"
+  pretty Ext = "Ext"
+  pretty Var = "Var"
+  pretty Term = "Term"
 
 instance Eq S where
   eq x = genericEq x
 
 data D
-  = Zero_D -- Var
-  | Suc_D -- Var -> Var
-  | Ref_D -- Var -> Term
-  | Lam_D -- Term -> Term
-  | App_D -- Term -> Term -> Term
-  | Hole_D -- Term
+  = Zero -- Var
+  | Suc -- Var -> Var
+  | Ref -- Var -> Term
+  | Lam -- Term -> Term
+  | App -- Term -> Term -> Term
+  | Hole -- Term
 
 derive instance Generic D _
 
@@ -59,144 +60,73 @@ instance Show D where
   show x = genericShow x
 
 instance Pretty D where
-  pretty Zero_D = "Zero"
-  pretty Suc_D = "Suc"
-  pretty Ref_D = "Var"
-  pretty Lam_D = "Lam"
-  pretty App_D = "App"
-  pretty Hole_D = "Hole"
+  pretty Zero = "Zero"
+  pretty Suc = "Suc"
+  pretty Ref = "Var"
+  pretty Lam = "Lam"
+  pretty App = "App"
+  pretty Hole = "Hole"
 
 instance Eq D where
   eq x = genericEq x
 
 --------------------------------------------------------------------------------
--- smart exttructors
---------------------------------------------------------------------------------
-
--- sorts
-
-ctx = pure Ctx_S ▵* []
-
-nil = pure Nil_S ▵* []
-
-ext gamma = pure Ext_S ▵* [ gamma ]
-
-ext_0 = pure Ext_S ▵< ([] /\ [])
-
-var gamma = pure Var_S ▵* [ gamma ]
-
-var' gamma = pure Var_S ▵∂. [ gamma ]
-
-term gamma = pure Term_S ▵* [ gamma ]
-
-term' gamma = pure Term_S ▵∂. [ gamma ]
-
--- derivs
-
-zero :: MetaSort S -> Deriv D S
-zero gamma = DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
-
-suc :: MetaSort S -> Deriv D S -> Deriv D S
-suc gamma x = DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
-
-zero' :: MetaSort S -> PropagDeriv D S
-zero' gamma = Inject_PropagDerivLabel (DerivLabel Zero_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
-
-suc' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-suc' gamma x = Inject_PropagDerivLabel (DerivLabel Suc_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
-
-ref :: MetaSort S -> Deriv D S -> Deriv D S
-ref gamma x = DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ x ]
-
-ref' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-ref' gamma x = Inject_PropagDerivLabel (DerivLabel Ref_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ x ]
-
-lam :: MetaSort S -> Deriv D S -> Deriv D S
-lam gamma b = DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ b ]
-
-lam' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S
-lam' gamma b = Inject_PropagDerivLabel (DerivLabel Lam_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ b ]
-
-app :: MetaSort S -> Deriv D S -> Deriv D S -> Deriv D S
-app gamma f a = DerivLabel App_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* [ f, a ]
-
-app' :: MetaSort S -> PropagDeriv D S -> PropagDeriv D S -> PropagDeriv D S
-app' gamma f a = Inject_PropagDerivLabel (DerivLabel (App_D) (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* [ f, a ]
-
-hole :: MetaSort S -> Deriv D S
-hole gamma = DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ]) ▵* []
-
-hole' :: MetaSort S -> PropagDeriv D S
-hole' gamma = Inject_PropagDerivLabel (DerivLabel Hole_D (Map.fromFoldable [ gamma_rv /\ gamma ])) ▵* []
-
---------------------------------------------------------------------------------
 -- semantics
 --------------------------------------------------------------------------------
 
-gamma_rv = RulialVar "gamma" :: RulialVar
-
-rv :: RulialVar -> RulialSort S
-rv x = Left x ▵* []
-
-rv' :: RulialVar -> RulialSortChange S
-rv' = rv >>> id'
+gamma :: forall s. Tree (Rulial s)
+gamma = Left (RulialVar "gamma") ▵* []
 
 derivRules :: DerivRules D S
 
 -- Var
 
-derivRules Zero_D =
+derivRules Zero =
   mkDerivRule "Zero"
     []
     ----
-    (var (ext (rv gamma_rv)))
+    (pure Var ▵* [ pure Ext ▵* [ gamma ] ])
 
-derivRules Suc_D =
+derivRules Suc =
   mkDerivRule "Suc"
-    [ var' (ext_0 ▵∂+ rv' gamma_rv) ]
+    [ (pure Ext ▵< ([] /\ [])) ▵∂+ id gamma ]
     ----
-    (var (ext (rv gamma_rv)))
+    (pure Var ▵* [ pure Ext ▵* [ gamma ] ])
 
 -- Term
 
-derivRules Ref_D =
+derivRules Ref =
   mkDerivRule "Ref"
-    [ var (rv gamma_rv) ▵∂~> term (rv gamma_rv) ]
+    [ (pure Var ▵* [ gamma ]) ▵∂~> (pure Term ▵* [ gamma ]) ]
     ----
-    (term (rv gamma_rv))
+    (pure Term ▵* [ gamma ])
 
-derivRules Lam_D =
+derivRules Lam =
   mkDerivRule "Lam"
-    [ ext_0 ▵∂- rv' gamma_rv ]
+    [ (pure Ext ▵< ([] /\ [])) ▵∂- id gamma ]
     ----
-    (term (rv gamma_rv))
+    (pure Term ▵* [ gamma ])
 
-derivRules App_D =
+derivRules App =
   mkDerivRule "App"
-    [ term' (rv' gamma_rv)
-    , term' (rv' gamma_rv)
+    [ pure Term ▵∂. [ id gamma ]
+    , pure Term ▵∂. [ id gamma ]
     ]
     ----
-    (term (rv gamma_rv))
+    (pure Term ▵* [ gamma ])
 
-derivRules Hole_D =
+derivRules Hole =
   mkDerivRule "Hole"
     []
     ----
-    (term (rv gamma_rv))
+    (pure Term ▵* [ gamma ])
 
 propagRules :: PropagRules D S
-propagRules =
-  [ PropagRule "Down Zero" \_ -> case _ of
-      -- -- identity change
-      -- PropagBoundary Down (Congruence (Right (Ctx_S)) ▵ Nil) ▵ (kid : Nil) -> pure kid
-      -- PropagBoundary Down (Plus (Tooth (Right (Ctx_S)) (RevList Nil)) ▵ (kid_ch : Nil)) ▵ (kid : Nil) -> ?A
-      -- PropagBoundary Down (Minus _ ▵ yyy) ▵ (kid : Nil) -> ?A
-      -- PropagBoundary Down (Replace _ _ ▵ yyy) ▵ (kid : Nil) -> ?A
-      -- PropagBoundary Down _ ▵ (_ : Nil) -> bug "invalid PropagBoundary Change"
-      -- PropagBoundary Down ch ▵ _ -> bug "invalid PropagDeriv"
-      _ -> empty
-  ] # List.fromFoldable
+propagRules = defaultPropagRules derivRules <> customPropagRules
+  where
+  customPropagRules =
+    [
+    ] # List.fromFoldable
 
 canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
 canonicalDerivOfSort _ = unimplemented "canonicalDerivOfSort"
@@ -205,12 +135,5 @@ canonicalDerivOfSort _ = unimplemented "canonicalDerivOfSort"
 -- utilities
 --------------------------------------------------------------------------------
 
-mkDerivRule
-  :: forall s f
-   . Foldable f
-  => String
-  -> f (RulialSortChange s)
-  -> RulialSort s
-  -> DerivRule s
 mkDerivRule label args sort = DerivRule label (List.fromFoldable args) sort
 
