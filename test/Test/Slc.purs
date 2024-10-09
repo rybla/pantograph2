@@ -20,4 +20,10 @@ spec = describe "Slc" do
           lam nil (ref (ext nil) (zero nil))
       )
   it "one step" do
-    pure unit -- TODO
+    shouldEqual_pretty
+      ( fromPropagDerivToDeriv $ propagateFixpoint propagRules $
+          lamₚ nil (refₚ (ext nil) (zeroₚ nil)) ↓ (ext₀ ▵∂+ id nil)
+      )
+      ( pure $
+          lam nil (ref (ext nil) (zero nil))
+      )

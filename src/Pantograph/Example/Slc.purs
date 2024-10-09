@@ -84,7 +84,8 @@ ext g = SortLabel Ext ▵* [ g ]
 
 extₐ g = pure (SortLabel Ext) ▵* [ g ]
 extᵪ g = pure (SortLabel Ext) ▵∂. [ g ]
-ext_0 = pure (SortLabel Ext) ▵< ([] /\ [])
+ext₀ =  SortLabel Ext ▵< ([] /\ [])
+extXXX = pure (SortLabel Ext) ▵< ([] /\ [])
 
 var g = SortLabel Var ▵* [ g ]
 varₐ g = pure (SortLabel Var) ▵* [ g ]
@@ -131,7 +132,7 @@ derivRules Zero =
 
 derivRules Suc =
   mkDerivRule "Suc"
-    [ ext_0 ▵∂+ id gamma_rs
+    [ extXXX ▵∂+ id gamma_rs
     ] ----
     (varₐ (extₐ gamma_rs))
 
@@ -145,7 +146,7 @@ derivRules Ref =
 
 derivRules Lam =
   mkDerivRule "Lam"
-    [ ext_0 ▵∂- id gamma_rs
+    [ extXXX  ▵∂- id gamma_rs
     ] ----
     (termₐ gamma_rs)
 

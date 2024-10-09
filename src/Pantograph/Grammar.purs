@@ -20,7 +20,7 @@ import Data.Maybe (Maybe, fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
-import Pantograph.EitherF (EitherF)
+import Pantograph.EitherF (EitherF(..))
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.Utility (bug)
 
@@ -213,6 +213,12 @@ instance Eq PropagBoundaryDirection where
 type PropagDeriv d s = Tree (PropagDerivLabel d s)
 type PropagDerivTooth d s = Tooth (PropagDerivLabel d s)
 type PropagDerivPath d s = Path (PropagDerivLabel d s)
+
+downPropagBoundary kid ch = LeftF (PropagBoundary Down ch) ▵* [ kid ]
+upPropagBoundary kid ch = LeftF (PropagBoundary Up ch) ▵* [ kid ]
+
+infix 1 downPropagBoundary as ↓
+infix 1 upPropagBoundary as ↑
 
 --------------------------------------------------------------------------------
 -- PropagDeriv
