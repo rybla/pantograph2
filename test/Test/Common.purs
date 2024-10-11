@@ -6,11 +6,10 @@ import Data.Foldable (intercalate)
 import Pantograph.Pretty (indent, pretty)
 import Test.Spec.Assertions (fail)
 
-shouldEqual_pretty actual expected =
-  unless (actual == expected) do
+shouldEqual_pretty expected actual =
+  unless (expected == actual) do
     fail
-      ( [ ""
-        , "expected"
+      ( [ "expected"
         , ""
         , pretty expected
         , ""

@@ -38,6 +38,10 @@ instance Show RulialVar where
 instance Pretty RulialVar where
   pretty (RulialVar str) = "$" <> str
 
+instance PrettyTreeLabel RulialVar where
+  prettyTree rv Nil = pretty rv
+  prettyTree _ _ = bug "invalid `Tree RulialVar`"
+
 instance Eq RulialVar where
   eq x = genericEq x
 
@@ -53,11 +57,11 @@ applyRulialVarSubstToTree sigma (Tree (Left x) _) = sigma # Map.lookup x # fromM
 applyRulialVarSubstToTree sigma (Tree (Right sl) kids) = Tree sl (kids <#> applyRulialVarSubstToTree sigma)
 
 applyRulialVarSubstToChange :: forall s. RulialVarSubst (Tree s) -> Tree (ChangeLabel (Rulial s)) -> Tree (ChangeLabel s)
-applyRulialVarSubstToChange sigma (Congruence (Left x) ▵ Nil) = sigma # Map.lookup x # fromMaybe' (\_ -> bug "RulialVar was not substituted") # id
-applyRulialVarSubstToChange sigma (Congruence (Right s) ▵ kids) = Congruence s ▵ (kids # map (applyRulialVarSubstToChange sigma))
-applyRulialVarSubstToChange sigma (Plus th ▵ (kid : Nil)) = Plus (th # applyRulialVarSubstToTooth sigma) ▵ ((kid # applyRulialVarSubstToChange sigma) : Nil)
-applyRulialVarSubstToChange sigma (Minus th ▵ (kid : Nil)) = Minus (th # applyRulialVarSubstToTooth sigma) ▵ ((kid # applyRulialVarSubstToChange sigma) : Nil)
-applyRulialVarSubstToChange sigma (Replace t t' ▵ Nil) = Replace (t # applyRulialVarSubstToTree sigma) (t' # applyRulialVarSubstToTree sigma) ▵ Nil
+applyRulialVarSubstToChange sigma (Congruence (Left x) % Nil) = sigma # Map.lookup x # fromMaybe' (\_ -> bug "RulialVar was not substituted") # id
+applyRulialVarSubstToChange sigma (Congruence (Right s) % kids) = Congruence s % (kids # map (applyRulialVarSubstToChange sigma))
+applyRulialVarSubstToChange sigma (Plus th % (kid : Nil)) = Plus (th # applyRulialVarSubstToTooth sigma) % ((kid # applyRulialVarSubstToChange sigma) : Nil)
+applyRulialVarSubstToChange sigma (Minus th % (kid : Nil)) = Minus (th # applyRulialVarSubstToTooth sigma) % ((kid # applyRulialVarSubstToChange sigma) : Nil)
+applyRulialVarSubstToChange sigma (Replace t t' % Nil) = Replace (t # applyRulialVarSubstToTree sigma) (t' # applyRulialVarSubstToTree sigma) % Nil
 applyRulialVarSubstToChange _sigma _ = bug "invalid Change"
 
 applyRulialVarSubstToTooth :: forall s. RulialVarSubst (Tree s) -> Tooth (Rulial s) -> Tooth s
@@ -75,6 +79,9 @@ derive instance Generic (SortLabel s) _
 instance Pretty s => Pretty (SortLabel s) where
   pretty (SortLabel t) = pretty t
 
+instance PrettyTreeLabel s => PrettyTreeLabel (SortLabel s) where
+  prettyTree (SortLabel s) = prettyTree s
+
 instance Show s => Show (SortLabel s) where
   show x = genericShow x
 
@@ -91,15 +98,23 @@ derive instance Traversable SortLabel
 
 type DerivLabel d s = DerivLabel' d (SortLabel s)
 
-data DerivLabel' d s = DerivLabel d (RulialVarSubst (Tree s))
+data DerivLabel' d s
+  = DerivLabel d (RulialVarSubst (Tree s))
+  | DerivBoundary (Tree (ChangeLabel s))
 
 derive instance Generic (DerivLabel' d s) _
 
 instance (Show s, Show d) => Show (DerivLabel' d s) where
   show x = genericShow x
 
-instance (Pretty s, Pretty d) => Pretty (DerivLabel' d s) where
+instance (PrettyTreeLabel s, Pretty d) => Pretty (DerivLabel' d s) where
   pretty (DerivLabel d sigma) = pretty d <> " " <> pretty sigma
+  pretty (DerivBoundary ch) = "!! " <> pretty ch
+
+instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerivLabel' d s) where
+  prettyTree (DerivLabel d _sigma) kids = prettyTree d kids
+  prettyTree (DerivBoundary ch) (kid : Nil) = pretty ch <> " !! " <> kid
+  prettyTree _ _ = bug "invalid `Tree (DerivLabel' d s)`"
 
 instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
   eq x = genericEq x
@@ -126,7 +141,7 @@ derive instance Generic (DerivRule s) _
 instance Show s => Show (DerivRule s) where
   show x = genericShow x
 
-instance Pretty s => Pretty (DerivRule s) where
+instance PrettyTreeLabel s => Pretty (DerivRule s) where
   pretty (DerivRule name kids sort) =
     [ [ "(DerivRule " <> name ]
     , if (kids # length) == 0 then [] else kids # map (pretty >>> ("  " <> _)) # Array.fromFoldable
@@ -147,11 +162,13 @@ getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Tre
 getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
   where
   DerivRule _name _kidChanges parentSort = derivRules d
+getParentSortOfDerivLabel _ (DerivBoundary ch) = outerEndpoint ch
 
 getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (ChangeLabel (SortLabel s)))
 getKidSortChangesOfDerivLabel derivRules (DerivLabel d sigma) = kidChanges # map (applyRulialVarSubstToChange sigma)
   where
   DerivRule _name kidChanges _parentSort = derivRules d
+getKidSortChangesOfDerivLabel _ (DerivBoundary ch) = ch : Nil
 
 getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (SortLabel s))
 getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules dl # map innerEndpoint
@@ -165,7 +182,7 @@ data Insertion d s =
     String -- name
     (Path (DerivLabel d s)) -- path to insert
     (Tree (ChangeLabel (SortLabel s))) -- outward change at outside of insert
-    (Change (SortLabel s)) -- inward  change at inside of insert
+    (Tree (ChangeLabel (SortLabel s))) -- inward  change at inside of insert
 
 --------------------------------------------------------------------------------
 -- PropagDeriv
@@ -194,6 +211,23 @@ type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (SortLabel
 
 data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
+derive instance Generic (PropagDerivLabel' s) _
+
+instance Show s => Show (PropagDerivLabel' s) where
+  show x = genericShow x
+
+instance PrettyTreeLabel s => Pretty (PropagDerivLabel' s) where
+  pretty (PropagBoundary dir ch) = "!! " <> pretty dir <> " " <> pretty ch
+
+instance PrettyTreeLabel s => PrettyTreeLabel (PropagDerivLabel' s) where
+  prettyTree (PropagBoundary dir ch) (kid : Nil) = pretty ch <> " " <> pretty dir <> "  " <> kid
+  prettyTree _ _ = bug "invalid `PropagDerivLabel' s`"
+
+instance Eq s => Eq (PropagDerivLabel' s) where
+  eq x = genericEq x
+
+derive instance Functor PropagDerivLabel'
+
 data PropagBoundaryDirection
   = Up
   | Down
@@ -214,8 +248,8 @@ type PropagDeriv d s = Tree (PropagDerivLabel d s)
 type PropagDerivTooth d s = Tooth (PropagDerivLabel d s)
 type PropagDerivPath d s = Path (PropagDerivLabel d s)
 
-downPropagBoundary kid ch = LeftF (PropagBoundary Down ch) ▵* [ kid ]
-upPropagBoundary kid ch = LeftF (PropagBoundary Up ch) ▵* [ kid ]
+downPropagBoundary ch kid = LeftF (PropagBoundary Down ch) %* [ kid ]
+upPropagBoundary ch kid = LeftF (PropagBoundary Up ch) %* [ kid ]
 
 infix 1 downPropagBoundary as ↓
 infix 1 upPropagBoundary as ↑

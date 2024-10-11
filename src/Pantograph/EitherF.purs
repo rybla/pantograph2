@@ -6,6 +6,7 @@ import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
+import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.Utility (todo)
 
 data EitherF l r a = LeftF (l a) | RightF (r a)
@@ -45,6 +46,10 @@ instance (Functor l, Functor r) => Functor (EitherF l r) where
 --   bind = todo ""
 
 -- instance (Monad l, Monad r) => Monad (EitherF l r)
+
+instance (Pretty (l a), Pretty (r a)) => Pretty (EitherF l r a) where
+  pretty (LeftF x) = pretty x
+  pretty (RightF x) = pretty x
 
 eitherF l r = case _ of
   LeftF x -> l x

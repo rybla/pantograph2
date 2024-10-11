@@ -65,10 +65,10 @@ module Pantograph.Example.Ulc where
 -- --------------------------------------------------------------------------------
 
 -- mkString_S :: Sort S
--- mkString_S = (String_S ▵* [])
+-- mkString_S = (String_S %* [])
 
 -- mkTerm_S :: Sort S
--- mkTerm_S = (Term_S ▵* [])
+-- mkTerm_S = (Term_S %* [])
 
 -- --------------------------------------------------------------------------------
 -- -- semantics
@@ -80,31 +80,31 @@ module Pantograph.Example.Ulc where
 --     ruleString =
 --       mkDerivRule "String"
 --         []
---         (Right (Term_S) ▵* [ Right (String_S) ▵* [] ])
+--         (Right (Term_S) %* [ Right (String_S) %* [] ])
 
 --     ruleVar =
 --       mkDerivRule "Var"
---         [ pure (Replace (String_S ▵* []) (Term_S ▵* [])) ▵* [] ]
---         (Right (Term_S) ▵* [])
+--         [ pure (Replace (String_S %* []) (Term_S %* [])) %* [] ]
+--         (Right (Term_S) %* [])
 
 --     ruleLam =
 --       mkDerivRule "Lam"
---         [ pure (Replace (String_S ▵* []) (Term_S ▵* [])) ▵* []
---         , pure (Congruence Term_S) ▵* []
+--         [ pure (Replace (String_S %* []) (Term_S %* [])) %* []
+--         , pure (Congruence Term_S) %* []
 --         ]
---         (Right (Term_S) ▵* [])
+--         (Right (Term_S) %* [])
 
 --     ruleApp =
 --       mkDerivRule "App"
---         [ pure (Congruence Term_S) ▵* []
---         , pure (Congruence Term_S) ▵* []
+--         [ pure (Congruence Term_S) %* []
+--         , pure (Congruence Term_S) %* []
 --         ]
---         (Right (Term_S) ▵* [])
+--         (Right (Term_S) %* [])
 
 --     ruleHole =
 --       mkDerivRule "Hole"
 --         []
---         (Right (Term_S) ▵* [])
+--         (Right (Term_S) %* [])
 
 --   in
 --     case _ of
@@ -118,15 +118,15 @@ module Pantograph.Example.Ulc where
 -- propagRules =
 --   [ PropagRule "trivial" \_th pl -> case pl of
 --       -- simply remove boundary
---       PropagBoundary _ _ ▵ (kid : Nil) -> pure kid
+--       PropagBoundary _ _ % (kid : Nil) -> pure kid
 --       _ -> empty
 --   ] # List.fromFoldable
 
 -- canonicalDerivOfSort :: Sort S -> Maybe (Deriv D S)
--- canonicalDerivOfSort (String_S ▵ Nil) = pure (DerivLabel (String_D "") Map.empty ▵ Nil)
--- canonicalDerivOfSort (String_S ▵ _) = bug "invalid sort"
--- canonicalDerivOfSort (Term_S ▵ Nil) = pure (DerivLabel Hole_D Map.empty ▵ Nil)
--- canonicalDerivOfSort (Term_S ▵ _) = bug "invalid sort"
+-- canonicalDerivOfSort (String_S % Nil) = pure (DerivLabel (String_D "") Map.empty % Nil)
+-- canonicalDerivOfSort (String_S % _) = bug "invalid sort"
+-- canonicalDerivOfSort (Term_S % Nil) = pure (DerivLabel Hole_D Map.empty % Nil)
+-- canonicalDerivOfSort (Term_S % _) = bug "invalid sort"
 
 -- --------------------------------------------------------------------------------
 -- -- utilities

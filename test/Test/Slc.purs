@@ -13,17 +13,13 @@ spec :: Spec Unit
 spec = describe "Slc" do
   it "trivial" do
     shouldEqual_pretty
+      (lam nil (ref (ext nil) (zero nil)))
       ( fromPropagDerivToDeriv $ propagateFixpoint propagRules $
-          lamₚ nil (refₚ (ext nil) (zeroₚ nil))
-      )
-      ( pure $
-          lam nil (ref (ext nil) (zero nil))
+          lam_p nil (ref_p (ext nil) (zero_p nil))
       )
   it "one step" do
     shouldEqual_pretty
+      (lam nil (ref (ext nil) (zero nil)))
       ( fromPropagDerivToDeriv $ propagateFixpoint propagRules $
-          lamₚ nil (refₚ (ext nil) (zeroₚ nil)) ↓ (ext₀ ▵∂+ id nil)
-      )
-      ( pure $
-          lam nil (ref (ext nil) (zero nil))
+          term_c (ext_0 %∂+ id nil) ↓ lam_p nil (ref_p (ext nil) (zero_p nil))
       )
