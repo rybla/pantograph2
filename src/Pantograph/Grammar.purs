@@ -21,7 +21,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
 import Pantograph.EitherF (EitherF(..))
-import Pantograph.Pretty (class Pretty, pretty)
+import Pantograph.Pretty (class Pretty, parens, pretty)
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -108,12 +108,12 @@ instance (Show s, Show d) => Show (DerivLabel' d s) where
   show x = genericShow x
 
 instance (PrettyTreeLabel s, Pretty d) => Pretty (DerivLabel' d s) where
-  pretty (DerivLabel d sigma) = pretty d <> " " <> pretty sigma
-  pretty (DerivBoundary ch) = "!! " <> pretty ch
+  pretty (DerivLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
+  pretty (DerivBoundary ch) = parens $ "!! " <> pretty ch
 
 instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerivLabel' d s) where
   prettyTree (DerivLabel d _sigma) kids = prettyTree d kids
-  prettyTree (DerivBoundary ch) (kid : Nil) = pretty ch <> " !! " <> kid
+  prettyTree (DerivBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
   prettyTree _ _ = bug "invalid `Tree (DerivLabel' d s)`"
 
 instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
@@ -157,6 +157,9 @@ instance Eq s => Eq (DerivRule s) where
 derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
+
+getParentSortOfDerivTree :: forall d s. DerivRules d s -> Tree (DerivLabel d s) -> Tree (SortLabel s)
+getParentSortOfDerivTree derivRules (dl % _) = getParentSortOfDerivLabel derivRules dl
 
 getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Tree (SortLabel s)
 getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
@@ -211,16 +214,23 @@ type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (SortLabel
 
 data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
+getParentSortOfPropagDerivTree :: forall d s. DerivRules d s -> Tree (PropagDerivLabel d s) -> Tree (SortLabel s)
+getParentSortOfPropagDerivTree derivRules (pl % _) = getParentSortOfPropagDerivLabel derivRules pl
+
+getParentSortOfPropagDerivLabel :: forall d s. DerivRules d s -> PropagDerivLabel d s -> Tree (SortLabel s)
+getParentSortOfPropagDerivLabel _derivRules (LeftF (PropagBoundary _dir ch)) = outerEndpoint ch
+getParentSortOfPropagDerivLabel derivRules (RightF dl) = getParentSortOfDerivLabel derivRules dl
+
 derive instance Generic (PropagDerivLabel' s) _
 
 instance Show s => Show (PropagDerivLabel' s) where
   show x = genericShow x
 
 instance PrettyTreeLabel s => Pretty (PropagDerivLabel' s) where
-  pretty (PropagBoundary dir ch) = "!! " <> pretty dir <> " " <> pretty ch
+  pretty (PropagBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
 
 instance PrettyTreeLabel s => PrettyTreeLabel (PropagDerivLabel' s) where
-  prettyTree (PropagBoundary dir ch) (kid : Nil) = pretty ch <> " " <> pretty dir <> "  " <> kid
+  prettyTree (PropagBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
   prettyTree _ _ = bug "invalid `PropagDerivLabel' s`"
 
 instance Eq s => Eq (PropagDerivLabel' s) where
@@ -244,9 +254,9 @@ instance Pretty PropagBoundaryDirection where
 instance Eq PropagBoundaryDirection where
   eq x = genericEq x
 
-type PropagDeriv d s = Tree (PropagDerivLabel d s)
-type PropagDerivTooth d s = Tooth (PropagDerivLabel d s)
-type PropagDerivPath d s = Path (PropagDerivLabel d s)
+-- type PropagDeriv d s = Tree (PropagDerivLabel d s)
+-- type PropagDerivTooth d s = Tooth (PropagDerivLabel d s)
+-- type PropagDerivPath d s = Path (PropagDerivLabel d s)
 
 downPropagBoundary ch kid = LeftF (PropagBoundary Down ch) %* [ kid ]
 upPropagBoundary ch kid = LeftF (PropagBoundary Up ch) %* [ kid ]
@@ -258,7 +268,7 @@ infix 1 upPropagBoundary as ↑
 -- PropagDeriv
 --------------------------------------------------------------------------------
 
-data PropagRule d s = PropagRule String (Maybe (PropagDerivTooth d s) -> PropagDeriv d s -> Maybe (PropagDeriv d s))
+data PropagRule d s = PropagRule String (Maybe (Tooth (PropagDerivLabel d s)) -> Tree (PropagDerivLabel d s) -> Maybe (Tree (PropagDerivLabel d s)))
 
 type PropagRules d s = List (PropagRule d s)
 

@@ -7,16 +7,100 @@
     }
   ],
   [
+    "Slc ((Term +{ (Ext { (Ext Emp) }) }) ↓  #Z)",
+    {
+      "timestamp": "1728694000788.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term +{ (Ext { (Ext Empty) }) }) ↓  #Z)",
+    {
+      "timestamp": "1728678797108.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term +{ (Ext { (Ext Nil) }) }) ↓  #0)",
+    {
+      "timestamp": "1728670695446.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term +{ (Ext { (Ext Nil) }) }) ↓  #Z)",
+    {
+      "timestamp": "1728678696648.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term +{ (Ext { Nil }) }) ↓  #0)",
+    {
+      "timestamp": "1728668410831.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term +{ (Ext { Nil }) }) ↓  #Z)",
+    {
+      "timestamp": "1728668328051.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc ((Term -{ (Ext { Emp }) }) ↓  #Z)",
+    {
+      "timestamp": "1728694000788.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc ((Term -{ (Ext { Empty }) }) ↓  #Z)",
+    {
+      "timestamp": "1728678797108.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc ((Term -{ (Ext { Nil }) }) ↓  #0)",
+    {
+      "timestamp": "1728670695446.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc ((Term -{ (Ext { Nil }) }) ↓  #Z)",
+    {
+      "timestamp": "1728678696648.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (λ #0)",
+    {
+      "timestamp": "1728670695446.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (λ #Z)",
+    {
+      "timestamp": "1728694000788.0",
+      "success": true
+    }
+  ],
+  [
     "Slc one step",
     {
-      "timestamp": "1728652360934.0",
+      "timestamp": "1728668077122.0",
       "success": false
     }
   ],
   [
     "Slc trivial",
     {
-      "timestamp": "1728652360934.0",
+      "timestamp": "1728668077122.0",
       "success": true
     }
   ]

@@ -42,12 +42,13 @@ defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPr
     let chs_kids = getKidSortChangesOfDerivLabel derivRules dl
     kids' <-
       List.zip kids chs_kids # traverse \(kid /\ ch_kid) -> do
+        let ch_inv_kid = ch_kid # invertChange
         Debug.traceM $ "[defaultCongruenceDownPropagRule] trying to compose kid change at:"
-        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - kid:    " <> pretty kid
-        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch_kid: " <> pretty ch_kid
-        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch:     " <> pretty ch
+        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - kid     : " <> pretty kid
+        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch_kid  : " <> pretty ch_kid
+        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch      : " <> pretty ch
         ch' <- ch `composeChanges` ch_kid
-        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch':     " <> pretty ch'
+        Debug.traceM $ "[defaultCongruenceDownPropagRule]   - ch'     : " <> pretty ch'
         pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
     Debug.traceM $ "[defaultCongruenceDownPropagRule] composed ALL kid changes"
     pure $ RightF dl % kids'

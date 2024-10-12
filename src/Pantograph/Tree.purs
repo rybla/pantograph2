@@ -94,10 +94,10 @@ instance Show a => Show (Tooth a) where
   show x = genericShow x
 
 instance PrettyTreeLabel a => Pretty (Tooth a) where
-  pretty th = prettyToothS th "{}"
+  pretty th = prettyToothS th "{ }"
 
 prettyToothS :: forall a. PrettyTreeLabel a => Tooth a -> String -> String
-prettyToothS (Tooth a kids_l kids_r) str = prettyTree a ((kids_l # map pretty # List.fromFoldable) <> "{}" : (kids_r # map pretty))
+prettyToothS (Tooth a kids_l kids_r) str = prettyTree a ((kids_l # map pretty # List.fromFoldable) <> ("{ " <> str <> " }") : (kids_r # map pretty))
 
 instance Eq a => Eq (Tooth a) where
   eq x = genericEq x
@@ -121,7 +121,7 @@ instance Show a => Show (Path a) where
   show x = genericShow x
 
 instance PrettyTreeLabel a => Pretty (Path a) where
-  pretty (Path ths) = ths # foldl (\str th -> prettyToothS th str) "{}"
+  pretty (Path ths) = ths # foldl (\str th -> prettyToothS th str) "{ }"
 
 instance Eq a => Eq (Path a) where
   eq x = genericEq x
@@ -138,6 +138,10 @@ stepPath (Path ths) th = Path (th : ths)
 unstepPath :: forall f a. Plus f => Applicative f => Path a -> f (Path a /\ Tooth a)
 unstepPath (Path Nil) = empty
 unstepPath (Path (th : ths)) = pure (Path ths /\ th)
+
+unPath :: forall a. Path a -> Tree a -> Tree a
+unPath (Path Nil) t = t
+unPath (Path (th : ths)) t = unPath (Path ths) (unTooth th t)
 
 --------------------------------------------------------------------------------
 -- Change
@@ -189,9 +193,9 @@ instance Show l => Show (ChangeLabel l) where
 
 instance PrettyTreeLabel l => PrettyTreeLabel (ChangeLabel l) where
   prettyTree (Congruence l) kids = prettyTree l kids
-  prettyTree (Plus th) (kid : Nil) = "+ ⟨ " <> prettyToothS th (" ⟨ " <> kid <> " ⟩ ") <> " ⟩ "
-  prettyTree (Minus th) (kid : Nil) = "- ⟨ " <> prettyToothS th (" ⟨ " <> kid <> " ⟩ ") <> " ⟩ "
-  prettyTree (Replace x y) Nil = pretty x <> " ~> " <> pretty y
+  prettyTree (Plus th) (kid : Nil) = "+{ " <> prettyToothS th kid <> " }"
+  prettyTree (Minus th) (kid : Nil) = "-{ " <> prettyToothS th kid <> " }"
+  prettyTree (Replace x y) Nil = parens $ pretty x <> " ~> " <> pretty y
   prettyTree _ _ = bug "invlalid `Tree (ChangeLabel l)`"
 
 instance Eq l => Eq (ChangeLabel l) where
@@ -221,7 +225,7 @@ composeChanges (Congruence l1 % cs1) (Plus (Tooth l2 l r) % (c2 : Nil)) = do
         (l # map id)
   c <-
     composeChanges
-      (cs1 List.!! (length l + 1) # fromMaybe' \_ -> bug "cs1 isn't long enough")
+      (cs1 List.!! length l # fromMaybe' \_ -> bug "cs1 isn't long enough")
       c2
   r' <-
     traverse (uncurry composeChanges) $
