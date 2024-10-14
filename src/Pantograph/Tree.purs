@@ -255,8 +255,9 @@ composeChanges (Minus (Tooth l1 l r) % (c1 : Nil)) (Congruence l2 % cs2) = do
 composeChanges c1_@(Minus (Tooth lbl1 l1 r1) % (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r2) % (c2 : Nil)) = do
   guard $ lbl1 == lbl2
   if l1 == l2 && r1 == r2 then do
-    c <- composeChanges c1 c2
-    pure $ Congruence lbl1 % (c : Nil)
+    -- c <- composeChanges c1 c2
+    -- pure $ Congruence lbl1 % (c : Nil)
+    composeChanges c1 c2
   else do
     guard $ (c2_ # outerEndpoint) == (c1_ # innerEndpoint)
     let t = c2_ # innerEndpoint
