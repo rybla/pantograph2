@@ -7,6 +7,7 @@ import Prelude
 import Control.Plus (empty)
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.Newtype (unwrap)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
 import Debug as Debug
@@ -24,7 +25,8 @@ defaultPropagRules
   => DerivRules d s
   -> PropagRules d s
 defaultPropagRules = pure >>> apply
-  ( [ defaultCongruenceDownPropagRule
+  ( [ -- defaultCongruenceDownPropagRule
+      defaultPassThroughDownPropagRule
     ] # List.fromFoldable
   )
 
@@ -82,24 +84,35 @@ defaultPropagRules = pure >>> apply
 --     pure $ RightF dl % kids'
 --   _ -> empty
 
-defaultCongruenceDownPropagRule
-  :: forall d s
-   . Pretty d
-  => PrettyTreeLabel d
-  => Pretty s
-  => PrettyTreeLabel s
-  => Eq s
-  => DerivRules d s
-  -> PropagRule d s
-defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPropagRule" \_mb_th -> case _ of
-  t@(LeftF (PropagBoundary Down ch) % ((RightF dl % kids) : Nil)) -> do
-    Debug.traceM $ "[defaultCongruenceDownPropagRule] init: " <> pretty t
-    let chs_kids = getKidSortChangesOfDerivLabel derivRules dl
-    kids' <-
-      List.zip kids chs_kids # traverse \(kid /\ ch_kid) -> do
-        ch' <- todo ""
-        pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
-    Debug.traceM $ "[defaultCongruenceDownPropagRule] composed ALL kid changes"
+-- defaultCongruenceDownPropagRule
+--   :: forall d s
+--    . Pretty d
+--   => PrettyTreeLabel d
+--   => Pretty s
+--   => PrettyTreeLabel s
+--   => Eq s
+--   => DerivRules d s
+--   -> PropagRule d s
+-- defaultCongruenceDownPropagRule derivRules = PropagRule "defaultCongruenceDownPropagRule" \_mb_th -> case _ of
+--   t@(LeftF (PropagBoundary Down ch) % ((RightF dl % kids) : Nil)) -> do
+--     Debug.traceM $ "[defaultCongruenceDownPropagRule] init: " <> pretty t
+--     let chs_kids = getKidSortChangesOfDerivLabel derivRules dl
+--     kids' <-
+--       List.zip kids chs_kids # traverse \(kid /\ ch_kid) -> do
+--         ch' <- todo ""
+--         pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
+--     Debug.traceM $ "[defaultCongruenceDownPropagRule] composed ALL kid changes"
+--     pure $ RightF dl % kids'
+--   _ -> empty
+
+defaultPassThroughDownPropagRule :: forall d s. Pretty d => PrettyTreeLabel d => Pretty s => PrettyTreeLabel s => Eq s => DerivRules d s -> PropagRule d s
+defaultPassThroughDownPropagRule derivRules = PropagRule "defaultPassThroughDownPropagRule" \_mb_th -> case _ of
+  t@(LeftF (PropagBoundary Down ch) % ((RightF dl@(DerivLabel d _) % kids) : Nil)) -> do
+    Debug.traceM $ "[defaultPassThroughDownPropagRule] init: " <> pretty t
+    kids' <- List.zip kids (derivRules d # unwrap # _.kids)
+      # traverse \(kid /\ { passthrough_down }) -> do
+          ch' <- passthrough_down ch
+          pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
     pure $ RightF dl % kids'
   _ -> empty
 

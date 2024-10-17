@@ -17,6 +17,7 @@ import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe')
+import Data.Newtype (class Newtype)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
@@ -130,51 +131,61 @@ derive instance Functor (DerivLabel' d)
 -- parent. the "input" change will be matched against in the propagation rules,
 -- to see if the propagation rule applies. the "output" change will be result in
 -- the resulting change put on a kid/parent going in some direction. there might be an aspect 
-data DerivRule s =
-  DerivRule
-    String -- name
-    (List (Tree (ChangeLabel (Rulial (SortLabel s))))) -- for each kid, sort change oriented from kid to parent
-    (Tree (Rulial (SortLabel s))) -- parent sort
+newtype DerivRule s = DerivRule
+  { sort :: Tree (Rulial (SortLabel s))
+  , kids ::
+      List
+        { sort :: Tree (Rulial (SortLabel s))
+        , passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
+        , passthrough_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
+        , wrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
+        , wrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
+        , unwrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
+        , unwrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
+        }
+  }
 
 derive instance Generic (DerivRule s) _
 
-instance Show s => Show (DerivRule s) where
-  show x = genericShow x
+derive instance Newtype (DerivRule s) _
 
-instance PrettyTreeLabel s => Pretty (DerivRule s) where
-  pretty (DerivRule name kids sort) =
-    [ [ "(DerivRule " <> name ]
-    , if (kids # length) == 0 then [] else kids # map (pretty >>> ("  " <> _)) # Array.fromFoldable
-    , [ "  ---------------------------------------------" ]
-    , [ "  " <> (sort # pretty) ]
-    , [ ")" ]
-    ]
-      # fold >>> intercalate "\n"
+-- instance Show s => Show (DerivRule s) where
+--   show x = genericShow x
 
-instance Eq s => Eq (DerivRule s) where
-  eq x = genericEq x
+-- instance PrettyTreeLabel s => Pretty (DerivRule s) where
+--   pretty (DerivRule name kids sort) =
+--     [ [ "(DerivRule " <> name ]
+--     , if (kids # length) == 0 then [] else kids # map (pretty >>> ("  " <> _)) # Array.fromFoldable
+--     , [ "  ---------------------------------------------" ]
+--     , [ "  " <> (sort # pretty) ]
+--     , [ ")" ]
+--     ]
+--       # fold >>> intercalate "\n"
 
-derive instance Functor DerivRule
+-- instance Eq s => Eq (DerivRule s) where
+--   eq x = genericEq x
+
+-- derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
-getParentSortOfDerivTree :: forall d s. DerivRules d s -> Tree (DerivLabel d s) -> Tree (SortLabel s)
-getParentSortOfDerivTree derivRules (dl % _) = getParentSortOfDerivLabel derivRules dl
+-- getParentSortOfDerivTree :: forall d s. DerivRules d s -> Tree (DerivLabel d s) -> Tree (SortLabel s)
+-- getParentSortOfDerivTree derivRules (dl % _) = getParentSortOfDerivLabel derivRules dl
 
-getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Tree (SortLabel s)
-getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
-  where
-  DerivRule _name _kidChanges parentSort = derivRules d
-getParentSortOfDerivLabel _ (DerivBoundary ch) = outerEndpoint ch
+-- getParentSortOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> Tree (SortLabel s)
+-- getParentSortOfDerivLabel derivRules (DerivLabel d sigma) = parentSort # applyRulialVarSubstToTree sigma
+--   where
+--   DerivRule _name _kidChanges parentSort = derivRules d
+-- getParentSortOfDerivLabel _ (DerivBoundary ch) = outerEndpoint ch
 
-getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (ChangeLabel (SortLabel s)))
-getKidSortChangesOfDerivLabel derivRules (DerivLabel d sigma) = kidChanges # map (applyRulialVarSubstToChange sigma)
-  where
-  DerivRule _name kidChanges _parentSort = derivRules d
-getKidSortChangesOfDerivLabel _ (DerivBoundary ch) = ch : Nil
+-- getKidSortChangesOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (ChangeLabel (SortLabel s)))
+-- getKidSortChangesOfDerivLabel derivRules (DerivLabel d sigma) = kidChanges # map (applyRulialVarSubstToChange sigma)
+--   where
+--   DerivRule _name kidChanges _parentSort = derivRules d
+-- getKidSortChangesOfDerivLabel _ (DerivBoundary ch) = ch : Nil
 
-getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (SortLabel s))
-getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules dl # map innerEndpoint
+-- getKidSortsOfDerivLabel :: forall d s. DerivRules d s -> DerivLabel d s -> List (Tree (SortLabel s))
+-- getKidSortsOfDerivLabel derivRules dl = getKidSortChangesOfDerivLabel derivRules dl # map innerEndpoint
 
 --------------------------------------------------------------------------------
 -- Insertion
@@ -214,12 +225,12 @@ type PropagDerivLabel d s = EitherF PropagDerivLabel' (DerivLabel' d) (SortLabel
 
 data PropagDerivLabel' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
 
-getParentSortOfPropagDerivTree :: forall d s. DerivRules d s -> Tree (PropagDerivLabel d s) -> Tree (SortLabel s)
-getParentSortOfPropagDerivTree derivRules (pl % _) = getParentSortOfPropagDerivLabel derivRules pl
+-- getParentSortOfPropagDerivTree :: forall d s. DerivRules d s -> Tree (PropagDerivLabel d s) -> Tree (SortLabel s)
+-- getParentSortOfPropagDerivTree derivRules (pl % _) = getParentSortOfPropagDerivLabel derivRules pl
 
-getParentSortOfPropagDerivLabel :: forall d s. DerivRules d s -> PropagDerivLabel d s -> Tree (SortLabel s)
-getParentSortOfPropagDerivLabel _derivRules (LeftF (PropagBoundary _dir ch)) = outerEndpoint ch
-getParentSortOfPropagDerivLabel derivRules (RightF dl) = getParentSortOfDerivLabel derivRules dl
+-- getParentSortOfPropagDerivLabel :: forall d s. DerivRules d s -> PropagDerivLabel d s -> Tree (SortLabel s)
+-- getParentSortOfPropagDerivLabel _derivRules (LeftF (PropagBoundary _dir ch)) = outerEndpoint ch
+-- getParentSortOfPropagDerivLabel derivRules (RightF dl) = getParentSortOfDerivLabel derivRules dl
 
 derive instance Generic (PropagDerivLabel' s) _
 
