@@ -1,7 +1,7 @@
 module Test.Slc where
 
 -- import Pantograph.Example.Slc
-import Pantograph.Grammar
+import Pantograph.Language
 import Pantograph.Propagation
 import Pantograph.Tree
 import Prelude hiding (zero)

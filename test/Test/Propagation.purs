@@ -1,6 +1,6 @@
 module Test.Propagation where
 
-import Pantograph.Grammar
+import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 

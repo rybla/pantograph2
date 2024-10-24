@@ -1,6 +1,6 @@
 module Pantograph.Propagation where
 
-import Pantograph.Grammar
+import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 
@@ -25,7 +25,7 @@ propagateFixpoint prs pd0 = go pd0
   where
   go pd = case propagateOnce prs mempty pd of
     Nothing -> pd
-    Just (PropagRule name _ /\ pd') -> Debug.trace
+    Just (PropagRule { name } /\ pd') -> Debug.trace
       ( intercalate "\n"
           [ "[propagateFixpoint] successfully propagated a step:"
           , "[propagateFixpoint]   - name : " <> name
@@ -50,6 +50,6 @@ propagateOnce prs path pd = case propagateOnce' prs (unstepPath path <#> snd) pd
 
 propagateOnce' :: forall d s. PropagRules d s -> Maybe (Tooth (PropagDerivLabel d s)) -> Tree (PropagDerivLabel d s) -> Maybe (PropagRule d s /\ Tree (PropagDerivLabel d s))
 propagateOnce' Nil _ _ = empty
-propagateOnce' (pr0@(PropagRule _name pr) : prs) mb_th pd = case pr mb_th pd of
+propagateOnce' (pr0@(PropagRule { rule }) : prs) mb_th pd = case rule mb_th pd of
   Nothing -> propagateOnce' prs mb_th pd
   Just pd' -> pure $ pr0 /\ pd'

@@ -1,7 +1,7 @@
 module Pantograph.EditorBackend where
 
 import Data.Maybe (Maybe)
-import Pantograph.Grammar (DerivRules, PropagRules, SortLabel, DerivLabel)
+import Pantograph.Language
 import Pantograph.Tree (Tree)
 
 newtype EditorBackend d s = EditorBackend

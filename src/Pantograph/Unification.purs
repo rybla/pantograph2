@@ -1,6 +1,5 @@
 module Pantograph.Unification where
 
-import Pantograph.Grammar
 import Prelude
 
 import Control.Alternative (guard)
