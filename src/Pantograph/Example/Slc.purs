@@ -1,6 +1,6 @@
 module Pantograph.Example.Slc where
 
-import Pantograph.Grammar
+import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 
@@ -54,12 +54,14 @@ instance PrettyTreeLabel D where
 derivRules :: DerivRules D S
 derivRules Zero =
   DerivRule
-    { kids: Nil
+    { name: "Zero"
+    , kids: Nil
     , sort: Right (SortLabel Var) % ((Right (SortLabel Ext) % ((Left (RulialVar "gamma") % Nil) : Nil)) : Nil)
     }
 derivRules Suc =
   DerivRule
-    { kids: List.fromFoldable
+    { name: "Suc"
+    , kids: List.fromFoldable
         [ { sort: Right (SortLabel Var) % ((Left (RulialVar "gamma") % Nil) : Nil)
           , passthrough_down: case _ of
               Congruence (SortLabel Var) % ((Congruence (SortLabel Ext) % (ch_gamma : Nil)) : Nil) -> pure $

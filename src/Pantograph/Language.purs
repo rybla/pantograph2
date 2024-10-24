@@ -32,7 +32,7 @@ type RulialVarSubst = Map RulialVar
 -- SortLabel
 --------------------------------------------------------------------------------
 
-class (Show s, Eq s, PrettyTreeLabel s) <= IsSortRuleLabel s
+class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
 
 data SortLabel s = SortLabel s
 
@@ -40,7 +40,7 @@ data SortLabel s = SortLabel s
 -- DerivLabel
 --------------------------------------------------------------------------------
 
-class (Show d, Eq d, PrettyTreeLabel d) <= IsDerivRuleLabel d
+class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerivRuleLabel d
 
 type DerivLabel d s = DerivLabel' d (SortLabel s)
 

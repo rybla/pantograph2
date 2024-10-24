@@ -1,6 +1,6 @@
 module Pantograph.Library.PropagRules where
 
-import Pantograph.Grammar
+import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 
@@ -17,11 +17,8 @@ import Pantograph.Utility (todo)
 
 defaultPropagRules
   :: forall d s
-   . Pretty d
-  => PrettyTreeLabel d
-  => Pretty s
-  => PrettyTreeLabel s
-  => Eq s
+   . IsSortRuleLabel s
+  => IsDerivRuleLabel d
   => DerivRules d s
   -> PropagRules d s
 defaultPropagRules = pure >>> apply
@@ -105,14 +102,17 @@ defaultPropagRules = pure >>> apply
 --     pure $ RightF dl % kids'
 --   _ -> empty
 
-defaultPassThroughDownPropagRule :: forall d s. Pretty d => PrettyTreeLabel d => Pretty s => PrettyTreeLabel s => Eq s => DerivRules d s -> PropagRule d s
-defaultPassThroughDownPropagRule derivRules = PropagRule "defaultPassThroughDownPropagRule" \_mb_th -> case _ of
-  t@(LeftF (PropagBoundary Down ch) % ((RightF dl@(DerivLabel d _) % kids) : Nil)) -> do
-    Debug.traceM $ "[defaultPassThroughDownPropagRule] init: " <> pretty t
-    kids' <- List.zip kids (derivRules d # unwrap # _.kids)
-      # traverse \(kid /\ { passthrough_down }) -> do
-          ch' <- passthrough_down ch
-          pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
-    pure $ RightF dl % kids'
-  _ -> empty
+defaultPassThroughDownPropagRule :: forall d s. IsSortRuleLabel s => IsDerivRuleLabel d => DerivRules d s -> PropagRule d s
+defaultPassThroughDownPropagRule derivRules = PropagRule
+  { name: "defaultPassThroughDownPropagRule"
+  , rule: \_mb_th -> case _ of
+      t@(LeftF (PropagBoundary Down ch) % ((RightF dl@(DerivLabel d _) % kids) : Nil)) -> do
+        Debug.traceM $ "[defaultPassThroughDownPropagRule] init: " <> pretty t
+        kids' <- List.zip kids (derivRules d # unwrap # _.kids)
+          # traverse \(kid /\ { passthrough_down }) -> do
+              ch' <- passthrough_down ch
+              pure $ LeftF (PropagBoundary Down ch') % (kid : Nil)
+        pure $ RightF dl % kids'
+      _ -> empty
+  }
 
