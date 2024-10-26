@@ -16,6 +16,7 @@ workspace:
           - spec
           - spec-node
           - transformers
+          - variant
         build_plan:
           - aff
           - ansi
@@ -101,6 +102,7 @@ workspace:
           - unfoldable
           - unsafe-coerce
           - unsafe-reference
+          - variant
           - web-clipboard
           - web-dom
           - web-events
@@ -1619,6 +1621,19 @@ packages:
     integrity: sha256-zU7BhfJU14nXQRZG9iADsp0mSiKhz07OcKyjRB2YT+Y=
     dependencies:
       - prelude
+  variant:
+    type: registry
+    version: 8.0.0
+    integrity: sha256-SR//zQDg2dnbB8ZHslcxieUkCeNlbMToapvmh9onTtw=
+    dependencies:
+      - enums
+      - lists
+      - maybe
+      - partial
+      - prelude
+      - record
+      - tuples
+      - unsafe-coerce
   web-clipboard:
     type: registry
     version: 6.0.0

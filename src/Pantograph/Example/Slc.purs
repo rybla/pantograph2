@@ -5,13 +5,14 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (empty)
-import Data.Either (Either(..))
+import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
-import Pantograph.RevList (RevList(..))
-import Pantograph.Utility (bug, todo)
+import Pantograph.Pretty (class Pretty)
+import Pantograph.Utility (bug)
+import Type.Proxy (Proxy(..))
 
 data S
   = Emp
@@ -31,6 +32,14 @@ instance PrettyTreeLabel S where
   prettyTree Term (gamma : Nil) = "Term " <> gamma
   prettyTree _ _ = bug "invalid S"
 
+instance Eq S where
+  eq x = genericEq x
+
+instance Pretty S where
+  pretty = show
+
+instance IsSortRuleLabel S
+
 data D
   = Zero
   | Suc
@@ -43,6 +52,12 @@ derive instance Generic D _
 instance Show D where
   show x = genericShow x
 
+instance Eq D where
+  eq x = genericEq x
+
+instance Pretty D where
+  pretty = show
+
 instance PrettyTreeLabel D where
   prettyTree Zero Nil = "Z"
   prettyTree Suc (n : Nil) = "S" <> n
@@ -51,55 +66,158 @@ instance PrettyTreeLabel D where
   prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
   prettyTree _ _ = bug "invalid D"
 
-derivRules :: DerivRules D S
-derivRules Zero =
-  DerivRule
-    { name: "Zero"
-    , kids: Nil
-    , sort: Right (SortLabel Var) % ((Right (SortLabel Ext) % ((Left (RulialVar "gamma") % Nil) : Nil)) : Nil)
+instance IsDerivRuleLabel D
+
+instance HasDerivRules D S where
+  derivRules Zero = DerivRule
+    { sort: Var %|^ [ Ext %|^ [ gamma ] ]
+    , kids: mempty
     }
-derivRules Suc =
-  DerivRule
-    { name: "Suc"
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Suc = DerivRule
+    { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: Right (SortLabel Var) % ((Left (RulialVar "gamma") % Nil) : Nil)
-          , passthrough_down: case _ of
-              Congruence (SortLabel Var) % ((Congruence (SortLabel Ext) % (ch_gamma : Nil)) : Nil) -> pure $
-                Congruence (SortLabel Var) % (ch_gamma : Nil)
-              _ -> empty
-          , passthrough_up: case _ of
-              Congruence (SortLabel Var) % (ch_gamma : Nil) -> pure $
-                Congruence (SortLabel Var) % ((Congruence (SortLabel Ext) % (ch_gamma : Nil)) : Nil)
-              _ -> empty
-          , wrap_down: case _ of
-              Congruence (SortLabel Var) % ((Plus (Tooth (SortLabel Ext) (RevList Nil) Nil) % (ch_gamma : Nil)) : Nil) -> pure
-                { up: id $ SortLabel Var % ((SortLabel Ext % ((ch_gamma # outerEndpoint) : Nil)) : Nil)
-                , down: Congruence (SortLabel Var) % (ch_gamma : Nil)
+        [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Ref = DerivRule
+    { sort: Term %|^ [ gamma ]
+    , kids: List.fromFoldable
+        [ { sort: Var %|^ [ gamma ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Lam = DerivRule
+    { sort: Term %|^ [ gamma ]
+    , kids: List.fromFoldable
+        [ { sort: Term %|^ [ Ext %|^ [ gamma ] ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules App = DerivRule
+    { sort: Term %|^ [ gamma ]
+    , kids: List.fromFoldable
+        [ { sort: Term %|^ [ gamma ] }
+        , { sort: Term %|^ [ gamma ] }
+        ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+
+instance HasChangeRules D S where
+  changeRules Zero = ChangeRule
+    { kids: mempty }
+  changeRules Suc = ChangeRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , unwrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ gamma # outerEndpoint ]
+                , down: Var %∂.^ [ gamma ]
                 }
-              _ -> empty
-          , wrap_up: case _ of
-              Congruence (SortLabel Var) % ((Minus (Tooth (SortLabel Ext) (RevList Nil) Nil) % (ch_gamma : Nil)) : Nil) -> pure
-                { up: Congruence (SortLabel Var) % ((Congruence (SortLabel Ext) % (ch_gamma : Nil)) : Nil)
-                , down: id $ SortLabel Var % ((ch_gamma # innerEndpoint) : Nil)
+          , unwrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ Var %^ [ gamma # innerEndpoint ]
                 }
-              _ -> empty
-          , unwrap_down: case _ of
-              Congruence (SortLabel Var) % ((Minus (Tooth (SortLabel Ext) (RevList Nil) Nil) % (ch_gamma : Nil)) : Nil) -> pure
-                { up: id $ SortLabel Var % ((ch_gamma # outerEndpoint) : Nil)
-                , down: Congruence (SortLabel Var) % (ch_gamma : Nil)
+          , wrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ Ext %^ [ gamma # outerEndpoint ] ]
+                , down: Var %∂.^ [ gamma ]
                 }
-              _ -> empty
-          , unwrap_up: case _ of
-              Congruence (SortLabel Var) % ((Plus (Tooth (SortLabel Ext) (RevList Nil) Nil) % (ch_gamma : Nil)) : Nil) -> pure
-                { up: Congruence (SortLabel Var) % (ch_gamma : Nil)
-                , down: id $ SortLabel Var % ((ch_gamma # innerEndpoint) : Nil)
+          , wrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ Var %^ [ gamma # innerEndpoint ]
                 }
-              _ -> empty
           }
         ]
-    , sort: Right (SortLabel Var) % ((Right (SortLabel Ext) % ((Left (RulialVar "gamma") % Nil) : Nil)) : Nil)
     }
-derivRules Ref = todo ""
-derivRules Lam = todo ""
-derivRules App = todo ""
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  changeRules Ref = ChangeRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , unwrap_down: const empty
+          , unwrap_up: const empty
+          , wrap_down: const empty
+          , wrap_up: const empty
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  changeRules Lam = ChangeRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , passthrough_up: matchTreeChangeSort
+              (Term %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , unwrap_down: const empty
+          , unwrap_up: const empty
+          , wrap_down: const empty
+          , wrap_up: const empty
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  changeRules App = ChangeRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , unwrap_down: const empty
+          , unwrap_up: const empty
+          , wrap_down: const empty
+          , wrap_up: const empty
+          }
+        , { passthrough_down: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Term %∂.^ [ gamma ]
+          , unwrap_down: const empty
+          , unwrap_up: const empty
+          , wrap_down: const empty
+          , wrap_up: const empty
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+
+instance IsLanguage D S
 
