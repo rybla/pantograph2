@@ -112,10 +112,7 @@ data DerivLabel' d s
 
 newtype DerivRule s = DerivRule
   { sort :: Tree (Rulial (SortLabel s))
-  , kids ::
-      List
-        { sort :: Tree (Rulial (SortLabel s))
-        }
+  , kids :: List { sort :: Tree (Rulial (SortLabel s)) }
   }
 
 type DerivRules d s = d -> DerivRule s
@@ -126,10 +123,24 @@ class HasDerivRules d s where
 class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d s
 
 --------------------------------------------------------------------------------
--- ChangeRule
+-- DerivChangeRule 
 --------------------------------------------------------------------------------
 
-newtype ChangeRule s = ChangeRule
+newtype DerivChangeRule s = DerivChangeRule
+  { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
+
+type DerivChangeRules d s = d -> DerivChangeRule s
+
+class HasDerivChangeRules d s where
+  derivChangeRules :: DerivChangeRules d s
+
+class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s
+
+--------------------------------------------------------------------------------
+-- DerivPropagRule
+--------------------------------------------------------------------------------
+
+newtype DerivPropagRule s = DerivPropagRule
   { kids ::
       List
         { passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
@@ -141,12 +152,12 @@ newtype ChangeRule s = ChangeRule
         }
   }
 
-type ChangeRules d s = d -> ChangeRule s
+type DerivPropagRules d s = d -> DerivPropagRule s
 
-class HasChangeRules d s where
-  changeRules :: ChangeRules d s
+class HasDerivPropagRules d s where
+  derivPropagRules :: DerivPropagRules d s
 
-class (IsLanguage d s, HasChangeRules d s) <= IsChangeLanguage d s
+class (IsLanguage d s, HasDerivPropagRules d s) <= IsDerivPropagLanguage d s
 
 --------------------------------------------------------------------------------
 -- PropagLabel
@@ -367,9 +378,9 @@ derive instance Generic (DerivRule s) _
 
 derive instance Newtype (DerivRule s) _
 
-derive instance Generic (ChangeRule s) _
+derive instance Generic (DerivPropagRule s) _
 
-derive instance Newtype (ChangeRule s) _
+derive instance Newtype (DerivPropagRule s) _
 
 derive instance Generic (PropagLabel'' s) _
 

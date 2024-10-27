@@ -43,9 +43,11 @@ instance IsSortRuleLabel S
 data D
   = Zero
   | Suc
+  | Free
   | Ref
   | Lam
   | App
+  | Hole
 
 derive instance Generic D _
 
@@ -64,6 +66,7 @@ instance PrettyTreeLabel D where
   prettyTree Ref (x : Nil) = "#" <> x
   prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
   prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
+  prettyTree Hole Nil = "?"
   prettyTree _ _ = bug "invalid D"
 
 instance IsDerivRuleLabel D
@@ -76,6 +79,13 @@ instance HasDerivRules D S where
     where
     gamma = mkRulialVar "gamma"
   derivRules Suc = DerivRule
+    { sort: Var %|^ [ gamma ]
+    , kids: List.fromFoldable
+        [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Free = DerivRule
     { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
         [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
@@ -105,11 +115,18 @@ instance HasDerivRules D S where
     }
     where
     gamma = mkRulialVar "gamma"
+  derivRules Hole = DerivRule
+    { sort: Term %|^ [ gamma ]
+    , kids: mempty
+    }
+    where
+    gamma = mkRulialVar "gamma"
 
-instance HasChangeRules D S where
-  changeRules Zero = ChangeRule
-    { kids: mempty }
-  changeRules Suc = ChangeRule
+instance HasDerivPropagRules D S where
+  derivPropagRules Zero = DerivPropagRule
+    { kids: mempty
+    }
+  derivPropagRules Suc = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
@@ -148,7 +165,48 @@ instance HasChangeRules D S where
     }
     where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
-  changeRules Ref = ChangeRule
+  derivPropagRules Free = DerivPropagRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , unwrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ gamma # outerEndpoint ]
+                , down: Var %∂.^ [ gamma ]
+                }
+          , unwrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ Var %^ [ gamma # innerEndpoint ]
+                }
+          , wrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ Ext %^ [ gamma # outerEndpoint ] ]
+                , down: Var %∂.^ [ gamma ]
+                }
+          , wrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ Var %^ [ gamma # innerEndpoint ]
+                }
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  derivPropagRules Ref = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
               (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
@@ -167,7 +225,7 @@ instance HasChangeRules D S where
     }
     where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
-  changeRules Lam = ChangeRule
+  derivPropagRules Lam = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
               (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
@@ -186,7 +244,7 @@ instance HasChangeRules D S where
     }
     where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
-  changeRules App = ChangeRule
+  derivPropagRules App = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
               (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
@@ -218,6 +276,9 @@ instance HasChangeRules D S where
     }
     where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
+  derivPropagRules Hole = DerivPropagRule
+    { kids: mempty
+    }
 
 instance IsLanguage D S
 
