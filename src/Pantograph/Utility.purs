@@ -2,7 +2,17 @@ module Pantograph.Utility where
 
 import Prelude
 
+import Data.Maybe (Maybe)
+import Data.Symbol (class IsSymbol, reflectSymbol)
+import Record as Record
+import Foreign.Object (Object)
+import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
+import Prim.Row (class Lacks)
+import Prim.Row as Row
+import Prim.RowList (class RowToList, RowList)
+import Prim.RowList as RowList
+import Type.Prelude (Proxy(..))
 
 todo :: forall a. String -> a
 todo msg = unsafeCrashWith $ "TODO: " <> msg
@@ -18,3 +28,27 @@ assert msg b k = if not b then bug msg else k unit
 
 assertM :: forall m. Monad m => String -> Boolean -> m Unit
 assertM msg b = if not b then pure (bug msg) else pure unit
+
+class FromObjectToRecord a r where
+  fromObjectToRecord :: Object a -> Maybe (Record r)
+
+instance (RowToList r rl, FromObjectToRecord' a r rl) => FromObjectToRecord a r where
+  fromObjectToRecord = fromObjectToRecord' (Proxy :: Proxy rl)
+
+class FromObjectToRecord' a r (rl :: RowList Type) | rl -> r where
+  fromObjectToRecord' :: Proxy rl -> Object a -> Maybe (Record r)
+
+instance
+  ( IsSymbol k
+  , Row.Cons k a r r'
+  , Lacks k r
+  , FromObjectToRecord' a r rl_
+  ) =>
+  FromObjectToRecord' a r' (RowList.Cons k v rl_) where
+  fromObjectToRecord' _ o = do
+    v <- o # Object.lookup (reflectSymbol (Proxy :: Proxy k))
+    r :: Record r <- fromObjectToRecord' (Proxy :: Proxy rl_) o
+    pure $ Record.insert (Proxy :: Proxy k) v r
+
+instance FromObjectToRecord' a () RowList.Nil where
+  fromObjectToRecord' _ _ = pure {}

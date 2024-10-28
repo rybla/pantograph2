@@ -141,6 +141,11 @@ instance HasDerivRules D S where
     where
     gamma = mkRulialVar "gamma"
 
+instance HasDerivChangeRules D S where
+  derivChangeRules = ?a
+
+instance IsDerivChangeLanguage D S
+
 instance HasDerivPropagRules D S where
   derivPropagRules ZeroW = todo "ZeroW"
   derivPropagRules SucW = todo "SucW"
