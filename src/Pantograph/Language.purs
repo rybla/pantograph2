@@ -145,10 +145,10 @@ newtype DerivPropagRule s = DerivPropagRule
       List
         { passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
         , passthrough_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
-        , wrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
-        , wrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
-        , unwrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
-        , unwrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Tree (ChangeLabel (SortLabel s)), down :: Tree (ChangeLabel (SortLabel s)) }
+        , wrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
+        , wrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
+        , unwrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
+        , unwrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
         }
   }
 
