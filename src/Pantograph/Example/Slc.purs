@@ -17,7 +17,8 @@ import Type.Proxy (Proxy(..))
 data S
   = Empty
   | Ext
-  | VarW
+  | ExtFree
+  | VarWeak
   | Var
   | Term
 
@@ -28,10 +29,11 @@ instance Show S where
 
 instance PrettyTreeLabel S where
   prettyTree Empty Nil = "∅"
-  prettyTree Ext (gamma : Nil) = "E" <> gamma
-  prettyTree VarW (gamma : Nil) = "VarW " <> gamma
-  prettyTree Var (gamma : Nil) = "Var " <> gamma
-  prettyTree Term (gamma : Nil) = "Term " <> gamma
+  prettyTree Ext (g : Nil) = "E" <> g
+  prettyTree ExtFree (g : Nil) = "F" <> g
+  prettyTree VarWeak (g : Nil) = "VarWeak " <> g
+  prettyTree Var (g : Nil) = "Var " <> g
+  prettyTree Term (g : Nil) = "Term " <> g
   prettyTree _ _ = bug "invalid S"
 
 instance Eq S where
@@ -43,8 +45,8 @@ instance Pretty S where
 instance IsSortRuleLabel S
 
 data D
-  = ZeroW
-  | SucW
+  = ZeroWeak
+  | SucWeak
   | Free
   | Zero
   | Suc
@@ -65,8 +67,8 @@ instance Pretty D where
   pretty = show
 
 instance PrettyTreeLabel D where
-  prettyTree ZeroW Nil = "Z"
-  prettyTree SucW (w : Nil) = "S" <> w
+  prettyTree ZeroWeak Nil = "Z"
+  prettyTree SucWeak (w : Nil) = "S" <> w
   prettyTree Free (w : Nil) = "F" <> w
   prettyTree Zero (w : Nil) = "Z" <> w
   prettyTree Suc (n : Nil) = "S" <> n
@@ -79,28 +81,28 @@ instance PrettyTreeLabel D where
 instance IsDerivRuleLabel D
 
 instance HasDerivRules D S where
-  derivRules ZeroW = DerivRule
-    { sort: VarW %|^ [ Empty %|^ [] ]
+  derivRules ZeroWeak = DerivRule
+    { sort: VarWeak %|^ [ Empty %|^ [] ]
     , kids: mempty
     }
-  derivRules SucW = DerivRule
-    { sort: VarW %|^ [ gamma ]
+  derivRules SucWeak = DerivRule
+    { sort: VarWeak %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: VarW %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: VarWeak %|^ [ Ext %|^ [ gamma ] ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
   derivRules Free = DerivRule
     { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: VarW %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: VarWeak %|^ [ Ext %|^ [ gamma ] ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
   derivRules Zero = DerivRule
     { sort: Var %|^ [ Ext %|^ [ gamma ] ]
     , kids: List.fromFoldable
-        [ { sort: VarW %|^ [ gamma ] } ]
+        [ { sort: VarWeak %|^ [ gamma ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
@@ -142,49 +144,54 @@ instance HasDerivRules D S where
     gamma = mkRulialVar "gamma"
 
 instance HasDerivChangeRules D S where
-  derivChangeRules = ?a
+  derivChangeRules ZeroWeak = todo "derivChangeRules ZeroWeak"
+  derivChangeRules SucWeak = todo "derivChangeRules SucWeak"
+  derivChangeRules Free = todo "derivChangeRules Free"
+  derivChangeRules Zero = todo "derivChangeRules Zero"
+  derivChangeRules Suc = todo "derivChangeRules Suc"
+  derivChangeRules Ref = todo "derivChangeRules Ref"
+  derivChangeRules Lam = todo "derivChangeRules Lam"
+  derivChangeRules App = todo "derivChangeRules App"
+  derivChangeRules Hole = todo "derivChangeRules Hole"
 
 instance IsDerivChangeLanguage D S
 
 instance HasDerivPropagRules D S where
-  derivPropagRules ZeroW = todo "ZeroW"
-  derivPropagRules SucW = todo "SucW"
-  derivPropagRules Zero = DerivPropagRule
-    { kids: mempty
-    }
-  derivPropagRules Suc = DerivPropagRule
+  derivPropagRules ZeroWeak = DerivPropagRule
+    { kids: mempty }
+  derivPropagRules SucWeak = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                Var %∂.^ [ gamma ]
+                VarWeak %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
-              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: id $ Var %^ [ gamma # outerEndpoint ]
-                , down: Var %∂.^ [ gamma ]
+                { up: id $ VarWeak %^ [ gamma # outerEndpoint ]
+                , down: VarWeak %∂.^ [ gamma ]
                 }
           , unwrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: id $ Var %^ [ gamma # innerEndpoint ]
+                { up: VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
                 }
           , wrap_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: id $ Var %^ [ Ext %^ [ gamma # outerEndpoint ] ]
-                , down: Var %∂.^ [ gamma ]
+                { up: id $ VarWeak %^ [ Ext %^ [ gamma # outerEndpoint ] ]
+                , down: VarWeak %∂.^ [ gamma ]
                 }
           , wrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: id $ Var %^ [ gamma # innerEndpoint ]
+                { up: VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
                 }
           }
         ]
@@ -197,9 +204,93 @@ instance HasDerivPropagRules D S where
               -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                Var %∂.^ [ gamma ]
+                VarWeak %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
               -- TODO: is this right?
+              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , unwrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ gamma # outerEndpoint ]
+                , down: VarWeak %∂.^ [ gamma ]
+                }
+          , unwrap_up: matchTreeChangeSort
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
+                }
+          , wrap_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ Ext %^ [ gamma # outerEndpoint ] ]
+                , down: VarWeak %∂.^ [ gamma ]
+                }
+          , wrap_up: matchTreeChangeSort
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
+                }
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  derivPropagRules Zero = DerivPropagRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                VarWeak %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
+              -- TODO: is this right?
+              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , unwrap_down: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ gamma # outerEndpoint ]
+                , down: VarWeak %∂.^ [ gamma ]
+                }
+          , unwrap_up: matchTreeChangeSort
+              -- TODO: is this right?
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
+                }
+          , wrap_down: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: id $ Var %^ [ Ext %^ [ gamma # outerEndpoint ] ]
+                , down: VarWeak %∂.^ [ gamma ]
+                }
+          , wrap_up: matchTreeChangeSort
+              -- TODO: is this right?
+              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+                , down: id $ VarWeak %^ [ gamma # innerEndpoint ]
+                }
+          }
+        ]
+    }
+    where
+    _gamma = matchialVar (Proxy :: Proxy "gamma")
+  derivPropagRules Suc = DerivPropagRule
+    { kids: List.fromFoldable
+        [ { passthrough_down: matchTreeChangeSort
+              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort
               (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 Var %∂.^ [ Ext %∂.^ [ gamma ] ]
