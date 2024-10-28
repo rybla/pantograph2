@@ -11,12 +11,13 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
 import Pantograph.Pretty (class Pretty)
-import Pantograph.Utility (bug)
+import Pantograph.Utility (bug, todo)
 import Type.Proxy (Proxy(..))
 
 data S
   = Emp
   | Ext
+  | VarW
   | Var
   | Term
 
@@ -28,6 +29,7 @@ instance Show S where
 instance PrettyTreeLabel S where
   prettyTree Emp Nil = "∅"
   prettyTree Ext (gamma : Nil) = "E" <> gamma
+  prettyTree VarW (gamma : Nil) = "VarW " <> gamma
   prettyTree Var (gamma : Nil) = "Var " <> gamma
   prettyTree Term (gamma : Nil) = "Term " <> gamma
   prettyTree _ _ = bug "invalid S"
@@ -41,9 +43,11 @@ instance Pretty S where
 instance IsSortRuleLabel S
 
 data D
-  = Zero
-  | Suc
+  = ZeroW
+  | SucW
   | Free
+  | Zero
+  | Suc
   | Ref
   | Lam
   | App
@@ -61,7 +65,10 @@ instance Pretty D where
   pretty = show
 
 instance PrettyTreeLabel D where
-  prettyTree Zero Nil = "Z"
+  prettyTree ZeroW Nil = "Z"
+  prettyTree SucW (w : Nil) = "S" <> w
+  prettyTree Free (w : Nil) = "F" <> w
+  prettyTree Zero (w : Nil) = "Z" <> w
   prettyTree Suc (n : Nil) = "S" <> n
   prettyTree Ref (x : Nil) = "#" <> x
   prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
@@ -72,6 +79,8 @@ instance PrettyTreeLabel D where
 instance IsDerivRuleLabel D
 
 instance HasDerivRules D S where
+  derivRules ZeroW = todo "ZeroW"
+  derivRules SucW = todo "SucW"
   derivRules Zero = DerivRule
     { sort: Var %|^ [ Ext %|^ [ gamma ] ]
     , kids: mempty
@@ -123,6 +132,8 @@ instance HasDerivRules D S where
     gamma = mkRulialVar "gamma"
 
 instance HasDerivPropagRules D S where
+  derivPropagRules ZeroW = todo "ZeroW"
+  derivPropagRules SucW = todo "SucW"
   derivPropagRules Zero = DerivPropagRule
     { kids: mempty
     }
