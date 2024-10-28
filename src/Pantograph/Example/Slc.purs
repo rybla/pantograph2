@@ -15,7 +15,7 @@ import Pantograph.Utility (bug, todo)
 import Type.Proxy (Proxy(..))
 
 data S
-  = Emp
+  = Empty
   | Ext
   | VarW
   | Var
@@ -27,7 +27,7 @@ instance Show S where
   show x = genericShow x
 
 instance PrettyTreeLabel S where
-  prettyTree Emp Nil = "∅"
+  prettyTree Empty Nil = "∅"
   prettyTree Ext (gamma : Nil) = "E" <> gamma
   prettyTree VarW (gamma : Nil) = "VarW " <> gamma
   prettyTree Var (gamma : Nil) = "Var " <> gamma
@@ -79,22 +79,32 @@ instance PrettyTreeLabel D where
 instance IsDerivRuleLabel D
 
 instance HasDerivRules D S where
-  derivRules ZeroW = todo "ZeroW"
-  derivRules SucW = todo "SucW"
-  derivRules Zero = DerivRule
-    { sort: Var %|^ [ Ext %|^ [ gamma ] ]
+  derivRules ZeroW = DerivRule
+    { sort: VarW %|^ [ Empty %|^ [] ]
     , kids: mempty
     }
-    where
-    gamma = mkRulialVar "gamma"
-  derivRules Suc = DerivRule
-    { sort: Var %|^ [ gamma ]
+  derivRules SucW = DerivRule
+    { sort: VarW %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: VarW %|^ [ Ext %|^ [ gamma ] ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
   derivRules Free = DerivRule
+    { sort: Var %|^ [ gamma ]
+    , kids: List.fromFoldable
+        [ { sort: VarW %|^ [ Ext %|^ [ gamma ] ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Zero = DerivRule
+    { sort: Var %|^ [ Ext %|^ [ gamma ] ]
+    , kids: List.fromFoldable
+        [ { sort: VarW %|^ [ gamma ] } ]
+    }
+    where
+    gamma = mkRulialVar "gamma"
+  derivRules Suc = DerivRule
     { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
         [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
