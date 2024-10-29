@@ -25,19 +25,19 @@ import Type.Equality (class TypeEquals)
 -- SuperLabel
 --------------------------------------------------------------------------------
 
-class SuperLabel l_sup l_sub | l_sup -> l_sub where
-  injectLabel :: l_sub -> l_sup
+-- class SuperLabel l_sup l_sub | l_sup -> l_sub where
+--   injectLabel :: l_sub -> l_sup
 
-class SuperLabelChain l_sup (ls :: TypeList) l_sub | l_sup l_sub -> ls where
-  injectLabelChain :: l_sub -> l_sup
+-- class SuperLabelChain l_sup (ls :: TypeList) l_sub | l_sup l_sub -> ls where
+--   injectLabelChain :: l_sub -> l_sup
 
-{- instance TypeEquals l_sup l_sub => SuperLabelChain l_sub NilTL l_sub where
-  injectLabelChain = identity
-else -}
-instance SuperLabel l_sup l_sub => SuperLabelChain l_sup NilTL l_sub where
-  injectLabelChain = injectLabel
-else instance (SuperLabel l_sup l, SuperLabelChain l ls l_sub) => SuperLabelChain l_sup (l :* ls) l_sub where
-  injectLabelChain = (injectLabelChain :: l_sub -> l) >>> (injectLabel :: l -> l_sup)
+-- {- instance TypeEquals l_sup l_sub => SuperLabelChain l_sub NilTL l_sub where
+--   injectLabelChain = identity
+-- else -}
+-- instance SuperLabel l_sup l_sub => SuperLabelChain l_sup NilTL l_sub where
+--   injectLabelChain = injectLabel
+-- else instance (SuperLabel l_sup l, SuperLabelChain l ls l_sub) => SuperLabelChain l_sup (l :* ls) l_sub where
+--   injectLabelChain = (injectLabelChain :: l_sub -> l) >>> (injectLabel :: l -> l_sup)
 
 --------------------------------------------------------------------------------
 -- MetaVar
@@ -77,11 +77,11 @@ instance Eq l => Eq (MetaLabel l) where
 
 derive instance Functor MetaLabel
 
-instance SuperLabel (MetaLabel l) l where
-  injectLabel = InjectMetaLabel
+-- instance SuperLabel (MetaLabel l) l where
+--   injectLabel = InjectMetaLabel
 
 mkMetaVar x = MetaVar (MkMetaVar x) % Nil
-mkMetaVar' x = injectLabelChain (MetaVar (MkMetaVar x)) % Nil
+-- mkMetaVar' x = injectLabelChain (MetaVar (MkMetaVar x)) % Nil
 
 type MetaVarSubst = Map MetaVar
 
@@ -101,33 +101,33 @@ instance Eq s => Eq (SortLabel s) where
 
 derive instance Functor SortLabel
 
-instance SuperLabel (SortLabel s) s where
-  injectLabel = InjectSortLabel
+-- instance SuperLabel (SortLabel s) s where
+--   injectLabel = InjectSortLabel
 
 class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
 
-mkTreeInject l kids = injectLabelChain l % List.fromFoldable kids
+-- mkTreeInject l kids = injectLabelChain l % List.fromFoldable kids
 
-infix 1 mkTreeInject as %^
+-- infix 1 mkTreeInject as %^
 
-mkCongruenceInject s kids = Congruence (injectLabelChain s) %* kids
+-- mkCongruenceInject s kids = Congruence (injectLabelChain s) %* kids
 
-infix 1 mkCongruenceInject as %∂.^
+-- infix 1 mkCongruenceInject as %∂.^
 
-mkPlusInject s kids_left kid kids_right = Plus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+-- mkPlusInject s kids_left kid kids_right = Plus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
-infixl 1 mkPlusInject as %∂+^
+-- infixl 1 mkPlusInject as %∂+^
 
-mkMinusInject s kids_left kid kids_right = Minus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+-- mkMinusInject s kids_left kid kids_right = Minus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
-infixl 1 mkMinusInject as %∂-^
+-- infixl 1 mkMinusInject as %∂-^
 
--- | Serves as closing delimeter for mkPlusInject and mkMinusInject
-apply' :: forall a b. (a -> b) -> a -> b
-apply' = Function.apply
+-- -- | Serves as closing delimeter for mkPlusInject and mkMinusInject
+-- apply' :: forall a b. (a -> b) -> a -> b
+-- apply' = Function.apply
 
-infixl 1 apply' as <<
-infixl 1 apply' as >>
+-- infixl 1 apply' as <<
+-- infixl 1 apply' as >>
 
 --------------------------------------------------------------------------------
 -- DerivLabel
