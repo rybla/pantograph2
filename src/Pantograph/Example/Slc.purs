@@ -6,89 +6,84 @@ take.
 -}
 module Pantograph.Example.Slc where
 
--- import Pantograph.Language
--- import Pantograph.Tree
--- import Prelude
+import Pantograph.Language
+import Pantograph.Tree
+import Prelude
 
--- import Control.Alternative (empty)
--- import Data.Eq.Generic (genericEq)
--- import Data.Generic.Rep (class Generic)
--- import Data.List (List(..), (:))
--- import Data.List as List
--- import Data.Show.Generic (genericShow)
--- import Pantograph.Pretty (class Pretty)
--- import Pantograph.Utility (bug, todo)
--- import Type.Proxy (Proxy(..))
+import Control.Alternative (empty)
+import Data.Eq.Generic (genericEq)
+import Data.Generic.Rep (class Generic)
+import Data.List (List(..), (:))
+import Data.List as List
+import Data.Show.Generic (genericShow)
+import Pantograph.Pretty (class Pretty)
+import Pantograph.Utility (bug, todo)
+import Type.Proxy (Proxy(..))
 
--- data S
---   = Empty
---   | Ext
---   | ExtFree
---   | Var
---   | Term
+data S
+  = Emp
+  | Ext
+  | Var
+  | Term
 
--- derive instance Generic S _
+derive instance Generic S _
 
--- instance Show S where
---   show x = genericShow x
+instance Show S where
+  show x = genericShow x
 
--- instance PrettyTreeLabel S where
---   prettyTree Empty Nil = "∅"
---   prettyTree Ext (g : Nil) = "E" <> g
---   prettyTree ExtFree (g : Nil) = "F" <> g
---   prettyTree Var (g : Nil) = "Var " <> g
---   prettyTree Term (g : Nil) = "Term " <> g
---   prettyTree _ _ = bug "invalid S"
+instance PrettyTreeLabel S where
+  prettyTree Emp Nil = "∅"
+  prettyTree Ext (g : Nil) = "E" <> g
+  prettyTree Var (g : Nil) = "Var " <> g
+  prettyTree Term (g : Nil) = "Term " <> g
+  prettyTree _ _ = bug "invalid S"
 
--- instance Eq S where
---   eq x = genericEq x
+instance Eq S where
+  eq x = genericEq x
 
--- instance Pretty S where
---   pretty = show
+instance Pretty S where
+  pretty = show
 
--- instance IsSortRuleLabel S
+instance IsSortRuleLabel S
 
--- data D
---   = VarStub
---   | Free
---   | Zero
---   | Suc
---   | Ref
---   | Lam
---   | App
---   | Hole
+data D
+  = Free
+  | Zero
+  | Suc
+  | Ref
+  | Lam
+  | App
+  | Hole
 
--- derive instance Generic D _
+derive instance Generic D _
 
--- instance Show D where
---   show x = genericShow x
+instance Show D where
+  show x = genericShow x
 
--- instance Eq D where
---   eq x = genericEq x
+instance Eq D where
+  eq x = genericEq x
 
--- instance Pretty D where
---   pretty = show
+instance Pretty D where
+  pretty = show
 
--- instance PrettyTreeLabel D where
---   prettyTree ZeroWeak Nil = "Z"
---   prettyTree SucWeak (w : Nil) = "S" <> w
---   prettyTree Free (w : Nil) = "F" <> w
---   prettyTree Zero (w : Nil) = "Z" <> w
---   prettyTree Suc (n : Nil) = "S" <> n
---   prettyTree Ref (x : Nil) = "#" <> x
---   prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
---   prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
---   prettyTree Hole Nil = "?"
---   prettyTree _ _ = bug "invalid D"
+instance PrettyTreeLabel D where
+  prettyTree Free Nil = "F"
+  prettyTree Zero Nil = "Z"
+  prettyTree Suc (n : Nil) = "S" <> n
+  prettyTree Ref (x : Nil) = "#" <> x
+  prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
+  prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
+  prettyTree Hole Nil = "?"
+  prettyTree _ _ = bug "invalid D"
 
--- instance IsDerivRuleLabel D
+instance IsDerivRuleLabel D
 
 -- instance HasDerivRules D S where
 --   derivRules VarStub = DerivRule
 --     { sort: ?a
 --     }
 --   -- derivRules ZeroWeak = DerivRule
---   --   { sort: Var %|^ [ Empty %|^ [] ]
+--   --   { sort: Var %|^ [ Emp %|^ [] ]
 --   --   , kids: mempty
 --   --   }
 --   -- derivRules SucWeak = DerivRule

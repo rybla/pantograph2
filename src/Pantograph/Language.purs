@@ -196,8 +196,6 @@ type DerivChangeRules d s = d -> DerivChangeRule s
 class HasDerivChangeRules d s | d -> s where
   derivChangeRules :: DerivChangeRules d s
 
-class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s | d -> s
-
 --------------------------------------------------------------------------------
 -- PropagLabel
 -- TODO: eventually I'll have to deal with the cursor position being somewhere in the Propag
@@ -234,8 +232,6 @@ type PropagRules d s = List (PropagRule d s)
 class HasPropagRules d s | d -> s where
   propagRules :: PropagRules d s
 
-class (IsLanguage d s, HasPropagRules d s) <= IsPropagLanguage d s | d -> s
-
 --------------------------------------------------------------------------------
 -- InsertRule
 --------------------------------------------------------------------------------
@@ -256,8 +252,6 @@ type InsertRules d s = List (InsertRule d s)
 
 class HasInsertRules d s | d -> s where
   insertRules :: InsertRules d s
-
-class (IsPropagLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- matching
