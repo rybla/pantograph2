@@ -181,21 +181,23 @@ instance HasDerivPropagRules D S where
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          -- when Free unwraps via a down change, then sends up a change that
+          -- will cause a Zero to wrap
           , unwrap_down: matchTreeChangeSort
-              -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: empty
+                { up: pure $ Var %∂.^ [ ExtFree %∂-^ [] << (gamma # outerEndpoint # id) >> [] ]
                 , down: pure $ Var %∂.^ [ gamma ]
                 }
           , unwrap_up: const empty
-          , wrap_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+          , wrap_down: const empty
+          -- matches on an ExtFree sent up by the result of unwrapping a Zero
+          , wrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ ExtFree %|∂+^ [] << _gamma >> [] ])
               \{ gamma } ->
-                { up: empty
-                , down: pure $ Var %∂.^ [ gamma ]
+                { up: pure $ Var %∂.^ [ gamma ]
+                , down: empty
                 }
-          , wrap_up: pure empty
           }
         ]
     }
@@ -205,15 +207,23 @@ instance HasDerivPropagRules D S where
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          -- when Zero unwraps via a down change, then sends up a change that
+          -- will cause a Free to wrap 
           , unwrap_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: pure $ Var %∂.^ [ ExtFree %∂+^ [] << gamma >> [] ]
+                { up: pure $ Var %∂.^ [ ExtFree %∂+^ [] << (gamma # outerEndpoint # id) >> [] ]
                 , down: pure $ Var %∂.^ [ gamma ]
                 }
           , unwrap_up: const empty
           , wrap_down: const empty
-          , wrap_up: const empty
+          -- matches on an up change sent by the result of unwrapping a Free
+          , wrap_up: matchTreeChangeSort
+              (Var %|∂.^ [ ExtFree %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: pure $ Var %∂.^ [ gamma ]
+                , down: empty
+                }
           }
         ]
     }
