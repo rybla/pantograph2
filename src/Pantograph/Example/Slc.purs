@@ -166,38 +166,12 @@ instance HasDerivPropagRules D S where
     { kids: mempty }
   derivPropagRules SucWeak = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-          , unwrap_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: empty
-                , down: pure $ Var %∂.^ [ gamma ]
-                }
-          , unwrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
-          , wrap_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: empty
-                , down: pure $ Var %∂.^ [ gamma ]
-                }
-          , wrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
+        [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , unwrap_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> { up: empty, down: pure $ Var %∂.^ [ gamma ] }
+          , unwrap_up: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ], down: empty }
+          , wrap_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> { up: empty, down: pure $ Var %∂.^ [ gamma ] }
+          , wrap_up: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ], down: empty }
           }
         ]
     }
@@ -205,14 +179,8 @@ instance HasDerivPropagRules D S where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules Free = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+        [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
               -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
@@ -220,15 +188,8 @@ instance HasDerivPropagRules D S where
                 { up: empty
                 , down: pure $ Var %∂.^ [ gamma ]
                 }
-          , unwrap_up: matchTreeChangeSort
-              -- TODO: is this right?
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: empty
-                , down: pure $ Var %∂.^ [ gamma ]
-                }
+          , unwrap_up: const empty
           , wrap_down: matchTreeChangeSort
-              -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
@@ -242,14 +203,8 @@ instance HasDerivPropagRules D S where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules Zero = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+        [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
@@ -266,38 +221,22 @@ instance HasDerivPropagRules D S where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules Suc = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
+        [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
                 , down: pure $ Var %∂.^ [ gamma ]
                 }
-          , unwrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
+          , unwrap_up: const empty
           , wrap_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
                 , down: pure $ Var %∂.^ [ gamma ]
                 }
-          , wrap_up: matchTreeChangeSort
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
+          , wrap_up: const empty
           }
         ]
     }
@@ -324,14 +263,8 @@ instance HasDerivPropagRules D S where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules Lam = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ Ext %∂.^ [ gamma ] ]
-          , passthrough_up: matchTreeChangeSort
-              (Term %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ gamma ]
+        [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ Ext %∂.^ [ gamma ] ]
+          , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
           , unwrap_down: const empty
           , unwrap_up: const empty
           , wrap_down: const empty
@@ -343,27 +276,15 @@ instance HasDerivPropagRules D S where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules App = DerivPropagRule
     { kids: List.fromFoldable
-        [ { passthrough_down: matchTreeChangeSort
-              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ gamma ]
+        [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
           , unwrap_down: const empty
           , unwrap_up: const empty
           , wrap_down: const empty
           , wrap_up: const empty
           }
-        , { passthrough_down: matchTreeChangeSort
-              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ gamma ]
-          , passthrough_up: matchTreeChangeSort
-              (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                Term %∂.^ [ gamma ]
+        , { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
+          , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
           , unwrap_down: const empty
           , unwrap_up: const empty
           , wrap_down: const empty
@@ -374,8 +295,7 @@ instance HasDerivPropagRules D S where
     where
     _gamma = matchialVar (Proxy :: Proxy "gamma")
   derivPropagRules Hole = DerivPropagRule
-    { kids: mempty
-    }
+    { kids: mempty }
 
 instance IsLanguage D S
 
