@@ -28,7 +28,7 @@ import Foreign.Object as Object
 import Pantograph.EitherF (EitherF(..))
 import Pantograph.Pretty (class Pretty, parens, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug)
+import Pantograph.Utility (class FromObjectToRecord, bug, fromObjectToRecord)
 import Prim.Row (class Cons, class Lacks)
 import Prim.Row as Row
 import Prim.RowList (class RowToList, RowList)
@@ -117,10 +117,10 @@ newtype DerivRule s = DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
-class HasDerivRules d s where
+class HasDerivRules d s | d -> s where
   derivRules :: DerivRules d s
 
-class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d s
+class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- DerivChangeRule 
@@ -131,10 +131,10 @@ newtype DerivChangeRule s = DerivChangeRule
 
 type DerivChangeRules d s = d -> DerivChangeRule s
 
-class HasDerivChangeRules d s where
+class HasDerivChangeRules d s | d -> s where
   derivChangeRules :: DerivChangeRules d s
 
-class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s
+class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- DerivPropagRule
@@ -154,10 +154,10 @@ newtype DerivPropagRule s = DerivPropagRule
 
 type DerivPropagRules d s = d -> DerivPropagRule s
 
-class HasDerivPropagRules d s where
+class HasDerivPropagRules d s | d -> s where
   derivPropagRules :: DerivPropagRules d s
 
-class (IsLanguage d s, HasDerivPropagRules d s) <= IsDerivPropagLanguage d s
+class (IsLanguage d s, HasDerivPropagRules d s) <= IsDerivPropagLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- PropagLabel
@@ -192,10 +192,10 @@ newtype PropagRule d s = PropagRule
 
 type PropagRules d s = List (PropagRule d s)
 
-class HasPropagRules d s where
+class HasPropagRules d s | d -> s where
   propagRules :: PropagRules d s
 
-class (IsLanguage d s, HasPropagRules d s) <= IsPropagLanguage d s
+class (IsLanguage d s, HasPropagRules d s) <= IsPropagLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- InsertRule
@@ -215,10 +215,10 @@ newtype InsertRule d s = InsertRule
 
 type InsertRules d s = List (InsertRule d s)
 
-class HasInsertRules d s where
+class HasInsertRules d s | d -> s where
   insertRules :: InsertRules d s
 
-class (IsPropagLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s
+class (IsPropagLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- matchTreeChangeSort
@@ -290,30 +290,6 @@ mkMatchialMinusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f
 mkMatchialMinusSort s kids_left kid kids_right = Right (Minus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
 
 infixl 1 mkMatchialMinusSort as %|∂-^
-
-class FromObjectToRecord a r where
-  fromObjectToRecord :: Object a -> Maybe (Record r)
-
-instance (RowToList r rl, FromObjectToRecord' a r rl) => FromObjectToRecord a r where
-  fromObjectToRecord = fromObjectToRecord' (Proxy :: Proxy rl)
-
-class FromObjectToRecord' a r (rl :: RowList Type) | rl -> r where
-  fromObjectToRecord' :: Proxy rl -> Object a -> Maybe (Record r)
-
-instance
-  ( IsSymbol k
-  , Row.Cons k a r r'
-  , Lacks k r
-  , FromObjectToRecord' a r rl_
-  ) =>
-  FromObjectToRecord' a r' (RowList.Cons k v rl_) where
-  fromObjectToRecord' _ o = do
-    v <- o # Object.lookup (reflectSymbol (Proxy :: Proxy k))
-    r :: Record r <- fromObjectToRecord' (Proxy :: Proxy rl_) o
-    pure $ Record.insert (Proxy :: Proxy k) v r
-
-instance FromObjectToRecord' a () RowList.Nil where
-  fromObjectToRecord' _ _ = pure {}
 
 --------------------------------------------------------------------------------
 -- instances

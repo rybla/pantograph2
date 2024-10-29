@@ -1,19 +1,33 @@
 module Test.Slc where
 
--- import Pantograph.Example.Slc
+import Pantograph.Example.Slc
 import Pantograph.Language
 import Pantograph.Propagation
 import Pantograph.Tree
 import Prelude hiding (zero)
 
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Tuple.Nested ((/\))
+import Effect.Aff (Error)
 import Effect.Class.Console as Console
+import Pantograph.EitherF (EitherF(..))
 import Pantograph.Pretty (pretty)
 import Test.Common (shouldEqual_pretty)
 import Test.Spec (Spec, describe, it)
 
+emp = Empty %^ []
+ext g = Ext %^ [ g ]
+lam g b = DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ b ]
+ref g x = DerivLabel Ref (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ x ]
+
 spec :: Spec Unit
 spec = describe "Slc" do
+  shouldEqual_propagateFixpoint
+    -- (DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
+    (lam emp (ref (ext emp) ?a))
+    (RightF (DerivLabel Lam ?a) %* [])
+
   -- shouldEqual_propagateFixpoint
   --   (lam emp (ref (ext emp) (zero emp)))
   --   (lam_p emp (ref_p (ext emp) (zero_p emp)))
@@ -37,11 +51,15 @@ spec = describe "Slc" do
 
   pure unit
 
-shouldEqual_propagateFixpoint d pd =
-  -- it (pretty pd) $
-  --   shouldEqual_pretty
-  --     d
-  --     (fromPropagDerivToDeriv $ propagateFixpoint propagRules $ pd)
-
+shouldEqual_propagateFixpoint
+  :: forall d s
+   . IsPropagLanguage d s
+  => Tree (DerivLabel d s)
+  -> Tree (PropagLabel d s)
+  -> Spec Unit
+shouldEqual_propagateFixpoint d pd = do
+  it (pretty pd) $
+    shouldEqual_pretty
+      d
+      (fromPropagDerivToDeriv $ propagateFixpoint propagRules $ pd)
   pure unit
-

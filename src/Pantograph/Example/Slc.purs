@@ -37,7 +37,6 @@ instance PrettyTreeLabel S where
   prettyTree Ext (g : Nil) = "E" <> g
   prettyTree ExtFree (g : Nil) = "F" <> g
   prettyTree Var (g : Nil) = "Var " <> g
-  prettyTree Var (g : Nil) = "Var " <> g
   prettyTree Term (g : Nil) = "Term " <> g
   prettyTree _ _ = bug "invalid S"
 
@@ -147,6 +146,8 @@ instance HasDerivRules D S where
     }
     where
     gamma = mkRulialVar "gamma"
+
+instance IsLanguage D S
 
 instance HasDerivChangeRules D S where
   derivChangeRules ZeroWeak = todo "derivChangeRules ZeroWeak"
@@ -307,5 +308,9 @@ instance HasDerivPropagRules D S where
   derivPropagRules Hole = DerivPropagRule
     { kids: mempty }
 
-instance IsLanguage D S
+instance IsDerivPropagLanguage D S
 
+instance HasPropagRules D S where
+  propagRules = mempty
+
+instance IsPropagLanguage D S
