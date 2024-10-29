@@ -24,7 +24,6 @@ data S
   = Empty
   | Ext
   | ExtFree
-  | VarWeak
   | Var
   | Term
 
@@ -37,7 +36,7 @@ instance PrettyTreeLabel S where
   prettyTree Empty Nil = "∅"
   prettyTree Ext (g : Nil) = "E" <> g
   prettyTree ExtFree (g : Nil) = "F" <> g
-  prettyTree VarWeak (g : Nil) = "VarWeak " <> g
+  prettyTree Var (g : Nil) = "Var " <> g
   prettyTree Var (g : Nil) = "Var " <> g
   prettyTree Term (g : Nil) = "Term " <> g
   prettyTree _ _ = bug "invalid S"
@@ -88,27 +87,27 @@ instance IsDerivRuleLabel D
 
 instance HasDerivRules D S where
   derivRules ZeroWeak = DerivRule
-    { sort: VarWeak %|^ [ Empty %|^ [] ]
+    { sort: Var %|^ [ Empty %|^ [] ]
     , kids: mempty
     }
   derivRules SucWeak = DerivRule
-    { sort: VarWeak %|^ [ gamma ]
+    { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: VarWeak %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
   derivRules Free = DerivRule
     { sort: Var %|^ [ gamma ]
     , kids: List.fromFoldable
-        [ { sort: VarWeak %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
   derivRules Zero = DerivRule
     { sort: Var %|^ [ Ext %|^ [ gamma ] ]
     , kids: List.fromFoldable
-        [ { sort: VarWeak %|^ [ gamma ] } ]
+        [ { sort: Var %|^ [ gamma ] } ]
     }
     where
     gamma = mkRulialVar "gamma"
@@ -168,35 +167,35 @@ instance HasDerivPropagRules D S where
   derivPropagRules SucWeak = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                VarWeak %∂.^ [ gamma ]
+                Var %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
+                Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
+                , down: pure $ Var %∂.^ [ gamma ]
                 }
           , unwrap_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: pure $ VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
+                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
                 , down: empty
                 }
           , wrap_down: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
+                , down: pure $ Var %∂.^ [ gamma ]
                 }
           , wrap_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: pure $ VarWeak %∂.^ [ Ext %∂.^ [ gamma ] ]
+                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
                 , down: empty
                 }
           }
@@ -209,9 +208,9 @@ instance HasDerivPropagRules D S where
         [ { passthrough_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                VarWeak %∂.^ [ gamma ]
+                Var %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
@@ -219,15 +218,21 @@ instance HasDerivPropagRules D S where
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
+                , down: pure $ Var %∂.^ [ gamma ]
                 }
-          , unwrap_up: pure empty
+          , unwrap_up: matchTreeChangeSort
+              -- TODO: is this right?
+              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
+              \{ gamma } ->
+                { up: empty
+                , down: pure $ Var %∂.^ [ gamma ]
+                }
           , wrap_down: matchTreeChangeSort
               -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
+                , down: pure $ Var %∂.^ [ gamma ]
                 }
           , wrap_up: pure empty
           }
@@ -240,25 +245,19 @@ instance HasDerivPropagRules D S where
         [ { passthrough_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                VarWeak %∂.^ [ gamma ]
+                Var %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
+              (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
-                { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
+                { up: pure $ Var %∂.^ [ ExtFree %∂+^ [] << gamma >> [] ]
+                , down: pure $ Var %∂.^ [ gamma ]
                 }
           , unwrap_up: const empty
-          , wrap_down: matchTreeChangeSort
-              -- TODO: is this right?
-              (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: empty
-                , down: pure $ VarWeak %∂.^ [ gamma ]
-                }
+          , wrap_down: const empty
           , wrap_up: const empty
           }
         ]
