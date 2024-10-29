@@ -78,73 +78,61 @@ instance PrettyTreeLabel D where
 
 instance IsDerivRuleLabel D
 
--- instance HasDerivRules D S where
---   derivRules VarStub = DerivRule
---     { sort: ?a
---     }
---   -- derivRules ZeroWeak = DerivRule
---   --   { sort: Var %|^ [ Emp %|^ [] ]
---   --   , kids: mempty
---   --   }
---   -- derivRules SucWeak = DerivRule
---   --   { sort: Var %|^ [ gamma ]
---   --   , kids: List.fromFoldable
---   --       [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
---   --   }
---   --   where
---   --   gamma = mkRulialVar "gamma"
---   derivRules Free = DerivRule
---     { sort: Var %|^ [ gamma ]
---     , kids: List.fromFoldable
---         [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules Zero = DerivRule
---     { sort: Var %|^ [ Ext %|^ [ gamma ] ]
---     , kids: List.fromFoldable
---         [ { sort: Var %|^ [ gamma ] } ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules Suc = DerivRule
---     { sort: Var %|^ [ gamma ]
---     , kids: List.fromFoldable
---         [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules Ref = DerivRule
---     { sort: Term %|^ [ gamma ]
---     , kids: List.fromFoldable
---         [ { sort: Var %|^ [ gamma ] } ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules Lam = DerivRule
---     { sort: Term %|^ [ gamma ]
---     , kids: List.fromFoldable
---         [ { sort: Term %|^ [ Ext %|^ [ gamma ] ] } ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules App = DerivRule
---     { sort: Term %|^ [ gamma ]
---     , kids: List.fromFoldable
---         [ { sort: Term %|^ [ gamma ] }
---         , { sort: Term %|^ [ gamma ] }
---         ]
---     }
---     where
---     gamma = mkRulialVar "gamma"
---   derivRules Hole = DerivRule
---     { sort: Term %|^ [ gamma ]
---     , kids: mempty
---     }
---     where
---     gamma = mkRulialVar "gamma"
+instance HasDerivRules D S where
+  derivRules Free = DerivRule
+    { sort: ?a %^ [] -- ?Var %^ [] -- Var %|^ [ gamma ]
+    , kids: List.fromFoldable
+        -- [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
+        [ { sort: ?a } ]
+    }
+    where
+    gamma = mkMetaVar "gamma"
+  -- derivRules Zero = DerivRule
+  --   { sort: Var %|^ [ Ext %|^ [ gamma ] ]
+  --   , kids: List.fromFoldable
+  --       [ { sort: Var %|^ [ gamma ] } ]
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  -- derivRules Suc = DerivRule
+  --   { sort: Var %|^ [ gamma ]
+  --   , kids: List.fromFoldable
+  --       [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  -- derivRules Ref = DerivRule
+  --   { sort: Term %|^ [ gamma ]
+  --   , kids: List.fromFoldable
+  --       [ { sort: Var %|^ [ gamma ] } ]
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  -- derivRules Lam = DerivRule
+  --   { sort: Term %|^ [ gamma ]
+  --   , kids: List.fromFoldable
+  --       [ { sort: Term %|^ [ Ext %|^ [ gamma ] ] } ]
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  -- derivRules App = DerivRule
+  --   { sort: Term %|^ [ gamma ]
+  --   , kids: List.fromFoldable
+  --       [ { sort: Term %|^ [ gamma ] }
+  --       , { sort: Term %|^ [ gamma ] }
+  --       ]
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  -- derivRules Hole = DerivRule
+  --   { sort: Term %|^ [ gamma ]
+  --   , kids: mempty
+  --   }
+  --   where
+  --   gamma = mkMetaVar "gamma"
+  derivRules _ = todo ""
 
--- instance IsLanguage D S
+instance IsLanguage D S
 
 -- instance HasDerivChangeRules D S where
 --   derivChangeRules ZeroWeak = todo "derivChangeRules ZeroWeak"

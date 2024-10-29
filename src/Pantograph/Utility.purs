@@ -9,6 +9,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, reflectSymbol)
+import Data.Tuple.Nested (type (/\), (/\))
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
@@ -92,3 +93,13 @@ instance
 
 instance FromMapToRecord' () RowList.Nil a where
   fromMapToRecord' _ _ = pure {}
+
+--------------------------------------------------------------------------------
+-- TypeList
+--------------------------------------------------------------------------------
+
+foreign import data TypeList :: Type
+foreign import data NilTL :: TypeList
+foreign import data ConsTL :: Type -> TypeList -> TypeList
+
+infixr 1 type ConsTL as :*
