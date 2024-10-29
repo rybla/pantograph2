@@ -1,3 +1,9 @@
+{-
+one major limitation here is that you can't re-nest lambdas and have the
+referenced variables recover -- since there isn't a way to tell that the
+re-nested lambda corresponds to the new position that the free variables should
+take.
+-}
 module Pantograph.Example.Slc where
 
 import Pantograph.Language
@@ -201,39 +207,29 @@ instance HasDerivPropagRules D S where
   derivPropagRules Free = DerivPropagRule
     { kids: List.fromFoldable
         [ { passthrough_down: matchTreeChangeSort
-              -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 VarWeak %∂.^ [ gamma ]
           , passthrough_up: matchTreeChangeSort
-              -- TODO: is this right?
               (VarWeak %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 Var %∂.^ [ Ext %∂.^ [ gamma ] ]
           , unwrap_down: matchTreeChangeSort
+              -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂-^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
                 , down: pure $ VarWeak %∂.^ [ gamma ]
                 }
-          , unwrap_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
+          , unwrap_up: pure empty
           , wrap_down: matchTreeChangeSort
+              -- TODO: is this right?
               (Var %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
               \{ gamma } ->
                 { up: empty
                 , down: pure $ VarWeak %∂.^ [ gamma ]
                 }
-          , wrap_up: matchTreeChangeSort
-              (VarWeak %|∂.^ [ Ext %|∂+^ [] << _gamma >> [] ] :: Tree (Matchial (gamma :: _) _ _))
-              \{ gamma } ->
-                { up: pure $ Var %∂.^ [ Ext %∂.^ [ gamma ] ]
-                , down: empty
-                }
+          , wrap_up: pure empty
           }
         ]
     }
