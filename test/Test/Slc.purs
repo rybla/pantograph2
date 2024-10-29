@@ -16,17 +16,17 @@ import Pantograph.Pretty (pretty)
 import Test.Common (shouldEqual_pretty)
 import Test.Spec (Spec, describe, it)
 
-emp = Empty %^ []
-ext g = Ext %^ [ g ]
-lam g b = DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ b ]
-ref g x = DerivLabel Ref (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ x ]
+-- emp = Empty %^ []
+-- ext g = Ext %^ [ g ]
+-- lam g b = DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ b ]
+-- ref g x = DerivLabel Ref (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ x ]
 
 spec :: Spec Unit
 spec = describe "Slc" do
-  shouldEqual_propagateFixpoint
-    -- (DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
-    (lam emp (ref (ext emp) ?a))
-    (RightF (DerivLabel Lam ?a) %* [])
+  -- shouldEqual_propagateFixpoint
+  --   -- (DerivLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
+  --   (lam emp (ref (ext emp) ?a))
+  --   (RightF (DerivLabel Lam ?a) %* [])
 
   -- shouldEqual_propagateFixpoint
   --   (lam emp (ref (ext emp) (zero emp)))

@@ -7,7 +7,7 @@ import Control.Bind (bindFlipped)
 import Control.Monad.Maybe.Trans (runMaybeT)
 import Control.Monad.State (execStateT, gets, modify_)
 import Control.Plus (empty)
-import Data.Either (Either(..))
+import Data.Either (Either)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (class Foldable, traverse_)
 import Data.Function as Function
@@ -16,6 +16,7 @@ import Data.Identity (Identity)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
@@ -25,10 +26,9 @@ import Data.Traversable (class Traversable)
 import Data.Tuple (uncurry)
 import Foreign.Object (Object)
 import Foreign.Object as Object
-import Pantograph.EitherF (EitherF(..))
 import Pantograph.Pretty (class Pretty, parens, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (class FromObjectToRecord, bug, fromObjectToRecord)
+import Pantograph.Utility (class FromObjectToRecord, bug, fromObjectToRecord, todo)
 import Prim.Row (class Cons, class Lacks)
 import Prim.Row as Row
 import Prim.RowList (class RowToList, RowList)
@@ -37,35 +37,72 @@ import Record as Record
 import Type.Prelude (Proxy(..))
 
 --------------------------------------------------------------------------------
--- RulialVar
+-- MetaVar
 --------------------------------------------------------------------------------
 
-data RulialVar = RulialVar String
+data MetaVar = MkMetaVar String
 
-mkRulialVar :: forall a. String -> Tree (Either RulialVar a)
-mkRulialVar x = Left (RulialVar x) % Nil
+derive instance Generic MetaVar _
 
-type Rulial = Either RulialVar
+instance Show MetaVar where
+  show x = genericShow x
 
-type RulialVarSubst = Map RulialVar
+instance Pretty MetaVar where
+  pretty (MkMetaVar str) = "$" <> str
+
+instance Eq MetaVar where
+  eq x = genericEq x
+
+--------------------------------------------------------------------------------
+-- MetaLabel 
+--------------------------------------------------------------------------------
+
+data MetaLabel a
+  = MetaVar MetaVar
+  | InjectMetaLabel a
+
+derive instance Generic (MetaLabel a) _
+
+instance Show a => Show (MetaLabel a) where
+  show x = genericShow x
+
+instance Eq a => Eq (MetaLabel a) where
+  eq x = genericEq x
+
+derive instance Functor MetaLabel
+
+mkMetaVar :: forall a. String -> Tree (MetaLabel a)
+mkMetaVar x = MetaVar (MkMetaVar x) % Nil
+
+type MetaVarSubst = Map MetaVar
 
 --------------------------------------------------------------------------------
 -- SortLabel
 --------------------------------------------------------------------------------
 
-class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
-
 data SortLabel s = SortLabel s
+
+derive instance Generic (SortLabel s) _
+
+instance Show s => Show (SortLabel s) where
+  show x = genericShow x
+
+instance Eq s => Eq (SortLabel s) where
+  eq x = genericEq x
+
+derive instance Functor SortLabel
+
+class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
 
 mkSort :: forall f s. Foldable f => s -> f (Tree (SortLabel s)) -> Tree (SortLabel s)
 mkSort s kids = SortLabel s %* kids
 
 infix 1 mkSort as %^
 
-mkRightSort :: forall a s f. Foldable f => s -> f (Tree (Either a (SortLabel s))) -> Tree (Either a (SortLabel s))
-mkRightSort s kids = Right (SortLabel s) % List.fromFoldable kids
+mkMetaLabelSort :: forall a s f. Foldable f => s -> f (Tree (MetaLabel (SortLabel s))) -> Tree (MetaLabel (SortLabel s))
+mkMetaLabelSort s kids = InjectMetaLabel (SortLabel s) % List.fromFoldable kids
 
-infix 1 mkRightSort as %|^
+infix 1 mkMetaLabelSort as %|^
 
 mkCongruenceSort :: forall f s. Foldable f => s -> f (Tree (ChangeLabel (SortLabel s))) -> Tree (ChangeLabel (SortLabel s))
 mkCongruenceSort s kids = Congruence (SortLabel s) %* kids
@@ -103,17 +140,37 @@ class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerivRuleLabel d
 type DerivLabel d s = DerivLabel' d (SortLabel s)
 
 data DerivLabel' d s
-  = DerivLabel d (RulialVarSubst (Tree s))
+  = DerivLabel d (MetaVarSubst (Tree s))
   | DerivBoundary (Tree (ChangeLabel s))
+
+derive instance Generic (DerivLabel' d s) _
+
+instance (Show d, Show s) => Show (DerivLabel' d s) where
+  show x = genericShow x
+
+instance (Eq d, Eq s) => Eq (DerivLabel' d s) where
+  eq x = genericEq x
+
+derive instance Functor (DerivLabel' d)
 
 --------------------------------------------------------------------------------
 -- DerivRule
 --------------------------------------------------------------------------------
 
 newtype DerivRule s = DerivRule
-  { sort :: Tree (Rulial (SortLabel s))
-  , kids :: List { sort :: Tree (Rulial (SortLabel s)) }
+  { sort :: Tree (MetaLabel (SortLabel s))
+  , kids :: List { sort :: Tree (MetaLabel (SortLabel s)) }
   }
+
+derive instance Generic (DerivRule s) _
+
+instance Show s => Show (DerivRule s) where
+  show x = genericShow x
+
+instance Eq s => Eq (DerivRule s) where
+  eq x = genericEq x
+
+derive instance Functor DerivRule
 
 type DerivRules d s = d -> DerivRule s
 
@@ -129,6 +186,16 @@ class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d
 newtype DerivChangeRule s = DerivChangeRule
   { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
 
+derive instance Generic (DerivChangeRule s) _
+
+instance Show s => Show (DerivChangeRule s) where
+  show x = genericShow x
+
+instance Eq s => Eq (DerivChangeRule s) where
+  eq x = genericEq x
+
+derive instance Functor DerivChangeRule
+
 type DerivChangeRules d s = d -> DerivChangeRule s
 
 class HasDerivChangeRules d s | d -> s where
@@ -137,46 +204,23 @@ class HasDerivChangeRules d s | d -> s where
 class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- DerivPropagRule
---------------------------------------------------------------------------------
-
-newtype DerivPropagRule s = DerivPropagRule
-  { kids ::
-      List
-        { passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
-        , passthrough_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
-        , wrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , wrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , unwrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , unwrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        }
-  }
-
-type DerivPropagRules d s = d -> DerivPropagRule s
-
-class HasDerivPropagRules d s | d -> s where
-  derivPropagRules :: DerivPropagRules d s
-
-class (IsLanguage d s, HasDerivPropagRules d s) <= IsDerivPropagLanguage d s | d -> s
-
---------------------------------------------------------------------------------
 -- PropagLabel
 -- TODO: eventually I'll have to deal with the cursor position being somewhere in the Propag
 --------------------------------------------------------------------------------
 
-type PropagLabel d s = PropagLabel' (DerivLabel' d) (SortLabel s)
+data PropagLabel d s = PropagLabel d (SortLabel s)
 
-type PropagLabel' = EitherF PropagLabel''
-
-data PropagLabel'' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
+data PropagLabel' d s
+  = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
+  | InjectPropagLabel (DerivLabel' d s)
 
 data PropagBoundaryDirection = Up | Down
 
 downPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-downPropagBoundary ch kid = LeftF (PropagBoundary Down ch) %* [ kid ]
+downPropagBoundary ch kid = PropagBoundary Down ch %* [ kid ]
 
 upPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-upPropagBoundary ch kid = LeftF (PropagBoundary Up ch) %* [ kid ]
+upPropagBoundary ch kid = PropagBoundary Up ch %* [ kid ]
 
 infix 1 downPropagBoundary as ↓
 infix 1 upPropagBoundary as ↑
@@ -221,173 +265,191 @@ class HasInsertRules d s | d -> s where
 class (IsPropagLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
+-- matching
+--------------------------------------------------------------------------------
+
+matchChange
+  :: forall l r
+   . Eq l
+  => Tree (MetaLabel (ChangeLabel l))
+  -> Tree (ChangeLabel l)
+  -> Maybe (MetaVarSubst (Tree (ChangeLabel l)))
+matchChange (MetaVar x % Nil) t2 = pure $ Map.singleton x t2
+matchChange (MetaVar _ % _) _ = bug "MetaVar should have no kids"
+matchChange (InjectMetaLabel l1 % ts1) (l2 % ts2) | l1 == l2 = do
+  xxx <- List.zipWithA matchChange ts1 ts2
+  let xxx = Map.unionWith
+  todo ""
+matchChange _ _ = empty
+
+-- --------------------------------------------------------------------------------
+-- -- matchTreeChangeSort
+-- --------------------------------------------------------------------------------
+
+-- reflectExistsProxyCons :: forall xs a. ExistsProxyCons xs a -> String
+-- reflectExistsProxyCons = runExistsProxyCons reflectSymbol
+
+-- newtype ExistsProxyCons :: Row Type -> Type -> Type
+-- newtype ExistsProxyCons xs a = ExistsProxyCons (forall r. ExistsProxyConsK xs a r -> r)
+
+-- type ExistsProxyConsK :: Row Type -> Type -> Type -> Type
+-- type ExistsProxyConsK xs a r = forall x xs_. IsSymbol x => Cons x a xs_ xs => Proxy x -> r
+
+-- mkExistsProxyCons :: forall xs a. ExistsProxyConsK xs a (ExistsProxyCons xs a)
+-- mkExistsProxyCons a = ExistsProxyCons \k -> k a
+
+-- runExistsProxyCons :: forall xs a r. ExistsProxyConsK xs a r -> ExistsProxyCons xs a -> r
+-- runExistsProxyCons k1 (ExistsProxyCons k2) = k2 k1
+
+-- type Matchial :: Row Type -> Type -> Type -> Type
+-- type Matchial xs a b = Either (ExistsProxyCons xs a) b
+
 -- matchTreeChangeSort
---------------------------------------------------------------------------------
+--   :: forall xs s a
+--    . IsSortRuleLabel s
+--   => FromObjectToRecord (Tree (ChangeLabel (SortLabel s))) xs
+--   => Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) (ChangeLabel (SortLabel s)))
+--   -> (Record xs -> a)
+--   -> Tree (ChangeLabel (SortLabel s))
+--   -> Maybe a
+-- matchTreeChangeSort t1_ k t2_ =
+--   go t1_ t2_
+--     # flip execStateT (Object.empty :: Object (Tree (ChangeLabel (SortLabel s))))
+--     # runMaybeT
+--     # (unwrap :: Identity _ -> _)
+--     # bindFlipped fromObjectToRecord
+--     # map k
+--   where
+--   go (Left x1 % _) t2 = do
+--     let s = reflectExistsProxyCons x1
+--     gets (Object.lookup s) >>= case _ of
+--       Nothing -> modify_ $ Object.insert (reflectExistsProxyCons x1) t2
+--       -- if x1 has already been matched, then must be matched to the same value
+--       Just t2' | t2 == t2' -> pure unit
+--       _ -> empty
+--   go (Right l1 % ts1) (l2 % ts2) | l1 == l2 = List.zip ts1 ts2 # traverse_ (uncurry go)
+--   go _ _ = empty
 
-reflectExistsProxyCons :: forall xs a. ExistsProxyCons xs a -> String
-reflectExistsProxyCons = runExistsProxyCons reflectSymbol
+-- matchialVar
+--   :: forall x xs_ xs s a
+--    . IsSymbol x
+--   => Cons x (Tree (ChangeLabel (SortLabel s))) xs_ xs
+--   => Proxy x
+--   -> Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) a)
+-- matchialVar x = Left (mkExistsProxyCons x) %* []
 
-newtype ExistsProxyCons :: Row Type -> Type -> Type
-newtype ExistsProxyCons xs a = ExistsProxyCons (forall r. ExistsProxyConsK xs a r -> r)
+-- mkMatchialCongruenceSort :: forall s xs a. s -> Array (Tree (Matchial xs a (ChangeLabel (SortLabel s)))) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
+-- mkMatchialCongruenceSort s kids = Right (Congruence (SortLabel s)) % List.fromFoldable kids
 
-type ExistsProxyConsK :: Row Type -> Type -> Type -> Type
-type ExistsProxyConsK xs a r = forall x xs_. IsSymbol x => Cons x a xs_ xs => Proxy x -> r
+-- infix 1 mkMatchialCongruenceSort as %|∂.^
 
-mkExistsProxyCons :: forall xs a. ExistsProxyConsK xs a (ExistsProxyCons xs a)
-mkExistsProxyCons a = ExistsProxyCons \k -> k a
+-- mkMatchialPlusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
+-- mkMatchialPlusSort s kids_left kid kids_right = Right (Plus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
 
-runExistsProxyCons :: forall xs a r. ExistsProxyConsK xs a r -> ExistsProxyCons xs a -> r
-runExistsProxyCons k1 (ExistsProxyCons k2) = k2 k1
+-- infixl 1 mkMatchialPlusSort as %|∂+^
 
-type Matchial :: Row Type -> Type -> Type -> Type
-type Matchial xs a b = Either (ExistsProxyCons xs a) b
+-- mkMatchialMinusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
+-- mkMatchialMinusSort s kids_left kid kids_right = Right (Minus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
 
-matchTreeChangeSort
-  :: forall xs s a
-   . IsSortRuleLabel s
-  => FromObjectToRecord (Tree (ChangeLabel (SortLabel s))) xs
-  => Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) (ChangeLabel (SortLabel s)))
-  -> (Record xs -> a)
-  -> Tree (ChangeLabel (SortLabel s))
-  -> Maybe a
-matchTreeChangeSort t1_ k t2_ =
-  go t1_ t2_
-    # flip execStateT (Object.empty :: Object (Tree (ChangeLabel (SortLabel s))))
-    # runMaybeT
-    # (unwrap :: Identity _ -> _)
-    # bindFlipped fromObjectToRecord
-    # map k
-  where
-  go (Left x1 % _) t2 = do
-    let s = reflectExistsProxyCons x1
-    gets (Object.lookup s) >>= case _ of
-      Nothing -> modify_ $ Object.insert (reflectExistsProxyCons x1) t2
-      -- if x1 has already been matched, then must be matched to the same value
-      Just t2' | t2 == t2' -> pure unit
-      _ -> empty
-  go (Right l1 % ts1) (l2 % ts2) | l1 == l2 = List.zip ts1 ts2 # traverse_ (uncurry go)
-  go _ _ = empty
+-- infixl 1 mkMatchialMinusSort as %|∂-^
 
-matchialVar
-  :: forall x xs_ xs s a
-   . IsSymbol x
-  => Cons x (Tree (ChangeLabel (SortLabel s))) xs_ xs
-  => Proxy x
-  -> Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) a)
-matchialVar x = Left (mkExistsProxyCons x) %* []
+-- --------------------------------------------------------------------------------
+-- -- instances
+-- --------------------------------------------------------------------------------
 
-mkMatchialCongruenceSort :: forall s xs a. s -> Array (Tree (Matchial xs a (ChangeLabel (SortLabel s)))) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialCongruenceSort s kids = Right (Congruence (SortLabel s)) % List.fromFoldable kids
+-- derive instance Generic MetaVar _
 
-infix 1 mkMatchialCongruenceSort as %|∂.^
+-- instance Show MetaVar where
+--   show x = genericShow x
 
-mkMatchialPlusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialPlusSort s kids_left kid kids_right = Right (Plus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
+-- instance Pretty MetaVar where
+--   pretty (MetaVar str) = "$" <> str
 
-infixl 1 mkMatchialPlusSort as %|∂+^
+-- instance PrettyTreeLabel MetaVar where
+--   prettyTree rv Nil = pretty rv
+--   prettyTree _ _ = bug "invalid `Tree MetaVar`"
 
-mkMatchialMinusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialMinusSort s kids_left kid kids_right = Right (Minus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
+-- instance Eq MetaVar where
+--   eq x = genericEq x
 
-infixl 1 mkMatchialMinusSort as %|∂-^
+-- instance Ord MetaVar where
+--   compare x = genericCompare x
 
---------------------------------------------------------------------------------
--- instances
---------------------------------------------------------------------------------
+-- derive instance Generic (SortLabel s) _
 
-derive instance Generic RulialVar _
+-- instance Pretty s => Pretty (SortLabel s) where
+--   pretty (SortLabel t) = pretty t
 
-instance Show RulialVar where
-  show x = genericShow x
+-- instance PrettyTreeLabel s => PrettyTreeLabel (SortLabel s) where
+--   prettyTree (SortLabel s) = prettyTree s
 
-instance Pretty RulialVar where
-  pretty (RulialVar str) = "$" <> str
+-- instance Show s => Show (SortLabel s) where
+--   show x = genericShow x
 
-instance PrettyTreeLabel RulialVar where
-  prettyTree rv Nil = pretty rv
-  prettyTree _ _ = bug "invalid `Tree RulialVar`"
+-- instance Eq s => Eq (SortLabel s) where
+--   eq x = genericEq x
 
-instance Eq RulialVar where
-  eq x = genericEq x
+-- derive instance Functor SortLabel
+-- derive instance Foldable SortLabel
+-- derive instance Traversable SortLabel
 
-instance Ord RulialVar where
-  compare x = genericCompare x
+-- derive instance Generic (DerivLabel' d s) _
 
-derive instance Generic (SortLabel s) _
+-- instance (Show s, Show d) => Show (DerivLabel' d s) where
+--   show x = genericShow x
 
-instance Pretty s => Pretty (SortLabel s) where
-  pretty (SortLabel t) = pretty t
+-- instance (PrettyTreeLabel s, Pretty d) => Pretty (DerivLabel' d s) where
+--   pretty (DerivLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
+--   pretty (DerivBoundary ch) = parens $ "!! " <> pretty ch
 
-instance PrettyTreeLabel s => PrettyTreeLabel (SortLabel s) where
-  prettyTree (SortLabel s) = prettyTree s
+-- instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerivLabel' d s) where
+--   prettyTree (DerivLabel d _sigma) kids = prettyTree d kids
+--   prettyTree (DerivBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
+--   prettyTree _ _ = bug "invalid `Tree (DerivLabel' d s)`"
 
-instance Show s => Show (SortLabel s) where
-  show x = genericShow x
+-- instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
+--   eq x = genericEq x
 
-instance Eq s => Eq (SortLabel s) where
-  eq x = genericEq x
+-- derive instance Functor (DerivLabel' d)
 
-derive instance Functor SortLabel
-derive instance Foldable SortLabel
-derive instance Traversable SortLabel
+-- derive instance Generic (DerivRule s) _
 
-derive instance Generic (DerivLabel' d s) _
+-- derive instance Newtype (DerivRule s) _
 
-instance (Show s, Show d) => Show (DerivLabel' d s) where
-  show x = genericShow x
+-- derive instance Generic (DerivPropagRule s) _
 
-instance (PrettyTreeLabel s, Pretty d) => Pretty (DerivLabel' d s) where
-  pretty (DerivLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
-  pretty (DerivBoundary ch) = parens $ "!! " <> pretty ch
+-- derive instance Newtype (DerivPropagRule s) _
 
-instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerivLabel' d s) where
-  prettyTree (DerivLabel d _sigma) kids = prettyTree d kids
-  prettyTree (DerivBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
-  prettyTree _ _ = bug "invalid `Tree (DerivLabel' d s)`"
+-- derive instance Generic (PropagLabel'' s) _
 
-instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
-  eq x = genericEq x
+-- instance Show s => Show (PropagLabel'' s) where
+--   show x = genericShow x
 
-derive instance Functor (DerivLabel' d)
+-- instance PrettyTreeLabel s => Pretty (PropagLabel'' s) where
+--   pretty (PropagBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
 
-derive instance Generic (DerivRule s) _
+-- instance PrettyTreeLabel s => PrettyTreeLabel (PropagLabel'' s) where
+--   prettyTree (PropagBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
+--   prettyTree _ _ = bug "invalid `PropagLabel' s`"
 
-derive instance Newtype (DerivRule s) _
+-- instance Eq s => Eq (PropagLabel'' s) where
+--   eq x = genericEq x
 
-derive instance Generic (DerivPropagRule s) _
+-- derive instance Functor PropagLabel''
 
-derive instance Newtype (DerivPropagRule s) _
+-- derive instance Generic PropagBoundaryDirection _
 
-derive instance Generic (PropagLabel'' s) _
+-- instance Show PropagBoundaryDirection where
+--   show x = genericShow x
 
-instance Show s => Show (PropagLabel'' s) where
-  show x = genericShow x
+-- instance Pretty PropagBoundaryDirection where
+--   pretty Up = "↑"
+--   pretty Down = "↓"
 
-instance PrettyTreeLabel s => Pretty (PropagLabel'' s) where
-  pretty (PropagBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
+-- instance Eq PropagBoundaryDirection where
+--   eq x = genericEq x
 
-instance PrettyTreeLabel s => PrettyTreeLabel (PropagLabel'' s) where
-  prettyTree (PropagBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
-  prettyTree _ _ = bug "invalid `PropagLabel' s`"
+-- derive instance Generic (PropagRule d s) _
 
-instance Eq s => Eq (PropagLabel'' s) where
-  eq x = genericEq x
-
-derive instance Functor PropagLabel''
-
-derive instance Generic PropagBoundaryDirection _
-
-instance Show PropagBoundaryDirection where
-  show x = genericShow x
-
-instance Pretty PropagBoundaryDirection where
-  pretty Up = "↑"
-  pretty Down = "↓"
-
-instance Eq PropagBoundaryDirection where
-  eq x = genericEq x
-
-derive instance Generic (PropagRule d s) _
-
-derive instance Newtype (PropagRule d s) _
+-- derive instance Newtype (PropagRule d s) _
 

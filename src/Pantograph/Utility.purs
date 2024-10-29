@@ -2,16 +2,21 @@ module Pantograph.Utility where
 
 import Prelude
 
-import Data.Maybe (Maybe)
+import Control.Monad.Error.Class (throwError)
+import Data.Either (Either(..))
+import Data.List (List)
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, reflectSymbol)
-import Record as Record
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
-import Prim.Row (class Lacks)
+import Prim.Row (class Cons, class Lacks)
 import Prim.Row as Row
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
+import Record as Record
 import Type.Prelude (Proxy(..))
 
 todo :: forall a. String -> a
@@ -29,6 +34,10 @@ assert msg b k = if not b then bug msg else k unit
 assertM :: forall m. Monad m => String -> Boolean -> m Unit
 assertM msg b = if not b then pure (bug msg) else pure unit
 
+--------------------------------------------------------------------------------
+-- FromObjectToRecord
+--------------------------------------------------------------------------------
+
 class FromObjectToRecord a r where
   fromObjectToRecord :: Object a -> Maybe (Record r)
 
@@ -40,7 +49,7 @@ class FromObjectToRecord' a r (rl :: RowList Type) | rl -> r where
 
 instance
   ( IsSymbol k
-  , Row.Cons k a r r'
+  , Cons k a r r'
   , Lacks k r
   , FromObjectToRecord' a r rl_
   ) =>
@@ -52,3 +61,34 @@ instance
 
 instance FromObjectToRecord' a () RowList.Nil where
   fromObjectToRecord' _ _ = pure {}
+
+--------------------------------------------------------------------------------
+-- FromMapToRecord
+--------------------------------------------------------------------------------
+
+class FromMapToRecord r a | r -> a where
+  fromMapToRecord :: Map String a -> Either String (Record r)
+
+class FromMapToRecord' :: Row Type -> RowList Type -> Type -> Constraint
+class FromMapToRecord' r rl a | rl -> r, r -> a where
+  fromMapToRecord' :: Proxy rl -> Map String a -> Either String (Record r)
+
+instance
+  ( IsSymbol k
+  , Cons k a r r'
+  , Lacks k r
+  , FromMapToRecord' r rl_ a
+  ) =>
+  FromMapToRecord' r' (RowList.Cons k v rl_) a where
+  fromMapToRecord' _ m =
+    case m # Map.lookup k of
+      Nothing -> throwError k
+      Just v -> do
+        r <- fromMapToRecord' (Proxy :: Proxy rl_) m
+        r # Record.insert _k v # pure
+    where
+    _k = (Proxy :: Proxy k)
+    k = reflectSymbol _k
+
+instance FromMapToRecord' () RowList.Nil a where
+  fromMapToRecord' _ _ = pure {}
