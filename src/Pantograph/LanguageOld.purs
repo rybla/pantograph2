@@ -95,16 +95,16 @@ infixl 1 apply' as <<
 infixl 1 apply' as >>
 
 --------------------------------------------------------------------------------
--- DerivLabel
+-- DerLabel
 --------------------------------------------------------------------------------
 
 class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerivRuleLabel d
 
-type DerivLabel d s = DerivLabel' d (SortLabel s)
+type DerLabel d s = DerLabel' d (SortLabel s)
 
-data DerivLabel' d s
-  = DerivLabel d (RulialVarSubst (Tree s))
-  | DerivBoundary (Tree (ChangeLabel s))
+data DerLabel' d s
+  = DerLabel d (RulialVarSubst (Tree s))
+  | DerBoundary (Tree (ChangeLabel s))
 
 --------------------------------------------------------------------------------
 -- DerivRule
@@ -115,32 +115,32 @@ newtype DerivRule s = DerivRule
   , kids :: List { sort :: Tree (Rulial (SortLabel s)) }
   }
 
-type DerivRules d s = d -> DerivRule s
+type DerRules d s = d -> DerivRule s
 
-class HasDerivRules d s | d -> s where
-  derivRules :: DerivRules d s
+class HasDerRules d s | d -> s where
+  derRules :: DerRules d s
 
-class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d s | d -> s
+class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerRules d s) <= IsLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- DerivChangeRule 
+-- DerChangeRule 
 --------------------------------------------------------------------------------
 
-newtype DerivChangeRule s = DerivChangeRule
+newtype DerChangeRule s = DerChangeRule
   { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
 
-type DerivChangeRules d s = d -> DerivChangeRule s
+type DerChangeRules d s = d -> DerChangeRule s
 
-class HasDerivChangeRules d s | d -> s where
-  derivChangeRules :: DerivChangeRules d s
+class HasDerChangeRules d s | d -> s where
+  derChangeRules :: DerChangeRules d s
 
-class (IsLanguage d s, HasDerivChangeRules d s) <= IsDerivChangeLanguage d s | d -> s
+class (IsLanguage d s, HasDerChangeRules d s) <= IsDerChangeLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- DerivPropagRule
+-- DerAdjustRule
 --------------------------------------------------------------------------------
 
-newtype DerivPropagRule s = DerivPropagRule
+newtype DerAdjustRule s = DerAdjustRule
   { kids ::
       List
         { passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
@@ -152,50 +152,50 @@ newtype DerivPropagRule s = DerivPropagRule
         }
   }
 
-type DerivPropagRules d s = d -> DerivPropagRule s
+type DerAdjustRules d s = d -> DerAdjustRule s
 
-class HasDerivPropagRules d s | d -> s where
-  derivPropagRules :: DerivPropagRules d s
+class HasDerAdjustRules d s | d -> s where
+  derAdjustRules :: DerAdjustRules d s
 
-class (IsLanguage d s, HasDerivPropagRules d s) <= IsDerivPropagLanguage d s | d -> s
-
---------------------------------------------------------------------------------
--- PropagLabel
--- TODO: eventually I'll have to deal with the cursor position being somewhere in the Propag
---------------------------------------------------------------------------------
-
-type PropagLabel d s = PropagLabel' (DerivLabel' d) (SortLabel s)
-
-type PropagLabel' = EitherF PropagLabel''
-
-data PropagLabel'' s = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
-
-data PropagBoundaryDirection = Up | Down
-
-downPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-downPropagBoundary ch kid = LeftF (PropagBoundary Down ch) %* [ kid ]
-
-upPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-upPropagBoundary ch kid = LeftF (PropagBoundary Up ch) %* [ kid ]
-
-infix 1 downPropagBoundary as ↓
-infix 1 upPropagBoundary as ↑
+class (IsLanguage d s, HasDerAdjustRules d s) <= IsDerAdjustLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- PropagRule
+-- AdjustLabel
+-- TODO: eventually I'll have to deal with the cursor position being somewhere in the Adjust
 --------------------------------------------------------------------------------
 
-newtype PropagRule d s = PropagRule
+type AdjustLabel d s = AdjustLabel' (DerLabel' d) (SortLabel s)
+
+type AdjustLabel' = EitherF AdjustLabel''
+
+data AdjustLabel'' s = AdjustBoundary AdjustBoundaryDirection (Tree (ChangeLabel s))
+
+data AdjustBoundaryDirection = Up | Down
+
+downAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
+downAdjustBoundary ch kid = LeftF (AdjustBoundary Down ch) %* [ kid ]
+
+upAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
+upAdjustBoundary ch kid = LeftF (AdjustBoundary Up ch) %* [ kid ]
+
+infix 1 downAdjustBoundary as ↓
+infix 1 upAdjustBoundary as ↑
+
+--------------------------------------------------------------------------------
+-- AdjustRule
+--------------------------------------------------------------------------------
+
+newtype AdjustRule d s = AdjustRule
   { name :: String
-  , rule :: Maybe (Tooth (PropagLabel d s)) -> Tree (PropagLabel d s) -> Maybe (Tree (PropagLabel d s))
+  , rule :: Maybe (Tooth (AdjustLabel d s)) -> Tree (AdjustLabel d s) -> Maybe (Tree (AdjustLabel d s))
   }
 
-type PropagRules d s = List (PropagRule d s)
+type AdjustRules d s = List (AdjustRule d s)
 
-class HasPropagRules d s | d -> s where
-  propagRules :: PropagRules d s
+class HasAdjustRules d s | d -> s where
+  propagRules :: AdjustRules d s
 
-class (IsLanguage d s, HasPropagRules d s) <= IsPropagLanguage d s | d -> s
+class (IsLanguage d s, HasAdjustRules d s) <= IsAdjustLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- InsertRule
@@ -205,10 +205,10 @@ newtype InsertRule d s = InsertRule
   { name :: String
   , key :: String -- searchable by user
   , rule ::
-      Tree (DerivLabel d s)
+      Tree (DerLabel d s)
       -> Maybe
            { up :: Tree (ChangeLabel (SortLabel s))
-           , mid :: Tooth (DerivLabel d s)
+           , mid :: Tooth (DerLabel d s)
            , down :: Tree (ChangeLabel (SortLabel s))
            }
   }
@@ -218,7 +218,7 @@ type InsertRules d s = List (InsertRule d s)
 class HasInsertRules d s | d -> s where
   insertRules :: InsertRules d s
 
-class (IsPropagLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s | d -> s
+class (IsAdjustLanguage d s, HasInsertRules d s) <= IsInsertLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- matchTreeChangeSort
@@ -331,63 +331,63 @@ derive instance Functor SortLabel
 derive instance Foldable SortLabel
 derive instance Traversable SortLabel
 
-derive instance Generic (DerivLabel' d s) _
+derive instance Generic (DerLabel' d s) _
 
-instance (Show s, Show d) => Show (DerivLabel' d s) where
+instance (Show s, Show d) => Show (DerLabel' d s) where
   show x = genericShow x
 
-instance (PrettyTreeLabel s, Pretty d) => Pretty (DerivLabel' d s) where
-  pretty (DerivLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
-  pretty (DerivBoundary ch) = parens $ "!! " <> pretty ch
+instance (PrettyTreeLabel s, Pretty d) => Pretty (DerLabel' d s) where
+  pretty (DerLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
+  pretty (DerBoundary ch) = parens $ "!! " <> pretty ch
 
-instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerivLabel' d s) where
-  prettyTree (DerivLabel d _sigma) kids = prettyTree d kids
-  prettyTree (DerivBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
-  prettyTree _ _ = bug "invalid `Tree (DerivLabel' d s)`"
+instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerLabel' d s) where
+  prettyTree (DerLabel d _sigma) kids = prettyTree d kids
+  prettyTree (DerBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
+  prettyTree _ _ = bug "invalid `Tree (DerLabel' d s)`"
 
-instance (Eq s, Eq d) => Eq (DerivLabel' d s) where
+instance (Eq s, Eq d) => Eq (DerLabel' d s) where
   eq x = genericEq x
 
-derive instance Functor (DerivLabel' d)
+derive instance Functor (DerLabel' d)
 
 derive instance Generic (DerivRule s) _
 
 derive instance Newtype (DerivRule s) _
 
-derive instance Generic (DerivPropagRule s) _
+derive instance Generic (DerAdjustRule s) _
 
-derive instance Newtype (DerivPropagRule s) _
+derive instance Newtype (DerAdjustRule s) _
 
-derive instance Generic (PropagLabel'' s) _
+derive instance Generic (AdjustLabel'' s) _
 
-instance Show s => Show (PropagLabel'' s) where
+instance Show s => Show (AdjustLabel'' s) where
   show x = genericShow x
 
-instance PrettyTreeLabel s => Pretty (PropagLabel'' s) where
-  pretty (PropagBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
+instance PrettyTreeLabel s => Pretty (AdjustLabel'' s) where
+  pretty (AdjustBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
 
-instance PrettyTreeLabel s => PrettyTreeLabel (PropagLabel'' s) where
-  prettyTree (PropagBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
-  prettyTree _ _ = bug "invalid `PropagLabel' s`"
+instance PrettyTreeLabel s => PrettyTreeLabel (AdjustLabel'' s) where
+  prettyTree (AdjustBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
+  prettyTree _ _ = bug "invalid `AdjustLabel' s`"
 
-instance Eq s => Eq (PropagLabel'' s) where
+instance Eq s => Eq (AdjustLabel'' s) where
   eq x = genericEq x
 
-derive instance Functor PropagLabel''
+derive instance Functor AdjustLabel''
 
-derive instance Generic PropagBoundaryDirection _
+derive instance Generic AdjustBoundaryDirection _
 
-instance Show PropagBoundaryDirection where
+instance Show AdjustBoundaryDirection where
   show x = genericShow x
 
-instance Pretty PropagBoundaryDirection where
+instance Pretty AdjustBoundaryDirection where
   pretty Up = "↑"
   pretty Down = "↓"
 
-instance Eq PropagBoundaryDirection where
+instance Eq AdjustBoundaryDirection where
   eq x = genericEq x
 
-derive instance Generic (PropagRule d s) _
+derive instance Generic (AdjustRule d s) _
 
-derive instance Newtype (PropagRule d s) _
+derive instance Newtype (AdjustRule d s) _
 

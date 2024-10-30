@@ -28,6 +28,9 @@ data S
 
 derive instance Generic S _
 
+instance SuperLabel S S where
+  injectLabel = identity
+
 instance Show S where
   show x = genericShow x
 
@@ -76,81 +79,39 @@ instance PrettyTreeLabel D where
   prettyTree Hole Nil = "?"
   prettyTree _ _ = bug "invalid D"
 
-instance IsDerivRuleLabel D
+instance IsDerRuleLabel D
 
-instance HasDerivRules D S where
-  derivRules Free = DerivRule
-    { sort: ?a %^ [] -- ?Var %^ [] -- Var %|^ [ gamma ]
-    , kids: List.fromFoldable
-        -- [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
-        [ { sort: ?a } ]
-    }
+instance HasDerRules D S where
+  derRules = case _ of
+    Free -> Var %^ [ Ext %^ [ g ] ] -| []
+    Zero -> Var %^ [ Ext %^ [ g ] ] -| [ Var %^ [ g ] ]
+    Suc -> Var %^ [ g ] -| [ Var %^ [ Ext %^ [ g ] ] ]
+    Ref -> Term %^ [ g ] -| [ Var %^ [ g ] ]
+    Lam -> Term %^ [ g ] -| [ Term %^ [ Ext %^ [ g ] ] ]
+    App -> Term %^ [ g ] -| [ Term %^ [ g ], Term %^ [ g ] ]
+    Hole -> Term %^ [ g ] -| []
     where
-    gamma = mkMetaVar "gamma"
-  -- derivRules Zero = DerivRule
-  --   { sort: Var %|^ [ Ext %|^ [ gamma ] ]
-  --   , kids: List.fromFoldable
-  --       [ { sort: Var %|^ [ gamma ] } ]
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  -- derivRules Suc = DerivRule
-  --   { sort: Var %|^ [ gamma ]
-  --   , kids: List.fromFoldable
-  --       [ { sort: Var %|^ [ Ext %|^ [ gamma ] ] } ]
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  -- derivRules Ref = DerivRule
-  --   { sort: Term %|^ [ gamma ]
-  --   , kids: List.fromFoldable
-  --       [ { sort: Var %|^ [ gamma ] } ]
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  -- derivRules Lam = DerivRule
-  --   { sort: Term %|^ [ gamma ]
-  --   , kids: List.fromFoldable
-  --       [ { sort: Term %|^ [ Ext %|^ [ gamma ] ] } ]
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  -- derivRules App = DerivRule
-  --   { sort: Term %|^ [ gamma ]
-  --   , kids: List.fromFoldable
-  --       [ { sort: Term %|^ [ gamma ] }
-  --       , { sort: Term %|^ [ gamma ] }
-  --       ]
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  -- derivRules Hole = DerivRule
-  --   { sort: Term %|^ [ gamma ]
-  --   , kids: mempty
-  --   }
-  --   where
-  --   gamma = mkMetaVar "gamma"
-  derivRules _ = todo ""
+    g = mkMetaVar "gamma"
 
 instance IsLanguage D S
 
--- instance HasDerivChangeRules D S where
---   derivChangeRules ZeroWeak = todo "derivChangeRules ZeroWeak"
---   derivChangeRules SucWeak = todo "derivChangeRules SucWeak"
---   derivChangeRules Free = todo "derivChangeRules Free"
---   derivChangeRules Zero = todo "derivChangeRules Zero"
---   derivChangeRules Suc = todo "derivChangeRules Suc"
---   derivChangeRules Ref = todo "derivChangeRules Ref"
---   derivChangeRules Lam = todo "derivChangeRules Lam"
---   derivChangeRules App = todo "derivChangeRules App"
---   derivChangeRules Hole = todo "derivChangeRules Hole"
+-- instance HasDerChangeRules D S where
+--   derChangeRules ZeroWeak = todo "derChangeRules ZeroWeak"
+--   derChangeRules SucWeak = todo "derChangeRules SucWeak"
+--   derChangeRules Free = todo "derChangeRules Free"
+--   derChangeRules Zero = todo "derChangeRules Zero"
+--   derChangeRules Suc = todo "derChangeRules Suc"
+--   derChangeRules Ref = todo "derChangeRules Ref"
+--   derChangeRules Lam = todo "derChangeRules Lam"
+--   derChangeRules App = todo "derChangeRules App"
+--   derChangeRules Hole = todo "derChangeRules Hole"
 
--- instance IsDerivChangeLanguage D S
+-- instance IsDerChangeLanguage D S
 
--- instance HasDerivPropagRules D S where
---   derivPropagRules ZeroWeak = DerivPropagRule
+-- instance HasDerAdjustRules D S where
+--   derAdjustRules ZeroWeak = DerAdjustRule
 --     { kids: mempty }
---   derivPropagRules SucWeak = DerivPropagRule
+--   derAdjustRules SucWeak = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -163,7 +124,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Free = DerivPropagRule
+--   derAdjustRules Free = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -189,7 +150,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Zero = DerivPropagRule
+--   derAdjustRules Zero = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -215,7 +176,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Suc = DerivPropagRule
+--   derAdjustRules Suc = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -238,7 +199,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Ref = DerivPropagRule
+--   derAdjustRules Ref = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort
 --               (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
@@ -257,7 +218,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Lam = DerivPropagRule
+--   derAdjustRules Lam = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ Ext %∂.^ [ gamma ] ]
 --           , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
@@ -270,7 +231,7 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules App = DerivPropagRule
+--   derAdjustRules App = DerAdjustRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
@@ -290,12 +251,12 @@ instance IsLanguage D S
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derivPropagRules Hole = DerivPropagRule
+--   derAdjustRules Hole = DerAdjustRule
 --     { kids: mempty }
 
--- instance IsDerivPropagLanguage D S
+-- instance IsDerAdjustLanguage D S
 
--- instance HasPropagRules D S where
+-- instance HasAdjustRules D S where
 --   propagRules = mempty
 
--- instance IsPropagLanguage D S
+-- instance IsAdjustLanguage D S

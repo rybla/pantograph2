@@ -1,4 +1,4 @@
-# Propagation
+# Adjustation
 
 Shouldn't _always_ be able to passthrough a down change boundary through a form
 (for example, when there are no kids). Under what conditions _can_ passthrough

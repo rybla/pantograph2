@@ -10,5 +10,5 @@ import Pantograph.Pretty (pretty)
 
 main :: Effect Unit
 main = do
-  -- log (pretty (Ulc.derivRules Lam_D))
+  -- log (pretty (Ulc.derRules Lam_D))
   pure unit

@@ -6,7 +6,7 @@ import Control.Alternative (guard)
 import Control.MonadPlus (class Plus, empty)
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldl, intercalate, length)
+import Data.Foldable (class Foldable, foldl, length)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -83,11 +83,6 @@ getTeeth (Tree a ts) = go mempty mempty ts # RevList.toList
 
 data Tooth a = Tooth a (RevList (Tree a)) (List (Tree a))
 
-mkTooth :: forall a f1 f2. Foldable f1 => Foldable f2 => a -> f1 (Tree a) /\ f2 (Tree a) -> Tooth a
-mkTooth a (l /\ r) = Tooth a (RevList.fromFoldable l) (List.fromFoldable r)
-
-infix 1 mkTooth as %<
-
 derive instance Generic (Tooth a) _
 
 instance Show a => Show (Tooth a) where
@@ -154,7 +149,7 @@ data ChangeLabel l
   | Replace (Tree l) (Tree l)
 
 isValidChange :: forall l. Tree (ChangeLabel l) -> Boolean
-isValidChange (Congruence _ % _) = true -- TODO: could take into account DerivRules, but then need to refactor modules to move this and compose into Grammar, which I probabably don't want to do afterall
+isValidChange (Congruence _ % _) = true -- TODO: could take into account DerRules, but then need to refactor modules to move this and compose into Grammar, which I probabably don't want to do afterall
 isValidChange (Plus _ % (_ : Nil)) = true
 isValidChange (Minus _ % (_ : Nil)) = true
 isValidChange (Replace _ _ % Nil) = true
@@ -163,28 +158,11 @@ isValidChange _ = false
 mkCongruence :: forall f l. Foldable f => l -> f (Tree (ChangeLabel l)) -> Tree (ChangeLabel l)
 mkCongruence l kids = Congruence l %* kids
 
-infix 1 mkCongruence as %∂.
-
 id :: forall l. Tree l -> Tree (ChangeLabel l)
 id = map Congruence
 
 id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeLabel l))
 id' = map (map Congruence)
-
-mkPlus :: forall l. Tooth l -> Tree (ChangeLabel l) -> Tree (ChangeLabel l)
-mkPlus l kid = Plus l %* [ kid ]
-
-infix 1 mkPlus as %∂+
-
-mkMinus :: forall l. Tooth l -> Tree (ChangeLabel l) -> Tree (ChangeLabel l)
-mkMinus l kid = Minus l %* [ kid ]
-
-infix 1 mkMinus as %∂-
-
-mkReplace :: forall l. Tree l -> Tree l -> Tree (ChangeLabel l)
-mkReplace t1 t2 = Replace t1 t2 %* []
-
-infix 1 mkReplace as %∂~>
 
 derive instance Generic (ChangeLabel l) _
 

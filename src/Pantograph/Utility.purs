@@ -103,3 +103,14 @@ foreign import data NilTL :: TypeList
 foreign import data ConsTL :: Type -> TypeList -> TypeList
 
 infixr 1 type ConsTL as :*
+
+class HeadTL :: TypeList -> Type -> Constraint
+class HeadTL ts t | ts -> t
+
+instance HeadTL (t :* ts) t
+
+-- class HeadTL :: TypeList -> Type -> Type -> Constraint
+-- class HeadTL ts t_default t | ts t_default -> t
+
+-- instance HeadTL NilTL t_default t_default
+-- else instance HeadTL (t :* ts) t_default t

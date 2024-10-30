@@ -5,7 +5,6 @@ import Prelude
 
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable)
 import Data.Function as Function
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
@@ -18,26 +17,14 @@ import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Pantograph.Pretty (class Pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (type (:*), NilTL, TypeList)
-import Type.Equality (class TypeEquals)
+import Pantograph.Utility (todo)
 
 --------------------------------------------------------------------------------
 -- SuperLabel
 --------------------------------------------------------------------------------
 
--- class SuperLabel l_sup l_sub | l_sup -> l_sub where
---   injectLabel :: l_sub -> l_sup
-
--- class SuperLabelChain l_sup (ls :: TypeList) l_sub | l_sup l_sub -> ls where
---   injectLabelChain :: l_sub -> l_sup
-
--- {- instance TypeEquals l_sup l_sub => SuperLabelChain l_sub NilTL l_sub where
---   injectLabelChain = identity
--- else -}
--- instance SuperLabel l_sup l_sub => SuperLabelChain l_sup NilTL l_sub where
---   injectLabelChain = injectLabel
--- else instance (SuperLabel l_sup l, SuperLabelChain l ls l_sub) => SuperLabelChain l_sup (l :* ls) l_sub where
---   injectLabelChain = (injectLabelChain :: l_sub -> l) >>> (injectLabel :: l -> l_sup)
+class SuperLabel l_sup l_sub | l_sup -> l_sub where
+  injectLabel :: l_sub -> l_sup
 
 --------------------------------------------------------------------------------
 -- MetaVar
@@ -77,11 +64,11 @@ instance Eq l => Eq (MetaLabel l) where
 
 derive instance Functor MetaLabel
 
--- instance SuperLabel (MetaLabel l) l where
---   injectLabel = InjectMetaLabel
+instance SuperLabel l l' => SuperLabel (MetaLabel l) l' where
+  injectLabel = InjectMetaLabel <<< injectLabel
 
 mkMetaVar x = MetaVar (MkMetaVar x) % Nil
--- mkMetaVar' x = injectLabelChain (MetaVar (MkMetaVar x)) % Nil
+mkMetaVar' x = injectLabel (MetaVar (MkMetaVar x)) % Nil
 
 type MetaVarSubst = Map MetaVar
 
@@ -101,143 +88,136 @@ instance Eq s => Eq (SortLabel s) where
 
 derive instance Functor SortLabel
 
--- instance SuperLabel (SortLabel s) s where
---   injectLabel = InjectSortLabel
+instance SuperLabel s s' => SuperLabel (SortLabel s) s' where
+  injectLabel = InjectSortLabel <<< injectLabel
 
 class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
 
--- mkTreeInject l kids = injectLabelChain l % List.fromFoldable kids
+mkTreeInject l kids = injectLabel l % List.fromFoldable kids
 
--- infix 1 mkTreeInject as %^
+infix 2 mkTreeInject as %^
 
--- mkCongruenceInject s kids = Congruence (injectLabelChain s) %* kids
+mkCongruenceInject s kids = Congruence (injectLabel s) %* kids
 
--- infix 1 mkCongruenceInject as %∂.^
+infix 2 mkCongruenceInject as %.^
 
--- mkPlusInject s kids_left kid kids_right = Plus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+mkPlusInject s kids_left kid kids_right = Plus (Tooth (injectLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
--- infixl 1 mkPlusInject as %∂+^
+infixl 2 mkPlusInject as %+^
 
--- mkMinusInject s kids_left kid kids_right = Minus (Tooth (injectLabelChain s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+mkMinusInject s kids_left kid kids_right = Minus (Tooth (injectLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
--- infixl 1 mkMinusInject as %∂-^
+infixl 2 mkMinusInject as %-^
 
--- -- | Serves as closing delimeter for mkPlusInject and mkMinusInject
--- apply' :: forall a b. (a -> b) -> a -> b
--- apply' = Function.apply
+-- | Serves as closing delimeter for mkPlusInject and mkMinusInject
+apply' :: forall a b. (a -> b) -> a -> b
+apply' = Function.apply
 
--- infixl 1 apply' as <<
--- infixl 1 apply' as >>
+infixl 2 apply' as <<
+infixl 2 apply' as >>
 
 --------------------------------------------------------------------------------
--- DerivLabel
+-- DerLabel
 --------------------------------------------------------------------------------
 
-class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerivRuleLabel d
+class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerRuleLabel d
 
-type DerivLabel d s = DerivLabel' d (SortLabel s)
+type DerLabel d s = DerLabel' d (SortLabel s)
 
-data DerivLabel' d s
-  = DerivLabel d (MetaVarSubst (Tree s))
-  | DerivBoundary (Tree (ChangeLabel s))
+data DerLabel' d s
+  = DerLabel d (MetaVarSubst (Tree s))
+  | DerBoundary (Tree (ChangeLabel s))
 
-mkDerivLabel d sigma = DerivLabel d (Map.fromFoldable sigma)
+mkDerLabel d sigma = DerLabel d (Map.fromFoldable sigma)
 
-infix 1 mkDerivLabel as //
+infix 2 mkDerLabel as //
 
-derive instance Generic (DerivLabel' d s) _
+derive instance Generic (DerLabel' d s) _
 
-instance (Show d, Show s) => Show (DerivLabel' d s) where
+instance (Show d, Show s) => Show (DerLabel' d s) where
   show x = genericShow x
 
-instance (Eq d, Eq s) => Eq (DerivLabel' d s) where
+instance (Eq d, Eq s) => Eq (DerLabel' d s) where
   eq x = genericEq x
 
-derive instance Functor (DerivLabel' d)
+derive instance Functor (DerLabel' d)
 
 --------------------------------------------------------------------------------
--- DerivRule
+-- DerRule
 --------------------------------------------------------------------------------
 
-newtype DerivRule s = DerivRule
+newtype DerRule s = DerRule
   { sort :: Tree (MetaLabel (SortLabel s))
   , kids :: List { sort :: Tree (MetaLabel (SortLabel s)) }
   }
 
-derive instance Generic (DerivRule s) _
+mkDerRule sort kids = DerRule { sort, kids: List.fromFoldable (kids # map \sort -> { sort }) }
 
-instance Show s => Show (DerivRule s) where
+infix 0 mkDerRule as -|
+
+mkDerRuleFlipped = flip mkDerRule
+
+infix 0 mkDerRuleFlipped as |-
+
+derive instance Generic (DerRule s) _
+
+instance Show s => Show (DerRule s) where
   show x = genericShow x
 
-instance Eq s => Eq (DerivRule s) where
+instance Eq s => Eq (DerRule s) where
   eq x = genericEq x
 
-derive instance Functor DerivRule
+derive instance Functor DerRule
 
-type DerivRules d s = d -> DerivRule s
+type DerRules d s = d -> DerRule s
 
-class HasDerivRules d s | d -> s where
-  derivRules :: DerivRules d s
+class HasDerRules d s | d -> s where
+  derRules :: DerRules d s
 
-class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerivRules d s) <= IsLanguage d s | d -> s
-
---------------------------------------------------------------------------------
--- DerivChangeRule 
---------------------------------------------------------------------------------
-
-newtype DerivChangeRule s = DerivChangeRule
-  { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
-
-derive instance Generic (DerivChangeRule s) _
-
-instance Show s => Show (DerivChangeRule s) where
-  show x = genericShow x
-
-instance Eq s => Eq (DerivChangeRule s) where
-  eq x = genericEq x
-
-derive instance Functor DerivChangeRule
-
-type DerivChangeRules d s = d -> DerivChangeRule s
-
-class HasDerivChangeRules d s | d -> s where
-  derivChangeRules :: DerivChangeRules d s
+class (IsDerRuleLabel d, IsSortRuleLabel s, HasDerRules d s) <= IsLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- PropagLabel
--- TODO: eventually I'll have to deal with the cursor position being somewhere in the Propag
+-- AdjustLabel
+-- TODO: eventually I'll have to deal with the cursor position being somewhere
 --------------------------------------------------------------------------------
 
-data PropagLabel d s = PropagLabel d (SortLabel s)
+type AdjustLabel d s = AdjustLabel' d (SortLabel s)
 
-data PropagLabel' d s
-  = PropagBoundary PropagBoundaryDirection (Tree (ChangeLabel s))
-  | InjectPropagLabel (DerivLabel' d s)
+data AdjustLabel' d s
+  = AdjustBoundary AdjustBoundaryDirection (Tree (ChangeLabel s))
+  | InjectAdjustLabel (DerLabel' d s)
 
-data PropagBoundaryDirection = Up | Down
+instance PrettyTreeLabel (AdjustLabel' d s) where
+  prettyTree = todo ""
 
-downPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-downPropagBoundary ch kid = PropagBoundary Down ch %* [ kid ]
+data AdjustBoundaryDirection = Up | Down
 
-upPropagBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (PropagLabel' d s) -> Tree (PropagLabel' d s)
-upPropagBoundary ch kid = PropagBoundary Up ch %* [ kid ]
+instance Pretty AdjustBoundaryDirection where
+  pretty Up = "↑"
+  pretty Down = "↓"
 
-infix 1 downPropagBoundary as ↓
-infix 1 upPropagBoundary as ↑
+downAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
+downAdjustBoundary ch kid = AdjustBoundary Down ch %* [ kid ]
+
+upAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
+upAdjustBoundary ch kid = AdjustBoundary Up ch %* [ kid ]
+
+infix 2 downAdjustBoundary as ↓
+infix 2 upAdjustBoundary as ↑
 
 --------------------------------------------------------------------------------
--- PropagRule
+-- AdjustRule
 --------------------------------------------------------------------------------
 
-newtype PropagRule d s = PropagRule
+newtype AdjustRule d s = AdjustRule
   { name :: String
-  , rule :: Maybe (Tooth (PropagLabel d s)) -> Tree (PropagLabel d s) -> Maybe (Tree (PropagLabel d s))
+  , rule :: Maybe (Tooth (AdjustLabel d s)) -> Tree (AdjustLabel d s) -> Maybe (Tree (AdjustLabel d s))
   }
 
-type PropagRules d s = List (PropagRule d s)
+type AdjustRules d s = List (AdjustRule d s)
 
-class HasPropagRules d s | d -> s where
-  propagRules :: PropagRules d s
+class HasAdjustRules d s | d -> s where
+  propagRules :: AdjustRules d s
 
 --------------------------------------------------------------------------------
 -- InsertRule
@@ -247,10 +227,10 @@ newtype InsertRule d s = InsertRule
   { name :: String
   , key :: String -- searchable by user
   , rule ::
-      Tree (DerivLabel d s)
+      Tree (DerLabel d s)
       -> Maybe
            { up :: Tree (ChangeLabel (SortLabel s))
-           , mid :: Tooth (DerivLabel d s)
+           , mid :: Tooth (DerLabel d s)
            , down :: Tree (ChangeLabel (SortLabel s))
            }
   }
