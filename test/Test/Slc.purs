@@ -18,15 +18,15 @@ import Test.Spec (Spec, describe, it)
 
 -- emp = Empty %^ []
 -- ext g = Ext %^ [ g ]
--- lam g b = DerLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ b ]
--- ref g x = DerLabel Ref (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ x ]
+-- lam g b = DerLbl Lam (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ b ]
+-- ref g x = DerLbl Ref (Map.fromFoldable [ RulialVar "gamma" /\ g ]) %* [ x ]
 
 spec :: Spec Unit
 spec = describe "Slc" do
   -- shouldEqual_propagateFixpoint
-  --   -- (DerLabel Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
+  --   -- (DerLbl Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
   --   (lam emp (ref (ext emp) ?a))
-  --   (RightF (DerLabel Lam ?a) %* [])
+  --   (RightF (DerLbl Lam ?a) %* [])
 
   -- shouldEqual_propagateFixpoint
   --   (lam emp (ref (ext emp) (zero emp)))
@@ -41,25 +41,25 @@ spec = describe "Slc" do
   --   (term_c (ext_0 %∂+ id (ext emp)) ↓ ref_p (ext emp) (zero_p emp))
 
   -- it "ch_ref_1^-1 ∘ gamma ∘ ch_ref_1" do
-  --   let gamma = SortLabel Emp %* []
-  --   -- let ch_ref_1 = (SortLabel Var %* [ gamma ]) %∂~> (SortLabel Term %* [ gamma ])
+  --   let gamma = SortLbl Emp %* []
+  --   -- let ch_ref_1 = (SortLbl Var %* [ gamma ]) %∂~> (SortLbl Term %* [ gamma ])
   --   let ch_ref_1 = var_0 %∂- (term_0 %∂+ id gamma)
-  --   Console.log (pretty { "ch_ref_1": ch_ref_1, "invertChange ch_ref_1": invertChange ch_ref_1, xxx: composeChanges (SortLabel Term %∂. [ id gamma ]) ch_ref_1 })
+  --   Console.log (pretty { "ch_ref_1": ch_ref_1, "invertChange ch_ref_1": invertChange ch_ref_1, xxx: composeChanges (SortLbl Term %∂. [ id gamma ]) ch_ref_1 })
   --   shouldEqual_pretty
-  --     ((SortLabel Var %∂. [ id gamma ]) # Just)
-  --     (composeChanges (invertChange ch_ref_1) =<< composeChanges (SortLabel Term %∂. [ id gamma ]) ch_ref_1)
+  --     ((SortLbl Var %∂. [ id gamma ]) # Just)
+  --     (composeChanges (invertChange ch_ref_1) =<< composeChanges (SortLbl Term %∂. [ id gamma ]) ch_ref_1)
 
   pure unit
 
 -- shouldEqual_propagateFixpoint
 --   :: forall d s
 --    . IsAdjustLanguage d s
---   => Tree (DerLabel d s)
---   -> Tree (AdjustLabel d s)
+--   => Tree (DerLbl d s)
+--   -> Tree (AdjustLbl d s)
 --   -> Spec Unit
 -- shouldEqual_propagateFixpoint d pd = do
 --   it (pretty pd) $
 --     shouldEqual_pretty
 --       d
---       (fromAdjustDerivToDeriv $ propagateFixpoint propagRules $ pd)
+--       (fromAdjustDerivToDeriv $ propagateFixpoint adjustRules $ pd)
 --   pure unit

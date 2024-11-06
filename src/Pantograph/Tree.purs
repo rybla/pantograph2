@@ -42,20 +42,6 @@ instance Show a => Show (Tree a) where
 instance Eq a => Eq (Tree a) where
   eq x = genericEq x
 
-class PrettyTreeLabel a where
-  prettyTree :: a -> List String -> String
-
-instance (PrettyTreeLabel a, PrettyTreeLabel b) => PrettyTreeLabel (Either a b) where
-  prettyTree (Left a) = prettyTree a
-  prettyTree (Right b) = prettyTree b
-
-instance (PrettyTreeLabel (a x), PrettyTreeLabel (b x)) => PrettyTreeLabel (EitherF a b x) where
-  prettyTree (LeftF a) = prettyTree a
-  prettyTree (RightF b) = prettyTree b
-
-instance PrettyTreeLabel a => Pretty (Tree a) where
-  pretty (a % kids) = prettyTree a (kids # map pretty)
-
 derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
@@ -70,6 +56,30 @@ instance Bind Tree where
   bind (Tree x ts) f = let Tree x' ts' = f x in Tree x' (ts' <> map (_ >>= f) ts)
 
 instance Monad Tree
+
+class PrettyTreeLbl a where
+  prettyTree :: a -> List String -> String
+
+instance (PrettyTreeLbl a, PrettyTreeLbl b) => PrettyTreeLbl (Either a b) where
+  prettyTree (Left a) = prettyTree a
+  prettyTree (Right b) = prettyTree b
+
+instance (PrettyTreeLbl (a x), PrettyTreeLbl (b x)) => PrettyTreeLbl (EitherF a b x) where
+  prettyTree (LeftF a) = prettyTree a
+  prettyTree (RightF b) = prettyTree b
+
+instance PrettyTreeLbl a => Pretty (Tree a) where
+  pretty (a % kids) = prettyTree a (kids # map pretty)
+
+-- class MatchTreeLbl a f | a -> f where
+--   matchTree' :: forall b. a -> List (Tree b) -> f b
+
+-- matchTree :: forall a f. MatchTreeLbl a f => Tree a -> f a
+-- matchTree (l % kids) = matchTree' l kids
+
+class FormedTree a t | a -> t where
+  toFormedTree :: Tree a -> t
+  fromFormedTree :: t -> Tree a
 
 getTeeth :: forall a. Tree a -> List (Tooth a /\ Tree a)
 getTeeth (Tree a ts) = go mempty mempty ts # RevList.toList
@@ -88,10 +98,10 @@ derive instance Generic (Tooth a) _
 instance Show a => Show (Tooth a) where
   show x = genericShow x
 
-instance PrettyTreeLabel a => Pretty (Tooth a) where
+instance PrettyTreeLbl a => Pretty (Tooth a) where
   pretty th = prettyToothS th "{ }"
 
-prettyToothS :: forall a. PrettyTreeLabel a => Tooth a -> String -> String
+prettyToothS :: forall a. PrettyTreeLbl a => Tooth a -> String -> String
 prettyToothS (Tooth a kids_l kids_r) str = prettyTree a ((kids_l # map pretty # List.fromFoldable) <> ("{ " <> str <> " }") : (kids_r # map pretty))
 
 instance Eq a => Eq (Tooth a) where
@@ -115,7 +125,7 @@ derive instance Generic (Path a) _
 instance Show a => Show (Path a) where
   show x = genericShow x
 
-instance PrettyTreeLabel a => Pretty (Path a) where
+instance PrettyTreeLbl a => Pretty (Path a) where
   pretty (Path ths) = ths # foldl (\str th -> prettyToothS th str) "{ }"
 
 instance Eq a => Eq (Path a) where
@@ -142,51 +152,51 @@ unPath (Path (th : ths)) t = unPath (Path ths) (unTooth th t)
 -- Change
 --------------------------------------------------------------------------------
 
-data ChangeLabel l
+data ChangeLbl l
   = Congruence l
   | Plus (Tooth l)
   | Minus (Tooth l)
   | Replace (Tree l) (Tree l)
 
-isValidChange :: forall l. Tree (ChangeLabel l) -> Boolean
+isValidChange :: forall l. Tree (ChangeLbl l) -> Boolean
 isValidChange (Congruence _ % _) = true -- TODO: could take into account DerRules, but then need to refactor modules to move this and compose into Grammar, which I probabably don't want to do afterall
 isValidChange (Plus _ % (_ : Nil)) = true
 isValidChange (Minus _ % (_ : Nil)) = true
 isValidChange (Replace _ _ % Nil) = true
 isValidChange _ = false
 
-mkCongruence :: forall f l. Foldable f => l -> f (Tree (ChangeLabel l)) -> Tree (ChangeLabel l)
+mkCongruence :: forall f l. Foldable f => l -> f (Tree (ChangeLbl l)) -> Tree (ChangeLbl l)
 mkCongruence l kids = Congruence l %* kids
 
-id :: forall l. Tree l -> Tree (ChangeLabel l)
+id :: forall l. Tree l -> Tree (ChangeLbl l)
 id = map Congruence
 
-id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeLabel l))
+id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeLbl l))
 id' = map (map Congruence)
 
-derive instance Generic (ChangeLabel l) _
+derive instance Generic (ChangeLbl l) _
 
-instance Show l => Show (ChangeLabel l) where
+instance Show l => Show (ChangeLbl l) where
   show x = genericShow x
 
-instance PrettyTreeLabel l => PrettyTreeLabel (ChangeLabel l) where
+instance PrettyTreeLbl l => PrettyTreeLbl (ChangeLbl l) where
   prettyTree (Congruence l) kids = prettyTree l kids
   prettyTree (Plus th) (kid : Nil) = "+{ " <> prettyToothS th kid <> " }"
   prettyTree (Minus th) (kid : Nil) = "-{ " <> prettyToothS th kid <> " }"
   prettyTree (Replace x y) Nil = parens $ pretty x <> " ~> " <> pretty y
-  prettyTree _ _ = bug "invlalid `Tree (ChangeLabel l)`"
+  prettyTree _ _ = bug "invlalid `Tree (ChangeLbl l)`"
 
-instance Eq l => Eq (ChangeLabel l) where
+instance Eq l => Eq (ChangeLbl l) where
   eq x = genericEq x
 
-derive instance Functor ChangeLabel
-derive instance Foldable ChangeLabel
-derive instance Traversable ChangeLabel
+derive instance Functor ChangeLbl
+derive instance Foldable ChangeLbl
+derive instance Traversable ChangeLbl
 
-composeChanges' :: forall f l. Applicative f => Traversable f => Eq l => Tree (f (ChangeLabel l)) -> Tree (f (ChangeLabel l)) -> Maybe (Tree (f (ChangeLabel l)))
+composeChanges' :: forall f l. Applicative f => Traversable f => Eq l => Tree (f (ChangeLbl l)) -> Tree (f (ChangeLbl l)) -> Maybe (Tree (f (ChangeLbl l)))
 composeChanges' _ _ = todo "composeChanges'"
 
-composeChanges :: forall l. Eq l => Tree (ChangeLabel l) -> Tree (ChangeLabel l) -> Maybe (Tree (ChangeLabel l))
+composeChanges :: forall l. Eq l => Tree (ChangeLbl l) -> Tree (ChangeLbl l) -> Maybe (Tree (ChangeLbl l))
 
 composeChanges c1 c2 | not (isValidChange c1 && isValidChange c2) = bug "invalid Change"
 
@@ -260,7 +270,7 @@ composeChanges (Replace t1 t1' % Nil) c2 = do
 
 composeChanges _ _ = empty
 
-invertChange :: forall l. Tree (ChangeLabel l) -> Tree (ChangeLabel l)
+invertChange :: forall l. Tree (ChangeLbl l) -> Tree (ChangeLbl l)
 invertChange c | not (isValidChange c) = bug "invalid Change"
 invertChange (Congruence l % cs) = Congruence l % (cs # map invertChange)
 invertChange (Plus th % (c : Nil)) = Minus th % ((c # invertChange) : Nil)
@@ -268,7 +278,7 @@ invertChange (Minus th % (c : Nil)) = Plus th % ((c # invertChange) : Nil)
 invertChange (Replace t t' % Nil) = Replace t' t % Nil
 invertChange _ = bug "impossible"
 
-innerEndpoint :: forall l. Tree (ChangeLabel l) -> Tree l
+innerEndpoint :: forall l. Tree (ChangeLbl l) -> Tree l
 innerEndpoint c | not (isValidChange c) = bug "invalid Change"
 innerEndpoint (Congruence l % cs) = Tree l (innerEndpoint <$> cs)
 innerEndpoint (Plus _ % (c : Nil)) = innerEndpoint c
@@ -276,10 +286,10 @@ innerEndpoint (Minus th % (c : Nil)) = unTooth th (innerEndpoint c)
 innerEndpoint (Replace t _ % Nil) = t
 innerEndpoint (_ % _) = bug "impossible"
 
-innerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLabel l)) -> Tree (f l)
+innerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLbl l)) -> Tree (f l)
 innerEndpoint' = sequence >>> map innerEndpoint >>> sequence
 
-outerEndpoint :: forall l. Tree (ChangeLabel l) -> Tree l
+outerEndpoint :: forall l. Tree (ChangeLbl l) -> Tree l
 outerEndpoint c | not (isValidChange c) = bug "invalid Change"
 outerEndpoint (Congruence l % cs) = Tree l (outerEndpoint <$> cs)
 outerEndpoint (Plus th % (c : Nil)) = unTooth th (outerEndpoint c)
@@ -287,5 +297,5 @@ outerEndpoint (Minus _ % (c : Nil)) = outerEndpoint c
 outerEndpoint (Replace t _ % Nil) = t
 outerEndpoint (_ % _) = bug "impossible"
 
-outerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLabel l)) -> Tree (f l)
+outerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeLbl l)) -> Tree (f l)
 outerEndpoint' = sequence >>> map outerEndpoint >>> sequence

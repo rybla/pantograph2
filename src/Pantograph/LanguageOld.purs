@@ -50,39 +50,39 @@ type Rulial = Either RulialVar
 type RulialVarSubst = Map RulialVar
 
 --------------------------------------------------------------------------------
--- SortLabel
+-- SortLbl
 --------------------------------------------------------------------------------
 
-class (Show s, Eq s, Pretty s, PrettyTreeLabel s) <= IsSortRuleLabel s
+class (Show s, Eq s, Pretty s, PrettyTreeLbl s) <= IsSortRuleLbl s
 
-data SortLabel s = SortLabel s
+data SortLbl s = SortLbl s
 
-mkSort :: forall f s. Foldable f => s -> f (Tree (SortLabel s)) -> Tree (SortLabel s)
-mkSort s kids = SortLabel s %* kids
+mkSort :: forall f s. Foldable f => s -> f (Tree (SortLbl s)) -> Tree (SortLbl s)
+mkSort s kids = SortLbl s %* kids
 
 infix 1 mkSort as %^
 
-mkRightSort :: forall a s f. Foldable f => s -> f (Tree (Either a (SortLabel s))) -> Tree (Either a (SortLabel s))
-mkRightSort s kids = Right (SortLabel s) % List.fromFoldable kids
+mkRightSort :: forall a s f. Foldable f => s -> f (Tree (Either a (SortLbl s))) -> Tree (Either a (SortLbl s))
+mkRightSort s kids = Right (SortLbl s) % List.fromFoldable kids
 
 infix 1 mkRightSort as %|^
 
-mkCongruenceSort :: forall f s. Foldable f => s -> f (Tree (ChangeLabel (SortLabel s))) -> Tree (ChangeLabel (SortLabel s))
-mkCongruenceSort s kids = Congruence (SortLabel s) %* kids
+mkCongruenceSort :: forall f s. Foldable f => s -> f (Tree (ChangeLbl (SortLbl s))) -> Tree (ChangeLbl (SortLbl s))
+mkCongruenceSort s kids = Congruence (SortLbl s) %* kids
 
 infix 1 mkCongruenceSort as %∂.^
 
-mkPlusSort :: forall s f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (ChangeLabel (SortLabel s)) -> f2 (Tree (SortLabel s)) -> Tree (ChangeLabel (SortLabel s))
-mkPlusSort s kids_left kid kids_right = Plus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+mkPlusSort :: forall s f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLbl s)) -> Tree (ChangeLbl (SortLbl s)) -> f2 (Tree (SortLbl s)) -> Tree (ChangeLbl (SortLbl s))
+mkPlusSort s kids_left kid kids_right = Plus (Tooth (SortLbl s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
 infixl 1 mkPlusSort as %∂+^
 
-mkMinusSort :: forall s f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (ChangeLabel (SortLabel s)) -> f2 (Tree (SortLabel s)) -> Tree (ChangeLabel (SortLabel s))
-mkMinusSort s kids_left kid kids_right = Minus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
+mkMinusSort :: forall s f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLbl s)) -> Tree (ChangeLbl (SortLbl s)) -> f2 (Tree (SortLbl s)) -> Tree (ChangeLbl (SortLbl s))
+mkMinusSort s kids_left kid kids_right = Minus (Tooth (SortLbl s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right)) %* [ kid ]
 
 infixl 1 mkMinusSort as %∂-^
 
-mkReplaceSort :: forall s. Tree (SortLabel s) -> Tree (SortLabel s) -> Tree (ChangeLabel (SortLabel s))
+mkReplaceSort :: forall s. Tree (SortLbl s) -> Tree (SortLbl s) -> Tree (ChangeLbl (SortLbl s))
 mkReplaceSort t1 t2 = Replace t1 t2 %* []
 
 infix 1 mkReplaceSort as %∂~>^
@@ -95,24 +95,24 @@ infixl 1 apply' as <<
 infixl 1 apply' as >>
 
 --------------------------------------------------------------------------------
--- DerLabel
+-- DerLbl
 --------------------------------------------------------------------------------
 
-class (Show d, Eq d, Pretty d, PrettyTreeLabel d) <= IsDerivRuleLabel d
+class (Show d, Eq d, Pretty d, PrettyTreeLbl d) <= IsDerivRuleLbl d
 
-type DerLabel d s = DerLabel' d (SortLabel s)
+type DerLbl d s = DerLbl' d (SortLbl s)
 
-data DerLabel' d s
-  = DerLabel d (RulialVarSubst (Tree s))
-  | DerBoundary (Tree (ChangeLabel s))
+data DerLbl' d s
+  = DerLbl d (RulialVarSubst (Tree s))
+  | DerBdry (Tree (ChangeLbl s))
 
 --------------------------------------------------------------------------------
 -- DerivRule
 --------------------------------------------------------------------------------
 
 newtype DerivRule s = DerivRule
-  { sort :: Tree (Rulial (SortLabel s))
-  , kids :: List { sort :: Tree (Rulial (SortLabel s)) }
+  { sort :: Tree (Rulial (SortLbl s))
+  , kids :: List { sort :: Tree (Rulial (SortLbl s)) }
   }
 
 type DerRules d s = d -> DerivRule s
@@ -120,14 +120,14 @@ type DerRules d s = d -> DerivRule s
 class HasDerRules d s | d -> s where
   derRules :: DerRules d s
 
-class (IsDerivRuleLabel d, IsSortRuleLabel s, HasDerRules d s) <= IsLanguage d s | d -> s
+class (IsDerivRuleLbl d, IsSortRuleLbl s, HasDerRules d s) <= IsLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
 -- DerChangeRule 
 --------------------------------------------------------------------------------
 
 newtype DerChangeRule s = DerChangeRule
-  { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
+  { kids :: List { change :: Tree (ChangeLbl (SortLbl s)) } }
 
 type DerChangeRules d s = d -> DerChangeRule s
 
@@ -143,12 +143,12 @@ class (IsLanguage d s, HasDerChangeRules d s) <= IsDerChangeLanguage d s | d -> 
 newtype DerAdjustRule s = DerAdjustRule
   { kids ::
       List
-        { passthrough_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
-        , passthrough_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe (Tree (ChangeLabel (SortLabel s)))
-        , wrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , wrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , unwrap_down :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
-        , unwrap_up :: Tree (ChangeLabel (SortLabel s)) -> Maybe { up :: Maybe (Tree (ChangeLabel (SortLabel s))), down :: Maybe (Tree (ChangeLabel (SortLabel s))) }
+        { passthrough_down :: Tree (ChangeLbl (SortLbl s)) -> Maybe (Tree (ChangeLbl (SortLbl s)))
+        , passthrough_up :: Tree (ChangeLbl (SortLbl s)) -> Maybe (Tree (ChangeLbl (SortLbl s)))
+        , wrap_down :: Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+        , wrap_up :: Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+        , unwrap_down :: Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+        , unwrap_up :: Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
         }
   }
 
@@ -160,26 +160,26 @@ class HasDerAdjustRules d s | d -> s where
 class (IsLanguage d s, HasDerAdjustRules d s) <= IsDerAdjustLanguage d s | d -> s
 
 --------------------------------------------------------------------------------
--- AdjustLabel
+-- AdjustLbl
 -- TODO: eventually I'll have to deal with the cursor position being somewhere in the Adjust
 --------------------------------------------------------------------------------
 
-type AdjustLabel d s = AdjustLabel' (DerLabel' d) (SortLabel s)
+type AdjustLbl d s = AdjustLbl' (DerLbl' d) (SortLbl s)
 
-type AdjustLabel' = EitherF AdjustLabel''
+type AdjustLbl' = EitherF AdjustLbl''
 
-data AdjustLabel'' s = AdjustBoundary AdjustBoundaryDirection (Tree (ChangeLabel s))
+data AdjustLbl'' s = AdjustBdry BdryDirection (Tree (ChangeLbl s))
 
-data AdjustBoundaryDirection = Up | Down
+data BdryDirection = Up | Down
 
-downAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
-downAdjustBoundary ch kid = LeftF (AdjustBoundary Down ch) %* [ kid ]
+downAdjustBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjustLbl' d s) -> Tree (AdjustLbl' d s)
+downAdjustBdry ch kid = LeftF (AdjustBdry Down ch) %* [ kid ]
 
-upAdjustBoundary :: forall d s. Tree (ChangeLabel s) -> Tree (AdjustLabel' d s) -> Tree (AdjustLabel' d s)
-upAdjustBoundary ch kid = LeftF (AdjustBoundary Up ch) %* [ kid ]
+upAdjustBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjustLbl' d s) -> Tree (AdjustLbl' d s)
+upAdjustBdry ch kid = LeftF (AdjustBdry Up ch) %* [ kid ]
 
-infix 1 downAdjustBoundary as ↓
-infix 1 upAdjustBoundary as ↑
+infix 1 downAdjustBdry as ↓
+infix 1 upAdjustBdry as ↑
 
 --------------------------------------------------------------------------------
 -- AdjustRule
@@ -187,13 +187,13 @@ infix 1 upAdjustBoundary as ↑
 
 newtype AdjustRule d s = AdjustRule
   { name :: String
-  , rule :: Maybe (Tooth (AdjustLabel d s)) -> Tree (AdjustLabel d s) -> Maybe (Tree (AdjustLabel d s))
+  , rule :: Maybe (Tooth (AdjustLbl d s)) -> Tree (AdjustLbl d s) -> Maybe (Tree (AdjustLbl d s))
   }
 
 type AdjustRules d s = List (AdjustRule d s)
 
 class HasAdjustRules d s | d -> s where
-  propagRules :: AdjustRules d s
+  adjustRules :: AdjustRules d s
 
 class (IsLanguage d s, HasAdjustRules d s) <= IsAdjustLanguage d s | d -> s
 
@@ -205,11 +205,11 @@ newtype InsertRule d s = InsertRule
   { name :: String
   , key :: String -- searchable by user
   , rule ::
-      Tree (DerLabel d s)
+      Tree (DerLbl d s)
       -> Maybe
-           { up :: Tree (ChangeLabel (SortLabel s))
-           , mid :: Tooth (DerLabel d s)
-           , down :: Tree (ChangeLabel (SortLabel s))
+           { up :: Tree (ChangeLbl (SortLbl s))
+           , mid :: Tooth (DerLbl d s)
+           , down :: Tree (ChangeLbl (SortLbl s))
            }
   }
 
@@ -244,15 +244,15 @@ type Matchial xs a b = Either (ExistsProxyCons xs a) b
 
 matchTreeChangeSort
   :: forall xs s a
-   . IsSortRuleLabel s
-  => FromObjectToRecord (Tree (ChangeLabel (SortLabel s))) xs
-  => Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) (ChangeLabel (SortLabel s)))
+   . IsSortRuleLbl s
+  => FromObjectToRecord (Tree (ChangeLbl (SortLbl s))) xs
+  => Tree (Matchial xs (Tree (ChangeLbl (SortLbl s))) (ChangeLbl (SortLbl s)))
   -> (Record xs -> a)
-  -> Tree (ChangeLabel (SortLabel s))
+  -> Tree (ChangeLbl (SortLbl s))
   -> Maybe a
 matchTreeChangeSort t1_ k t2_ =
   go t1_ t2_
-    # flip execStateT (Object.empty :: Object (Tree (ChangeLabel (SortLabel s))))
+    # flip execStateT (Object.empty :: Object (Tree (ChangeLbl (SortLbl s))))
     # runMaybeT
     # (unwrap :: Identity _ -> _)
     # bindFlipped fromObjectToRecord
@@ -271,23 +271,23 @@ matchTreeChangeSort t1_ k t2_ =
 matchialVar
   :: forall x xs_ xs s a
    . IsSymbol x
-  => Cons x (Tree (ChangeLabel (SortLabel s))) xs_ xs
+  => Cons x (Tree (ChangeLbl (SortLbl s))) xs_ xs
   => Proxy x
-  -> Tree (Matchial xs (Tree (ChangeLabel (SortLabel s))) a)
+  -> Tree (Matchial xs (Tree (ChangeLbl (SortLbl s))) a)
 matchialVar x = Left (mkExistsProxyCons x) %* []
 
-mkMatchialCongruenceSort :: forall s xs a. s -> Array (Tree (Matchial xs a (ChangeLabel (SortLabel s)))) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialCongruenceSort s kids = Right (Congruence (SortLabel s)) % List.fromFoldable kids
+mkMatchialCongruenceSort :: forall s xs a. s -> Array (Tree (Matchial xs a (ChangeLbl (SortLbl s)))) -> Tree (Matchial xs a (ChangeLbl (SortLbl s)))
+mkMatchialCongruenceSort s kids = Right (Congruence (SortLbl s)) % List.fromFoldable kids
 
 infix 1 mkMatchialCongruenceSort as %|∂.^
 
-mkMatchialPlusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialPlusSort s kids_left kid kids_right = Right (Plus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
+mkMatchialPlusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLbl s)) -> Tree (Matchial xs a (ChangeLbl (SortLbl s))) -> f2 (Tree (SortLbl s)) -> Tree (Matchial xs a (ChangeLbl (SortLbl s)))
+mkMatchialPlusSort s kids_left kid kids_right = Right (Plus (Tooth (SortLbl s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
 
 infixl 1 mkMatchialPlusSort as %|∂+^
 
-mkMatchialMinusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s))) -> f2 (Tree (SortLabel s)) -> Tree (Matchial xs a (ChangeLabel (SortLabel s)))
-mkMatchialMinusSort s kids_left kid kids_right = Right (Minus (Tooth (SortLabel s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
+mkMatchialMinusSort :: forall s xs a f1 f2. Foldable f1 => Foldable f2 => s -> f1 (Tree (SortLbl s)) -> Tree (Matchial xs a (ChangeLbl (SortLbl s))) -> f2 (Tree (SortLbl s)) -> Tree (Matchial xs a (ChangeLbl (SortLbl s)))
+mkMatchialMinusSort s kids_left kid kids_right = Right (Minus (Tooth (SortLbl s) (RevList.fromList (List.fromFoldable kids_left)) (List.fromFoldable kids_right))) %* [ kid ]
 
 infixl 1 mkMatchialMinusSort as %|∂-^
 
@@ -303,7 +303,7 @@ instance Show RulialVar where
 instance Pretty RulialVar where
   pretty (RulialVar str) = "$" <> str
 
-instance PrettyTreeLabel RulialVar where
+instance PrettyTreeLbl RulialVar where
   prettyTree rv Nil = pretty rv
   prettyTree _ _ = bug "invalid `Tree RulialVar`"
 
@@ -313,42 +313,42 @@ instance Eq RulialVar where
 instance Ord RulialVar where
   compare x = genericCompare x
 
-derive instance Generic (SortLabel s) _
+derive instance Generic (SortLbl s) _
 
-instance Pretty s => Pretty (SortLabel s) where
-  pretty (SortLabel t) = pretty t
+instance Pretty s => Pretty (SortLbl s) where
+  pretty (SortLbl t) = pretty t
 
-instance PrettyTreeLabel s => PrettyTreeLabel (SortLabel s) where
-  prettyTree (SortLabel s) = prettyTree s
+instance PrettyTreeLbl s => PrettyTreeLbl (SortLbl s) where
+  prettyTree (SortLbl s) = prettyTree s
 
-instance Show s => Show (SortLabel s) where
+instance Show s => Show (SortLbl s) where
   show x = genericShow x
 
-instance Eq s => Eq (SortLabel s) where
+instance Eq s => Eq (SortLbl s) where
   eq x = genericEq x
 
-derive instance Functor SortLabel
-derive instance Foldable SortLabel
-derive instance Traversable SortLabel
+derive instance Functor SortLbl
+derive instance Foldable SortLbl
+derive instance Traversable SortLbl
 
-derive instance Generic (DerLabel' d s) _
+derive instance Generic (DerLbl' d s) _
 
-instance (Show s, Show d) => Show (DerLabel' d s) where
+instance (Show s, Show d) => Show (DerLbl' d s) where
   show x = genericShow x
 
-instance (PrettyTreeLabel s, Pretty d) => Pretty (DerLabel' d s) where
-  pretty (DerLabel d sigma) = parens $ pretty d <> " " <> pretty sigma
-  pretty (DerBoundary ch) = parens $ "!! " <> pretty ch
+instance (PrettyTreeLbl s, Pretty d) => Pretty (DerLbl' d s) where
+  pretty (DerLbl d sigma) = parens $ pretty d <> " " <> pretty sigma
+  pretty (DerBdry ch) = parens $ "!! " <> pretty ch
 
-instance (PrettyTreeLabel s, PrettyTreeLabel d) => PrettyTreeLabel (DerLabel' d s) where
-  prettyTree (DerLabel d _sigma) kids = prettyTree d kids
-  prettyTree (DerBoundary ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
-  prettyTree _ _ = bug "invalid `Tree (DerLabel' d s)`"
+instance (PrettyTreeLbl s, PrettyTreeLbl d) => PrettyTreeLbl (DerLbl' d s) where
+  prettyTree (DerLbl d _sigma) kids = prettyTree d kids
+  prettyTree (DerBdry ch) (kid : Nil) = parens $ pretty ch <> " !! " <> kid
+  prettyTree _ _ = bug "invalid `Tree (DerLbl' d s)`"
 
-instance (Eq s, Eq d) => Eq (DerLabel' d s) where
+instance (Eq s, Eq d) => Eq (DerLbl' d s) where
   eq x = genericEq x
 
-derive instance Functor (DerLabel' d)
+derive instance Functor (DerLbl' d)
 
 derive instance Generic (DerivRule s) _
 
@@ -358,33 +358,33 @@ derive instance Generic (DerAdjustRule s) _
 
 derive instance Newtype (DerAdjustRule s) _
 
-derive instance Generic (AdjustLabel'' s) _
+derive instance Generic (AdjustLbl'' s) _
 
-instance Show s => Show (AdjustLabel'' s) where
+instance Show s => Show (AdjustLbl'' s) where
   show x = genericShow x
 
-instance PrettyTreeLabel s => Pretty (AdjustLabel'' s) where
-  pretty (AdjustBoundary dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
+instance PrettyTreeLbl s => Pretty (AdjustLbl'' s) where
+  pretty (AdjustBdry dir ch) = parens $ "!! " <> pretty dir <> " " <> pretty ch
 
-instance PrettyTreeLabel s => PrettyTreeLabel (AdjustLabel'' s) where
-  prettyTree (AdjustBoundary dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
-  prettyTree _ _ = bug "invalid `AdjustLabel' s`"
+instance PrettyTreeLbl s => PrettyTreeLbl (AdjustLbl'' s) where
+  prettyTree (AdjustBdry dir ch) (kid : Nil) = parens $ pretty ch <> " " <> pretty dir <> "  " <> kid
+  prettyTree _ _ = bug "invalid `AdjustLbl' s`"
 
-instance Eq s => Eq (AdjustLabel'' s) where
+instance Eq s => Eq (AdjustLbl'' s) where
   eq x = genericEq x
 
-derive instance Functor AdjustLabel''
+derive instance Functor AdjustLbl''
 
-derive instance Generic AdjustBoundaryDirection _
+derive instance Generic BdryDirection _
 
-instance Show AdjustBoundaryDirection where
+instance Show BdryDirection where
   show x = genericShow x
 
-instance Pretty AdjustBoundaryDirection where
+instance Pretty BdryDirection where
   pretty Up = "↑"
   pretty Down = "↓"
 
-instance Eq AdjustBoundaryDirection where
+instance Eq BdryDirection where
   eq x = genericEq x
 
 derive instance Generic (AdjustRule d s) _

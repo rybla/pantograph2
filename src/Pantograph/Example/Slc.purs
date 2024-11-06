@@ -16,6 +16,8 @@ import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
+import Data.Tuple.Nested ((/\))
+import Pantograph.Library.DerivePropagationAdjustRulesFromDerRules (propagationAdjustRules)
 import Pantograph.Pretty (class Pretty)
 import Pantograph.Utility (bug, todo)
 import Type.Proxy (Proxy(..))
@@ -28,13 +30,13 @@ data S
 
 derive instance Generic S _
 
-instance SuperLabel S S where
-  injectLabel = identity
+instance SuperLbl S S where
+  injectLbl = identity
 
 instance Show S where
   show x = genericShow x
 
-instance PrettyTreeLabel S where
+instance PrettyTreeLbl S where
   prettyTree Emp Nil = "∅"
   prettyTree Ext (g : Nil) = "E" <> g
   prettyTree Var (g : Nil) = "Var " <> g
@@ -47,7 +49,7 @@ instance Eq S where
 instance Pretty S where
   pretty = show
 
-instance IsSortRuleLabel S
+instance IsSortRuleLbl S
 
 data D
   = Free
@@ -69,7 +71,7 @@ instance Eq D where
 instance Pretty D where
   pretty = show
 
-instance PrettyTreeLabel D where
+instance PrettyTreeLbl D where
   prettyTree Free Nil = "F"
   prettyTree Zero Nil = "Z"
   prettyTree Suc (n : Nil) = "S" <> n
@@ -79,7 +81,7 @@ instance PrettyTreeLabel D where
   prettyTree Hole Nil = "?"
   prettyTree _ _ = bug "invalid D"
 
-instance IsDerRuleLabel D
+instance IsDerRuleLbl D
 
 instance HasDerRules D S where
   derRules = case _ of
@@ -95,18 +97,16 @@ instance HasDerRules D S where
 
 instance IsLanguage D S
 
--- instance HasDerChangeRules D S where
---   derChangeRules ZeroWeak = todo "derChangeRules ZeroWeak"
---   derChangeRules SucWeak = todo "derChangeRules SucWeak"
---   derChangeRules Free = todo "derChangeRules Free"
---   derChangeRules Zero = todo "derChangeRules Zero"
---   derChangeRules Suc = todo "derChangeRules Suc"
---   derChangeRules Ref = todo "derChangeRules Ref"
---   derChangeRules Lam = todo "derChangeRules Lam"
---   derChangeRules App = todo "derChangeRules App"
---   derChangeRules Hole = todo "derChangeRules Hole"
-
--- instance IsDerChangeLanguage D S
+instance HasAdjustRules D S where
+  adjustRules = modifyAdjustRules <> propagationAdjustRules
+    where
+    modifyAdjustRules = List.fromFoldable
+      [ AdjustRule
+          { name: "replace Zero with Free"
+          , rule: \_mb_th tm -> tm # matchTree ((Zero // [ g /\ ?a ]) %^ []) # map (todo "")
+          }
+      ]
+    g = ?a
 
 -- instance HasDerAdjustRules D S where
 --   derAdjustRules ZeroWeak = DerAdjustRule
@@ -257,6 +257,6 @@ instance IsLanguage D S
 -- instance IsDerAdjustLanguage D S
 
 -- instance HasAdjustRules D S where
---   propagRules = mempty
+--   adjustRules = mempty
 
 -- instance IsAdjustLanguage D S

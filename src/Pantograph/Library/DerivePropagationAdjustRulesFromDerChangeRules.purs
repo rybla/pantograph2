@@ -6,8 +6,8 @@ import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.Show.Generic (genericShow)
-import Pantograph.Language (class IsLanguage, AdjustRules, SortLabel)
-import Pantograph.Tree (ChangeLabel, Tree)
+import Pantograph.Language (class IsLanguage, AdjustRules, SortLbl)
+import Pantograph.Tree (ChangeLbl, Tree)
 import Pantograph.Utility (todo)
 
 --------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ import Pantograph.Utility (todo)
 --------------------------------------------------------------------------------
 
 newtype DerChangeRule s = DerChangeRule
-  { kids :: List { change :: Tree (ChangeLabel (SortLabel s)) } }
+  { kids :: List { change :: Tree (ChangeLbl (SortLbl s)) } }
 
 derive instance Generic (DerChangeRule s) _
 

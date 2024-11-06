@@ -6,6 +6,6 @@ module Pantograph.EditorBackend where
 
 -- newtype EditorBackend d s = EditorBackend
 --   { derRules :: DerRules d s
---   , propagRules :: AdjustRules d s
---   , canonicalDerivOfSort :: Tree (SortLabel s) -> Maybe (Tree (DerLabel d s))
+--   , adjustRules :: AdjustRules d s
+--   , canonicalDerivOfSort :: Tree (SortLbl s) -> Maybe (Tree (DerLbl d s))
 --   }
