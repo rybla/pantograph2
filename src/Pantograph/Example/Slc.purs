@@ -114,7 +114,7 @@ instance HasAdjRules D S where
     ]
     where
     modifyAdjRules = AdjRules
-      { upTopRule: ?a
+      { upTopRule: todo "upTopRule"
       , upRules: todo "upRules"
       , downRules: todo "downRules"
       }
