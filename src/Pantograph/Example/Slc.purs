@@ -115,8 +115,14 @@ instance HasAdjRules D S where
     where
     modifyAdjRules = AdjRules
       { upTopRule: \(_ch /\ t) -> pure t
-      , upRules: todo "upRules"
-      , downRules: todo "downRules"
+      , upRules: List.fromFoldable
+          []
+      , downRules: List.fromFoldable
+          [ \(ch /\ t) -> do
+              sigma_t <- t # matchMetaTree (todo "pattern")
+              sigma_ch <- ch # matchMetaTree (todo "pattern")
+              todo ""
+          ]
       }
 
 -- instance HasDerAdjRules D S where
