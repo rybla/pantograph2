@@ -4,6 +4,7 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Plus (empty)
+import Data.Bifunctor (lmap)
 import Data.Eq.Generic (genericEq)
 import Data.Function as Function
 import Data.Functor.Variant (VariantF)
@@ -16,9 +17,9 @@ import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe, maybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested (type (/\), (/\))
-import Pantograph.Pretty (class Pretty)
+import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (todo)
+import Pantograph.Utility (bug, todo)
 
 --------------------------------------------------------------------------------
 -- SuperLbl
@@ -72,6 +73,9 @@ mkMetaVar x = MetaVar (MkMetaVar x) % Nil
 mkMetaVar' x = injectLbl (MetaVar (MkMetaVar x)) % Nil
 
 type MetaVarSubst = Map MetaVar
+
+lookupMetaVar :: forall a. MetaVar -> MetaVarSubst a -> a
+lookupMetaVar x = Map.lookup x >>> fromMaybe' \_ -> bug $ "missing MetaVar in MetaVarSubst: " <> pretty x
 
 --------------------------------------------------------------------------------
 -- SortLbl
@@ -129,7 +133,7 @@ type DerLbl d s = DerLbl' d (SortLbl s)
 
 data DerLbl' d s = DerLbl d (MetaVarSubst (Tree s))
 
-mkDerLbl d sigma = DerLbl d (Map.fromFoldable sigma)
+mkDerLbl d sigma = DerLbl d (Map.fromFoldable (sigma <#> lmap MkMetaVar))
 
 infix 2 mkDerLbl as //
 
@@ -142,6 +146,10 @@ instance (Eq d, Eq s) => Eq (DerLbl' d s) where
   eq x = genericEq x
 
 derive instance Functor (DerLbl' d)
+
+class IsDerRuleLblRefinement d s dr | d s -> dr where
+  toDerRefinemnt :: forall term. DerLbl' d s -> List term -> dr (Tree s) term
+  fromDerRefinment :: forall sort term l. dr sort term -> (term -> Tree l) -> Tree l
 
 --------------------------------------------------------------------------------
 -- DerRule

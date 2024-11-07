@@ -61,6 +61,21 @@ data D
   | App
   | Hole
 
+data DR sort term = LamR sort term
+
+instance IsDerRuleLblRefinement D S DR where
+  toDerRefinemnt (DerLbl Free sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Zero sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Suc sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Ref sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Lam sigma) (b : Nil) = LamR (sigma # lookupMetaVar (MkMetaVar "g")) b
+  toDerRefinemnt (DerLbl App sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
+  toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
+  toDerRefinemnt _ _ = bug "invalid TreeDerLbl"
+
+  fromDerRefinment = todo ""
+
 derive instance Generic D _
 
 instance Show D where
@@ -119,12 +134,11 @@ instance HasAdjRules D S where
           []
       , downRules: List.fromFoldable
           [ \(ch /\ t) -> do
-              sigma_t <- t # matchTreeAdjLbl ((Zero // [ g_ /\ g ]) %^ [ t' ])
+              sigma_t <- t # matchTreeAdjLbl ((Zero // [ "g" /\ g ]) %^ [ t' ])
               sigma_ch <- ch # matchTreeChangeSortLbl (todo "")
               todo ""
           ]
       }
-    g_ = MkMetaVar "g"
 
     g :: Tree (MetaLbl (SortLbl S))
     g = todo ""
