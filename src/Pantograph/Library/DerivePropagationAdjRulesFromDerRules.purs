@@ -5,5 +5,5 @@ import Pantograph.Language
 
 import Pantograph.Utility (todo)
 
-propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
-propagationAdjRules = todo ""
+-- propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
+-- propagationAdjRules = todo ""
