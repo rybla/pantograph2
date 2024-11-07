@@ -114,7 +114,7 @@ instance HasAdjRules D S where
     ]
     where
     modifyAdjRules = AdjRules
-      { upTopRule: todo "upTopRule"
+      { upTopRule: \(_ch /\ t) -> pure t
       , upRules: todo "upRules"
       , downRules: todo "downRules"
       }

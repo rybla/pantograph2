@@ -15,7 +15,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe, maybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested (type (/\), (/\))
 import Pantograph.Pretty (class Pretty)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (todo)
@@ -232,21 +232,21 @@ newtype AdjRules d s = AdjRules
 
 instance Semigroup (AdjRules d s) where
   append (AdjRules ars1) (AdjRules ars2) = AdjRules
-    { upTopRule: \ch t -> ars1.upTopRule ch t # flip maybe' pure \_ -> ars2.upTopRule ch t
+    { upTopRule: \ch_and_t -> ars1.upTopRule ch_and_t # flip maybe' pure \_ -> ars2.upTopRule ch_and_t
     , upRules: ars1.upRules <> ars2.upRules
     , downRules: ars1.downRules <> ars2.downRules
     }
 
 instance Monoid (AdjRules d s) where
   mempty = AdjRules
-    { upTopRule: \_ _ -> empty
+    { upTopRule: const empty
     , upRules: mempty
     , downRules: mempty
     }
 
-type DownAdjRule d s = Tree (ChangeLbl (SortLbl s)) -> Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
-type UpAdjRule d s = Tooth (AdjLbl d s) -> Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
-type UpTopRule d s = Tree (ChangeLbl (SortLbl s)) -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
+type DownAdjRule d s = Tree (ChangeLbl (SortLbl s)) /\ Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+type UpAdjRule d s = Tooth (AdjLbl d s) /\ Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+type UpTopRule d s = Tree (ChangeLbl (SortLbl s)) /\ Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
 
 class HasAdjRules d s | d -> s where
   adjRules :: AdjRules d s
