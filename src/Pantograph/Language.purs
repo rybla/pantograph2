@@ -98,6 +98,8 @@ mkTreeInj l kids = injectLbl l % List.fromFoldable kids
 
 infix 2 mkTreeInj as %^
 
+type ChangeSortLbl s = ChangeLbl (SortLbl s)
+
 mkCongruenceInj s kids = Congruence (injectLbl s) %* kids
 
 infix 2 mkCongruenceInj as %.^
@@ -175,6 +177,9 @@ class HasDerRules d s | d -> s where
 
 class (IsDerRuleLbl d, IsSortRuleLbl s, HasDerRules d s) <= IsLanguage d s | d -> s
 
+instance SuperLbl (DerLbl' d s) (DerLbl' d s) where
+  injectLbl = identity
+
 --------------------------------------------------------------------------------
 -- AdjLbl
 -- TODO: eventually I'll have to deal with the cursor position being somewhere
@@ -244,9 +249,9 @@ instance Monoid (AdjRules d s) where
     , downRules: mempty
     }
 
-type DownAdjRule d s = Tree (ChangeLbl (SortLbl s)) /\ Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
-type UpAdjRule d s = Tooth (AdjLbl d s) /\ Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
-type UpTopRule d s = Tree (ChangeLbl (SortLbl s)) /\ Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
+type DownAdjRule d s = Tree (ChangeSortLbl s) /\ Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeSortLbl s)), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeSortLbl s)) }
+type UpAdjRule d s = Tooth (AdjLbl d s) /\ Tree (ChangeSortLbl s) -> Maybe { up :: Maybe (Tree (ChangeSortLbl s)), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeSortLbl s)) }
+type UpTopRule d s = Tree (ChangeSortLbl s) /\ Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
 
 class HasAdjRules d s | d -> s where
   adjRules :: AdjRules d s
@@ -261,9 +266,9 @@ newtype InsertRule d s = InsertRule
   , rule ::
       Tree (DerLbl d s)
       -> Maybe
-           { up :: Tree (ChangeLbl (SortLbl s))
+           { up :: Tree (ChangeSortLbl s)
            , mid :: Tooth (DerLbl d s)
-           , down :: Tree (ChangeLbl (SortLbl s))
+           , down :: Tree (ChangeSortLbl s)
            }
   }
 
@@ -292,3 +297,34 @@ mergeMetaVarSubsts s1 s2 = List.foldM f s1 (Map.toUnfoldable s2)
   f m (x /\ a) | m # Map.lookup x # isNothing = m # Map.insert x a # pure
   f _ _ = empty
 
+matchTreeSortLbl
+  :: forall s
+   . IsSortRuleLbl s
+  => Tree (MetaLbl (SortLbl s))
+  -> Tree (SortLbl s)
+  -> Maybe (MetaVarSubst (Tree (SortLbl s)))
+matchTreeSortLbl ms s = todo "matchTreeSortLbl"
+
+matchTreeChangeSortLbl
+  :: forall s
+   . IsSortRuleLbl s
+  => Tree (MetaLbl (ChangeSortLbl s))
+  -> Tree (ChangeSortLbl s)
+  -> Maybe (MetaVarSubst (Tree (ChangeSortLbl s)))
+matchTreeChangeSortLbl mc c = todo "matchTreeChangeSortLbl"
+
+matchTreeDerLbl
+  :: forall d s
+   . IsLanguage d s
+  => Tree (MetaLbl (DerLbl' d (MetaLbl (SortLbl s))))
+  -> Tree (DerLbl d s)
+  -> Maybe (MetaVarSubst (Tree (DerLbl d s)) /\ MetaVarSubst (Tree (ChangeSortLbl s)) /\ MetaVarSubst (Tree (SortLbl s)))
+matchTreeDerLbl mt t = todo "matchTreeDerLbl"
+
+matchTreeAdjLbl
+  :: forall d s
+   . IsLanguage d s
+  => Tree (MetaLbl (AdjLbl' d (MetaLbl (SortLbl s))))
+  -> Tree (AdjLbl d s)
+  -> Maybe (MetaVarSubst (Tree (AdjLbl d s)) /\ MetaVarSubst (Tree (ChangeSortLbl s)) /\ MetaVarSubst (Tree (SortLbl s)))
+matchTreeAdjLbl mt t = todo "matchTreeAdjLbl"
