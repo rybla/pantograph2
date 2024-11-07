@@ -16,6 +16,7 @@ import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.Monoid (mempty)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
@@ -61,20 +62,20 @@ data D
   | App
   | Hole
 
-data DR sort term = LamR sort term
+-- data DR sort term = LamR sort term
 
-instance IsDerRuleLblRefinement D S DR where
-  toDerRefinemnt (DerLbl Free sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Zero sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Suc sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Ref sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Lam sigma) (b : Nil) = LamR (sigma # lookupMetaVar (MkMetaVar "g")) b
-  toDerRefinemnt (DerLbl App sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
-  toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
-  toDerRefinemnt _ _ = bug "invalid TreeDerLbl"
+-- instance IsDerRuleLblRefinement D S DR where
+--   toDerRefinemnt (DerLbl Free sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Zero sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Suc sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Ref sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Lam sigma) (b : Nil) = LamR (sigma # lookupMetaVar (MkMetaVar "g")) b
+--   toDerRefinemnt (DerLbl App sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
+--   toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
+--   toDerRefinemnt _ _ = bug "invalid TreeDerLbl"
 
-  fromDerRefinment = todo ""
+--   fromDerRefinment = todo ""
 
 derive instance Generic D _
 
@@ -134,16 +135,31 @@ instance HasAdjRules D S where
           []
       , downRules: List.fromFoldable
           [ \(ch /\ t) -> do
-              sigma_t <- t # matchTreeAdjLbl ((Zero // [ "g" /\ g ]) %^ [ t' ])
-              sigma_ch <- ch # matchTreeChangeSortLbl (todo "")
-              todo ""
+              -- _sigmaT_t /\ sigmaS_t <- t # matchTreeAdjLbl ((Zero // [ "g" /\ mkMetaVar "g" ]) %^ [])
+              -- sigmaS_ch <- ch # matchTreeChangeSortLbl (Var %^ [ mkMetaVar "dg" ])
+              -- let g = sigmaS_t # lookupMetaVar (MkMetaVar "g")
+              -- let dg = sigmaS_ch # lookupMetaVar (MkMetaVar "dg")
+              -- pure ((Var %^ [ dg ]) ↓ ((Free // [ "g" /\ g ]) %^ []))
+              let g = mkMetaVar "g"
+              let dg = mkMetaVar "dg"
+              ch /\ t #
+                f
+                  (Var %^ [ dg ])
+                  ((Zero // [ "g" /\ ?g ]) %^ [])
+                  -- ((Var %^ [ ?a ]) ↓ ((Free // [ "g" /\ g ]) %^ []))
+                  (InjMetaLbl (AdjBdry Down ?a) %* [ ?a ])
           ]
       }
 
-    g :: Tree (MetaLbl (SortLbl S))
-    g = todo ""
+    f inn_ch inn_t out (ch /\ t) = do
+      sigmaT_t /\ sigmaS_t <- t # matchTreeAdjLbl inn_t
+      sigmaS_ch <- ch # matchTreeChangeSortLbl inn_ch
+      todo ""
 
-    t' :: Tree (MetaLbl (AdjLbl' D (MetaLbl (SortLbl S))))
+    _g = MkMetaVar "g"
+    _dg = MkMetaVar "Δg"
+
+    t' :: Tree (MetaLbl (AdjLbl' D (MetaChangeSortLbl S) (MetaSortLbl S)))
     t' = todo ""
 
 -- instance HasDerAdjRules D S where

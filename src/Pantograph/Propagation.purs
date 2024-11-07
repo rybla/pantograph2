@@ -21,9 +21,9 @@ propagateStep t0 = go mempty t0
 
   go :: Path (AdjLbl d s) -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
   go path (AdjBdry Up ch % (t' : Nil)) = case unstepPath path of
-    Nothing -> upTopRule ch t'
+    Nothing -> upTopRule (ch /\ t')
     Just (path' /\ th) -> do
-      { up, mid, down } <- upRules # tryFirst (\f -> f th ch)
+      { up, mid, down } <- upRules # tryFirst (_ $ th /\ ch)
       pure
         $ unPath path'
         $ (up # maybe identity \upCh kid -> AdjBdry Up upCh %* [ kid ])
@@ -31,13 +31,15 @@ propagateStep t0 = go mempty t0
         $ (down # maybe identity \downCh kid -> AdjBdry Down downCh %* [ kid ])
         $ t'
   go path (AdjBdry Down ch % (t' : Nil)) = do
-    { up, mid, down } <- downRules # tryFirst (\f -> f ch t')
+    t'' <- downRules # tryFirst (_ $ ch /\ t')
+    -- pure
+    --   $ unPath path
+    --   $ (up # maybe identity \upCh kid -> AdjBdry Up upCh %* [ kid ])
+    --   $ (down # maybe identity \downCh kid -> AdjBdry Down downCh %* [ kid ])
+    --   $ t'
     pure
       $ unPath path
-      $ (up # maybe identity \upCh kid -> AdjBdry Up upCh %* [ kid ])
-      $ unPath mid
-      $ (down # maybe identity \downCh kid -> AdjBdry Down downCh %* [ kid ])
-      $ t'
+      $ t''
   go _ (AdjBdry _ _ % _) = bug "invalid AdjBdry"
   go path t = getTeeth t # tryFirst \(th /\ t') -> go (stepPath path th) t'
 

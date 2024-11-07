@@ -56,6 +56,9 @@ data MetaLbl l
   = MetaVar MetaVar
   | InjMetaLbl l
 
+type MetaSortLbl s = MetaLbl (SortLbl s)
+type MetaChangeSortLbl s = MetaLbl (ChangeLbl (SortLbl s))
+
 derive instance Generic (MetaLbl l) _
 
 instance Show l => Show (MetaLbl l) where
@@ -103,6 +106,9 @@ mkTreeInj l kids = injectLbl l % List.fromFoldable kids
 infix 2 mkTreeInj as %^
 
 type ChangeSortLbl s = ChangeLbl (SortLbl s)
+
+instance SuperLbl s s' => SuperLbl (ChangeLbl s) s' where
+  injectLbl = Congruence <<< injectLbl
 
 mkCongruenceInj s kids = Congruence (injectLbl s) %* kids
 
@@ -156,8 +162,8 @@ class IsDerRuleLblRefinement d s dr | d s -> dr where
 --------------------------------------------------------------------------------
 
 newtype DerRule s = DerRule
-  { sort :: Tree (MetaLbl (SortLbl s))
-  , kids :: List { sort :: Tree (MetaLbl (SortLbl s)) }
+  { sort :: Tree (MetaSortLbl s)
+  , kids :: List { sort :: Tree (MetaSortLbl s) }
   }
 
 mkDerRule sort kids = DerRule { sort, kids: List.fromFoldable (kids # map \sort -> { sort }) }
@@ -193,22 +199,22 @@ instance SuperLbl (DerLbl' d s) (DerLbl' d s) where
 -- TODO: eventually I'll have to deal with the cursor position being somewhere
 --------------------------------------------------------------------------------
 
-type AdjLbl d s = AdjLbl' d (SortLbl s)
+type AdjLbl d s = AdjLbl' d (ChangeLbl (SortLbl s)) (SortLbl s)
 
-data AdjLbl' d s
-  = AdjBdry BdryDir (Tree (ChangeLbl s))
+data AdjLbl' d ch_s s
+  = AdjBdry BdryDir (Tree ch_s)
   | InjAdjLbl (DerLbl' d s)
 
-derive instance Generic (AdjLbl' d s) _
+derive instance Generic (AdjLbl' d ch_s s) _
 
-instance (Eq d, Eq s) => Eq (AdjLbl' d s) where
+instance (Eq d, Eq ch_s, Eq s) => Eq (AdjLbl' d ch_s s) where
   eq x = genericEq x
 
-instance PrettyTreeLbl (AdjLbl' d s) where
+instance PrettyTreeLbl (AdjLbl' d ch_s s) where
   prettyTree = todo ""
 
-instance SuperLbl (DerLbl' d s) l' => SuperLbl (AdjLbl' d s) l' where
-  injectLbl = InjAdjLbl <<< injectLbl
+instance (SuperLbl s s', SuperLbl (DerLbl' d s') l') => SuperLbl (AdjLbl' d (ChangeLbl s) s) l' where
+  injectLbl = todo "InjAdjLbl <<< injectLbl"
 
 data BdryDir = Up | Down
 
@@ -224,14 +230,14 @@ instance Eq BdryDir where
 instance Ord BdryDir where
   compare x = genericCompare x
 
-downAdjBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjLbl' d s) -> Tree (AdjLbl' d s)
-downAdjBdry ch kid = AdjBdry Down ch %* [ kid ]
+-- downAdjBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjLbl' d s) -> Tree (AdjLbl' d s)
+-- downAdjBdry ch kid = AdjBdry Down ch %* [ kid ]
 
-upAdjBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjLbl' d s) -> Tree (AdjLbl' d s)
-upAdjBdry ch kid = AdjBdry Up ch %* [ kid ]
+-- upAdjBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjLbl' d s) -> Tree (AdjLbl' d s)
+-- upAdjBdry ch kid = AdjBdry Up ch %* [ kid ]
 
-infix 2 downAdjBdry as ↓
-infix 2 upAdjBdry as ↑
+-- infix 2 downAdjBdry as ↓
+-- infix 2 upAdjBdry as ↑
 
 --------------------------------------------------------------------------------
 -- AdjRule
@@ -257,9 +263,9 @@ instance Monoid (AdjRules d s) where
     , downRules: mempty
     }
 
-type DownAdjRule d s = Tree (ChangeSortLbl s) /\ Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeSortLbl s)), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeSortLbl s)) }
-type UpAdjRule d s = Tooth (AdjLbl d s) /\ Tree (ChangeSortLbl s) -> Maybe { up :: Maybe (Tree (ChangeSortLbl s)), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeSortLbl s)) }
 type UpTopRule d s = Tree (ChangeSortLbl s) /\ Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
+type UpAdjRule d s = Tooth (AdjLbl d s) /\ Tree (ChangeSortLbl s) -> Maybe { up :: Maybe (Tree (ChangeSortLbl s)), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeSortLbl s)) }
+type DownAdjRule d s = Tree (ChangeSortLbl s) /\ Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
 
 class HasAdjRules d s | d -> s where
   adjRules :: AdjRules d s
@@ -308,7 +314,7 @@ mergeMetaVarSubsts s1 s2 = List.foldM f s1 (Map.toUnfoldable s2)
 matchTreeSortLbl
   :: forall s
    . IsSortRuleLbl s
-  => Tree (MetaLbl (SortLbl s))
+  => Tree (MetaSortLbl s)
   -> Tree (SortLbl s)
   -> Maybe (MetaVarSubst (Tree (SortLbl s)))
 matchTreeSortLbl ms s = todo "matchTreeSortLbl"
@@ -324,7 +330,7 @@ matchTreeChangeSortLbl mc c = todo "matchTreeChangeSortLbl"
 matchTreeDerLbl
   :: forall d s
    . IsLanguage d s
-  => Tree (MetaLbl (DerLbl' d (MetaLbl (SortLbl s))))
+  => Tree (MetaLbl (DerLbl' d (MetaSortLbl s)))
   -> Tree (DerLbl d s)
   -> Maybe (MetaVarSubst (Tree (DerLbl d s)) /\ MetaVarSubst (Tree (ChangeSortLbl s)) /\ MetaVarSubst (Tree (SortLbl s)))
 matchTreeDerLbl mt t = todo "matchTreeDerLbl"
@@ -332,7 +338,12 @@ matchTreeDerLbl mt t = todo "matchTreeDerLbl"
 matchTreeAdjLbl
   :: forall d s
    . IsLanguage d s
-  => Tree (MetaLbl (AdjLbl' d (MetaLbl (SortLbl s))))
+  => Tree (MetaLbl (AdjLbl' d (MetaChangeSortLbl s) (MetaSortLbl s)))
   -> Tree (AdjLbl d s)
-  -> Maybe (MetaVarSubst (Tree (AdjLbl d s)) /\ MetaVarSubst (Tree (SortLbl s)))
+  -> Maybe
+       ( MetaVarSubst (Tree (SortLbl s))
+           /\ MetaVarSubst (Tree (ChangeSortLbl s))
+           /\ MetaVarSubst (Tree (AdjLbl d s))
+       )
 matchTreeAdjLbl mt t = todo "matchTreeAdjLbl"
+
