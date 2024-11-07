@@ -185,7 +185,7 @@ class (IsDerRuleLbl d, IsSortRuleLbl s, HasDerRules d s) <= IsLanguage d s | d -
 type AdjLbl d s = AdjLbl' d (SortLbl s)
 
 data AdjLbl' d s
-  = AdjBdry BdryDirection (Tree (ChangeLbl s))
+  = AdjBdry BdryDir (Tree (ChangeLbl s))
   | InjAdjLbl (DerLbl' d s)
 
 derive instance Generic (AdjLbl' d s) _
@@ -199,18 +199,18 @@ instance PrettyTreeLbl (AdjLbl' d s) where
 instance SuperLbl (DerLbl' d s) l' => SuperLbl (AdjLbl' d s) l' where
   injectLbl = InjAdjLbl <<< injectLbl
 
-data BdryDirection = Up | Down
+data BdryDir = Up | Down
 
-instance Pretty BdryDirection where
+instance Pretty BdryDir where
   pretty Up = "↑"
   pretty Down = "↓"
 
-derive instance Generic BdryDirection _
+derive instance Generic BdryDir _
 
-instance Eq BdryDirection where
+instance Eq BdryDir where
   eq x = genericEq x
 
-instance Ord BdryDirection where
+instance Ord BdryDir where
   compare x = genericCompare x
 
 downAdjBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjLbl' d s) -> Tree (AdjLbl' d s)
@@ -229,10 +229,12 @@ infix 2 upAdjBdry as ↑
 newtype AdjRules d s = AdjRules
   { downRules :: List (DownAdjRule d s)
   , upRules :: List (UpAdjRule d s)
+  , upTopRule :: UpTopRule d s
   }
 
-newtype DownAdjRule d s = MakeDownAdjRule (Tree (SortLbl s) -> Tree (AdjLbl d s) -> { up :: Maybe (Tree (SortLbl s)), mid :: Path (DerLbl d s), down :: Maybe (Tree (SortLbl s)) })
-newtype UpAdjRule d s = MakeUpAdjRule (Tooth (AdjLbl d s) -> Tree (SortLbl s) -> { up :: Maybe (Tree (SortLbl s)), mid :: Path (DerLbl d s), down :: Maybe (Tree (SortLbl s)) })
+type DownAdjRule d s = Tree (ChangeLbl (SortLbl s)) -> Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+type UpAdjRule d s = Tooth (AdjLbl d s) -> Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
+type UpTopRule d s = Tree (ChangeLbl (SortLbl s)) -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
 
 class HasAdjRules d s | d -> s where
   adjRules :: AdjRules d s

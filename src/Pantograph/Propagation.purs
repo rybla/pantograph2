@@ -5,41 +5,51 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Plus (empty)
-import Data.Foldable (intercalate)
 import Data.List (List(..), (:))
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Traversable (traverse)
-import Data.Tuple (snd)
-import Data.Tuple.Nested (type (/\), (/\))
-import Debug as Debug
-import Pantograph.EitherF (EitherF(..))
-import Pantograph.Pretty (pretty)
-import Pantograph.Utility (bug, todo)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Tuple.Nested ((/\))
+import Pantograph.Utility (bug)
 
 fixpoint :: forall a. (a -> Maybe a) -> a -> a
 fixpoint f a = case f a of
   Nothing -> a
   Just a' -> fixpoint f a'
 
-traverseFirst :: forall a b. (a -> Maybe b) -> List a -> Maybe b
-traverseFirst _ Nil = empty
-traverseFirst f (x : xs) = case f x of
-  Nothing -> traverseFirst f xs
+tryFirst :: forall a b. (a -> Maybe b) -> List a -> Maybe b
+tryFirst _ Nil = empty
+tryFirst f (x : xs) = case f x of
+  Nothing -> tryFirst f xs
   Just y -> pure y
 
-propagateStep :: forall d s. AdjRules d s -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
-propagateStep (AdjRules { upRules, downRules }) t = go mempty t
-  where
-  go :: Path (AdjLbl d s) -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
-  go path t@(AdjBdry dir ch % (kid : Nil)) = todo ""
-  go path t@((AdjBdry dir ch) % _) = bug "invalid AdjBdry"
-  go path t@((InjAdjLbl dl) % kids) = todo ""
+propagate :: forall d s. HasAdjRules d s => Tree (AdjLbl d s) -> Tree (AdjLbl d s)
+propagate = fixpoint propagateStep
 
--- case getTeeth t # traverseFirst f of
---   Nothing -> ?a
---   Just (th /\ t') -> pure ?a
--- where
--- f = ?a
+propagateStep :: forall d s. HasAdjRules d s => Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
+propagateStep t0 = go mempty t0
+  where
+  AdjRules { upRules, downRules, upTopRule } = adjRules :: AdjRules d s
+
+  go :: Path (AdjLbl d s) -> Tree (AdjLbl d s) -> Maybe (Tree (AdjLbl d s))
+  go path (AdjBdry Up ch % (t' : Nil)) = case unstepPath path of
+    Nothing -> upTopRule ch t'
+    Just (path' /\ th) -> do
+      { up, mid, down } <- upRules # tryFirst (\f -> f th ch)
+      pure
+        $ unPath path'
+        $ (up # maybe identity \upCh kid -> AdjBdry Up upCh %* [ kid ])
+        $ unPath mid
+        $ (down # maybe identity \downCh kid -> AdjBdry Down downCh %* [ kid ])
+        $ t'
+  go path (AdjBdry Down ch % (t' : Nil)) = do
+    { up, mid, down } <- downRules # tryFirst (\f -> f ch t')
+    pure
+      $ unPath path
+      $ (up # maybe identity \upCh kid -> AdjBdry Up upCh %* [ kid ])
+      $ unPath mid
+      $ (down # maybe identity \downCh kid -> AdjBdry Down downCh %* [ kid ])
+      $ t'
+  go _ (AdjBdry _ _ % _) = bug "invalid AdjBdry"
+  go path t = getTeeth t # tryFirst \(th /\ t') -> go (stepPath path th) t'
 
 -- fromAdjustDerivToDeriv :: forall d s. Tree (AdjustLbl d s) -> Tree (DerLbl d s)
 -- fromAdjustDerivToDeriv (AdjustBdry _ ch % (kid : Nil)) = DerBdry ch % ((kid # fromAdjustDerivToDeriv) : Nil)

@@ -168,9 +168,9 @@ type AdjustLbl d s = AdjustLbl' (DerLbl' d) (SortLbl s)
 
 type AdjustLbl' = EitherF AdjustLbl''
 
-data AdjustLbl'' s = AdjustBdry BdryDirection (Tree (ChangeLbl s))
+data AdjustLbl'' s = AdjustBdry BdryDir (Tree (ChangeLbl s))
 
-data BdryDirection = Up | Down
+data BdryDir = Up | Down
 
 downAdjustBdry :: forall d s. Tree (ChangeLbl s) -> Tree (AdjustLbl' d s) -> Tree (AdjustLbl' d s)
 downAdjustBdry ch kid = LeftF (AdjustBdry Down ch) %* [ kid ]
@@ -375,16 +375,16 @@ instance Eq s => Eq (AdjustLbl'' s) where
 
 derive instance Functor AdjustLbl''
 
-derive instance Generic BdryDirection _
+derive instance Generic BdryDir _
 
-instance Show BdryDirection where
+instance Show BdryDir where
   show x = genericShow x
 
-instance Pretty BdryDirection where
+instance Pretty BdryDir where
   pretty Up = "↑"
   pretty Down = "↓"
 
-instance Eq BdryDirection where
+instance Eq BdryDir where
   eq x = genericEq x
 
 derive instance Generic (AdjustRule d s) _
