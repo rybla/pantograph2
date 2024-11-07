@@ -12,7 +12,7 @@ import Data.List (List(..))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe, isNothing)
+import Data.Maybe (Maybe(..), fromMaybe', isNothing, maybe, maybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
@@ -125,9 +125,7 @@ class (Show d, Eq d, Pretty d, PrettyTreeLbl d) <= IsDerRuleLbl d
 
 type DerLbl d s = DerLbl' d (SortLbl s)
 
-data DerLbl' d s
-  = DerLbl d (MetaVarSubst (Tree s))
-  | DerBdry (Tree (ChangeLbl s))
+data DerLbl' d s = DerLbl d (MetaVarSubst (Tree s))
 
 mkDerLbl d sigma = DerLbl d (Map.fromFoldable sigma)
 
@@ -227,10 +225,24 @@ infix 2 upAdjBdry as ↑
 --------------------------------------------------------------------------------
 
 newtype AdjRules d s = AdjRules
-  { downRules :: List (DownAdjRule d s)
+  { upTopRule :: UpTopRule d s
   , upRules :: List (UpAdjRule d s)
-  , upTopRule :: UpTopRule d s
+  , downRules :: List (DownAdjRule d s)
   }
+
+instance Semigroup (AdjRules d s) where
+  append (AdjRules ars1) (AdjRules ars2) = AdjRules
+    { upTopRule: \ch t -> ars1.upTopRule ch t # flip maybe' pure \_ -> ars2.upTopRule ch t
+    , upRules: ars1.upRules <> ars2.upRules
+    , downRules: ars1.downRules <> ars2.downRules
+    }
+
+instance Monoid (AdjRules d s) where
+  mempty = AdjRules
+    { upTopRule: \_ _ -> empty
+    , upRules: mempty
+    , downRules: mempty
+    }
 
 type DownAdjRule d s = Tree (ChangeLbl (SortLbl s)) -> Tree (AdjLbl d s) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }
 type UpAdjRule d s = Tooth (AdjLbl d s) -> Tree (ChangeLbl (SortLbl s)) -> Maybe { up :: Maybe (Tree (ChangeLbl (SortLbl s))), mid :: Path (AdjLbl d s), down :: Maybe (Tree (ChangeLbl (SortLbl s))) }

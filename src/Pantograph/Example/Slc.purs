@@ -11,12 +11,14 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (empty)
+import Data.Array as Array
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.Pretty (class Pretty)
 import Pantograph.Utility (bug, todo)
 import Type.Proxy (Proxy(..))
@@ -97,15 +99,25 @@ instance HasDerRules D S where
 instance IsLanguage D S
 
 instance HasAdjRules D S where
-  adjustRules = modifyAdjRules <> propagationAdjRules
+  -- adjRules = modifyAdjRules -- <> propagationAdjRules
+  --   where
+  --   modifyAdjRules = List.fromFoldable
+  --     -- [ AdjRule
+  --     --     { name: "replace Zero with Free"
+  --     --     , rule: \_mb_th tm -> tm # matchTree ((Zero // [ g /\ ?a ]) %^ []) # map (todo "")
+  --     --     }
+  --     -- ]
+  --     []
+  adjRules = Array.fold
+    [ modifyAdjRules
+    , propagationAdjRules
+    ]
     where
-    modifyAdjRules = List.fromFoldable
-      [ AdjRule
-          { name: "replace Zero with Free"
-          , rule: \_mb_th tm -> tm # matchTree ((Zero // [ g /\ ?a ]) %^ []) # map (todo "")
-          }
-      ]
-    g = ?a
+    modifyAdjRules = AdjRules
+      { upTopRule: ?a
+      , upRules: todo "upRules"
+      , downRules: todo "downRules"
+      }
 
 -- instance HasDerAdjRules D S where
 --   derAdjRules ZeroWeak = DerAdjRule

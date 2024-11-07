@@ -1,2 +1,0 @@
-module Pantograph.Editor where
-
