@@ -326,5 +326,5 @@ matchTreeAdjLbl
    . IsLanguage d s
   => Tree (MetaLbl (AdjLbl' d (MetaLbl (SortLbl s))))
   -> Tree (AdjLbl d s)
-  -> Maybe (MetaVarSubst (Tree (AdjLbl d s)) /\ MetaVarSubst (Tree (ChangeSortLbl s)) /\ MetaVarSubst (Tree (SortLbl s)))
+  -> Maybe (MetaVarSubst (Tree (AdjLbl d s)) /\ MetaVarSubst (Tree (SortLbl s)))
 matchTreeAdjLbl mt t = todo "matchTreeAdjLbl"

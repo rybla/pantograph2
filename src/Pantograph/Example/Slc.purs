@@ -119,8 +119,8 @@ instance HasAdjRules D S where
           []
       , downRules: List.fromFoldable
           [ \(ch /\ t) -> do
-              sigma_t <- t # matchTreeAdjLbl ((Zero // [ g_ /\ g ]) %^ [])
-              -- sigma_ch <- ch # matchMetaTree (todo "pattern")
+              sigma_t <- t # matchTreeAdjLbl ((Zero // [ g_ /\ g ]) %^ [ t' ])
+              sigma_ch <- ch # matchTreeChangeSortLbl (todo "")
               todo ""
           ]
       }
@@ -128,6 +128,9 @@ instance HasAdjRules D S where
 
     g :: Tree (MetaLbl (SortLbl S))
     g = todo ""
+
+    t' :: Tree (MetaLbl (AdjLbl' D (MetaLbl (SortLbl S))))
+    t' = todo ""
 
 -- instance HasDerAdjRules D S where
 --   derAdjRules ZeroWeak = DerAdjRule
