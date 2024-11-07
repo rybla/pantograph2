@@ -2,7 +2,7 @@ module Test.Slc where
 
 import Pantograph.Example.Slc
 import Pantograph.Language
-import Pantograph.Adjust
+import Pantograph.Propagation
 import Pantograph.Tree
 import Prelude hiding (zero)
 

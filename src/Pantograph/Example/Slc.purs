@@ -17,7 +17,6 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
-import Pantograph.Library.DerivePropagationAdjustRulesFromDerRules (propagationAdjustRules)
 import Pantograph.Pretty (class Pretty)
 import Pantograph.Utility (bug, todo)
 import Type.Proxy (Proxy(..))
@@ -97,21 +96,21 @@ instance HasDerRules D S where
 
 instance IsLanguage D S
 
-instance HasAdjustRules D S where
-  adjustRules = modifyAdjustRules <> propagationAdjustRules
+instance HasAdjRules D S where
+  adjustRules = modifyAdjRules <> propagationAdjRules
     where
-    modifyAdjustRules = List.fromFoldable
-      [ AdjustRule
+    modifyAdjRules = List.fromFoldable
+      [ AdjRule
           { name: "replace Zero with Free"
           , rule: \_mb_th tm -> tm # matchTree ((Zero // [ g /\ ?a ]) %^ []) # map (todo "")
           }
       ]
     g = ?a
 
--- instance HasDerAdjustRules D S where
---   derAdjustRules ZeroWeak = DerAdjustRule
+-- instance HasDerAdjRules D S where
+--   derAdjRules ZeroWeak = DerAdjRule
 --     { kids: mempty }
---   derAdjustRules SucWeak = DerAdjustRule
+--   derAdjRules SucWeak = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -124,7 +123,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Free = DerAdjustRule
+--   derAdjRules Free = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -150,7 +149,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Zero = DerAdjustRule
+--   derAdjRules Zero = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -176,7 +175,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Suc = DerAdjustRule
+--   derAdjRules Suc = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Var %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Var %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Var %∂.^ [ Ext %∂.^ [ gamma ] ]
@@ -199,7 +198,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Ref = DerAdjustRule
+--   derAdjRules Ref = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort
 --               (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _))
@@ -218,7 +217,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Lam = DerAdjustRule
+--   derAdjRules Lam = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ Ext %∂.^ [ gamma ] ]
 --           , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ Ext %|∂.^ [ _gamma ] ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
@@ -231,7 +230,7 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules App = DerAdjustRule
+--   derAdjRules App = DerAdjRule
 --     { kids: List.fromFoldable
 --         [ { passthrough_down: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
 --           , passthrough_up: matchTreeChangeSort (Term %|∂.^ [ _gamma ] :: Tree (Matchial (gamma :: _) _ _)) \{ gamma } -> Term %∂.^ [ gamma ]
@@ -251,12 +250,12 @@ instance HasAdjustRules D S where
 --     }
 --     where
 --     _gamma = matchialVar (Proxy :: Proxy "gamma")
---   derAdjustRules Hole = DerAdjustRule
+--   derAdjRules Hole = DerAdjRule
 --     { kids: mempty }
 
--- instance IsDerAdjustLanguage D S
+-- instance IsDerAdjLanguage D S
 
--- instance HasAdjustRules D S where
+-- instance HasAdjRules D S where
 --   adjustRules = mempty
 
--- instance IsAdjustLanguage D S
+-- instance IsAdjLanguage D S

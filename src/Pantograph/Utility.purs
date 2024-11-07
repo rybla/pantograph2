@@ -2,9 +2,10 @@ module Pantograph.Utility where
 
 import Prelude
 
+import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
 import Data.Either (Either(..))
-import Data.List (List)
+import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -34,6 +35,17 @@ assert msg b k = if not b then bug msg else k unit
 
 assertM :: forall m. Monad m => String -> Boolean -> m Unit
 assertM msg b = if not b then pure (bug msg) else pure unit
+
+fixpoint :: forall a. (a -> Maybe a) -> a -> a
+fixpoint f a = case f a of
+  Nothing -> a
+  Just a' -> fixpoint f a'
+
+tryFirst :: forall a b. (a -> Maybe b) -> List a -> Maybe b
+tryFirst _ Nil = empty
+tryFirst f (x : xs) = case f x of
+  Nothing -> tryFirst f xs
+  Just y -> pure y
 
 --------------------------------------------------------------------------------
 -- FromObjectToRecord

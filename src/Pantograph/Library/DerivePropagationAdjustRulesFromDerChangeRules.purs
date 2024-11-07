@@ -1,13 +1,13 @@
-module Pantograph.Library.DerivePropagationAdjustRulesFromDerChangeRules where
+module Pantograph.Library.DerivePropagationAdjRulesFromDerChangeRules where
 
 import Prelude
+import Pantograph.Language
+import Pantograph.Tree
 
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.Show.Generic (genericShow)
-import Pantograph.Language (class IsLanguage, AdjustRules, SortLbl)
-import Pantograph.Tree (ChangeLbl, Tree)
 import Pantograph.Utility (todo)
 
 --------------------------------------------------------------------------------
@@ -34,6 +34,6 @@ class HasDerChangeRules d s | d -> s where
 
 --------------------------------------------------------------------------------
 
-propagationAdjustRules :: forall d s. HasDerChangeRules d s => AdjustRules d s
-propagationAdjustRules = mempty -- TODO: figure out how to derive these from DerChangeRules
+propagationAdjRules :: forall d s. HasDerChangeRules d s => AdjRules d s
+propagationAdjRules = todo "propagationAdjRules" -- TODO: figure out how to derive these from DerChangeRules
 
