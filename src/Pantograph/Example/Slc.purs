@@ -6,37 +6,37 @@ take.
 -}
 module Pantograph.Example.Slc where
 
--- import Pantograph.Language
--- import Pantograph.Tree
--- import Prelude
+import Pantograph.Language
+import Pantograph.Tree
+import Prelude
 
--- import Control.Alternative (empty)
--- import Data.Array as Array
--- import Data.Eq.Generic (genericEq)
--- import Data.Generic.Rep (class Generic)
--- import Data.List (List(..), (:))
--- import Data.List as List
--- import Data.Monoid (mempty)
--- import Data.Show.Generic (genericShow)
--- import Data.Tuple.Nested ((/\))
--- import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
--- import Pantograph.Pretty (class Pretty)
--- import Pantograph.Utility (bug, todo)
--- import Type.Proxy (Proxy(..))
+import Control.Alternative (empty)
+import Data.Array as Array
+import Data.Eq.Generic (genericEq)
+import Data.Generic.Rep (class Generic)
+import Data.List (List(..), (:))
+import Data.List as List
+import Data.Monoid (mempty)
+import Data.Show.Generic (genericShow)
+import Data.Tuple.Nested ((/\))
+import Pantograph.Pretty (class Pretty)
+import Pantograph.Utility (bug, todo)
+import SuperType (class SuperType)
+import Type.Proxy (Proxy(..))
 
--- data S
---   = Emp
---   | Ext
---   | Var
---   | Term
+data S
+  = Emp
+  | Ext
+  | Var
+  | Term
 
--- derive instance Generic S _
+derive instance Generic S _
 
--- instance SuperLbl S S where
---   injectLbl = identity
+instance SuperType S S where
+  inject = identity
 
--- instance Show S where
---   show x = genericShow x
+instance Show S where
+  show x = genericShow x
 
 -- instance PrettyTreeLbl S where
 --   prettyTree Emp Nil = "∅"
@@ -45,48 +45,27 @@ module Pantograph.Example.Slc where
 --   prettyTree Term (g : Nil) = "Term " <> g
 --   prettyTree _ _ = bug "invalid S"
 
--- instance Eq S where
---   eq x = genericEq x
-
--- instance Pretty S where
---   pretty = show
+instance Eq S where
+  eq x = genericEq x
 
 -- instance IsSortRuleLbl S
 
--- data D
---   = Free
---   | Zero
---   | Suc
---   | Ref
---   | Lam
---   | App
---   | Hole
+data D
+  = Free
+  | Zero
+  | Suc
+  | Ref
+  | Lam
+  | App
+  | Hole
 
--- -- data DR sort term = LamR sort term
+derive instance Generic D _
 
--- -- instance IsDerRuleLblRefinement D S DR where
--- --   toDerRefinemnt (DerLbl Free sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Zero sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Suc sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Ref sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Lam sigma) (b : Nil) = LamR (sigma # lookupMetaVar (MkMetaVar "g")) b
--- --   toDerRefinemnt (DerLbl App sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
--- --   toDerRefinemnt (DerLbl Hole sigma) kids = todo ""
--- --   toDerRefinemnt _ _ = bug "invalid TreeDerLbl"
+instance Show D where
+  show x = genericShow x
 
--- --   fromDerRefinment = todo ""
-
--- derive instance Generic D _
-
--- instance Show D where
---   show x = genericShow x
-
--- instance Eq D where
---   eq x = genericEq x
-
--- instance Pretty D where
---   pretty = show
+instance Eq D where
+  eq x = genericEq x
 
 -- instance PrettyTreeLbl D where
 --   prettyTree Free Nil = "F"
@@ -100,17 +79,17 @@ module Pantograph.Example.Slc where
 
 -- instance IsDerRuleLbl D
 
--- instance HasDerRules D S where
---   derRules = case _ of
---     Free -> Var %^ [ Ext %^ [ g ] ] -| []
---     Zero -> Var %^ [ Ext %^ [ g ] ] -| [ Var %^ [ g ] ]
---     Suc -> Var %^ [ g ] -| [ Var %^ [ Ext %^ [ g ] ] ]
---     Ref -> Term %^ [ g ] -| [ Var %^ [ g ] ]
---     Lam -> Term %^ [ g ] -| [ Term %^ [ Ext %^ [ g ] ] ]
---     App -> Term %^ [ g ] -| [ Term %^ [ g ], Term %^ [ g ] ]
---     Hole -> Term %^ [ g ] -| []
---     where
---     g = mkMetaVar "gamma"
+instance HasDerRules D S where
+  derRules = case _ of
+    Free -> Var %^ [ Ext %^ [ g ] ] -| []
+    Zero -> Var %^ [ Ext %^ [ g ] ] -| [ Var %^ [ g ] ]
+    Suc -> Var %^ [ g ] -| [ Var %^ [ Ext %^ [ g ] ] ]
+    Ref -> Term %^ [ g ] -| [ Var %^ [ g ] ]
+    Lam -> Term %^ [ g ] -| [ Term %^ [ Ext %^ [ g ] ] ]
+    App -> Term %^ [ g ] -| [ Term %^ [ g ], Term %^ [ g ] ]
+    Hole -> Term %^ [ g ] -| []
+    where
+    g = ?a -- mkMetaVar "gamma"
 
 -- instance IsLanguage D S
 
