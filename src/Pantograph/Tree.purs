@@ -20,7 +20,7 @@ import Pantograph.Pretty (class Pretty, parens, pretty)
 import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, todo)
-import SuperType (class SuperType, inject)
+import SuperType (class SuperTypeStep, inject, injectStep)
 
 --------------------------------------------------------------------------------
 -- Tree
@@ -28,17 +28,16 @@ import SuperType (class SuperType, inject)
 
 data Tree a = Tree a (List (Tree a))
 
-infix 1 Tree as %
+infix 3 Tree as %%
 
-mkTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
-mkTree a = Tree a <<< List.fromFoldable
+makeTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
+makeTree a = Tree a <<< List.fromFoldable
 
-infix 1 mkTree as %*
+infix 3 makeTree as %*
 
-mkTreeInject :: forall a a' f. SuperType a a' => Foldable f => a' -> f (Tree a) -> Tree a
-mkTreeInject a = Tree (inject a) <<< List.fromFoldable
+makeTreeInject a' = Tree (inject a') <<< List.fromFoldable
 
-infix 1 mkTree as %^
+infix 3 makeTreeInject as %
 
 derive instance Generic (Tree a) _
 
@@ -75,7 +74,7 @@ instance (PrettyTreeL (a x), PrettyTreeL (b x)) => PrettyTreeL (EitherF a b x) w
   prettyTree (RightF b) = prettyTree b
 
 instance PrettyTreeL a => Pretty (Tree a) where
-  pretty (a % kids) = prettyTree a (kids # map pretty)
+  pretty (a %% kids) = prettyTree a (kids # map pretty)
 
 -- class MatchTreeL a f | a -> f where
 --   matchTree' :: forall b. a -> List (Tree b) -> f b
@@ -164,22 +163,6 @@ data ChangeL l
   | Minus (Tooth l)
   | Replace (Tree l) (Tree l)
 
-isValidChange :: forall l. Tree (ChangeL l) -> Boolean
-isValidChange (Congruence _ % _) = true -- TODO: could take into account DerRules, but then need to refactor modules to move this and compose into Grammar, which I probabably don't want to do afterall
-isValidChange (Plus _ % (_ : Nil)) = true
-isValidChange (Minus _ % (_ : Nil)) = true
-isValidChange (Replace _ _ % Nil) = true
-isValidChange _ = false
-
-mkCongruence :: forall f l. Foldable f => l -> f (Tree (ChangeL l)) -> Tree (ChangeL l)
-mkCongruence l kids = Congruence l %* kids
-
-id :: forall l. Tree l -> Tree (ChangeL l)
-id = map Congruence
-
-id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeL l))
-id' = map (map Congruence)
-
 derive instance Generic (ChangeL l) _
 
 instance Show l => Show (ChangeL l) where
@@ -199,6 +182,25 @@ derive instance Functor ChangeL
 derive instance Foldable ChangeL
 derive instance Traversable ChangeL
 
+instance SuperTypeStep (ChangeL l) l where
+  injectStep = Congruence
+
+isValidChange :: forall l. Tree (ChangeL l) -> Boolean
+isValidChange (Congruence _ %% _) = true -- TODO: could take into account DerRules, but then need to refactor modules to move this and compose into Grammar, which I probabably don't want to do afterall
+isValidChange (Plus _ %% (_ : Nil)) = true
+isValidChange (Minus _ %% (_ : Nil)) = true
+isValidChange (Replace _ _ %% Nil) = true
+isValidChange _ = false
+
+makeCongruence :: forall f l. Foldable f => l -> f (Tree (ChangeL l)) -> Tree (ChangeL l)
+makeCongruence l kids = Congruence l %* kids
+
+id :: forall l. Tree l -> Tree (ChangeL l)
+id = map Congruence
+
+id' :: forall f l. Functor f => Tree (f l) -> Tree (f (ChangeL l))
+id' = map (map Congruence)
+
 composeChanges' :: forall f l. Applicative f => Traversable f => Eq l => Tree (f (ChangeL l)) -> Tree (f (ChangeL l)) -> Maybe (Tree (f (ChangeL l)))
 composeChanges' _ _ = todo "composeChanges'"
 
@@ -206,11 +208,11 @@ composeChanges :: forall l. Eq l => Tree (ChangeL l) -> Tree (ChangeL l) -> Mayb
 
 composeChanges c1 c2 | not (isValidChange c1 && isValidChange c2) = bug "invalid Change"
 
-composeChanges (Congruence l1 % cs1) (Congruence l2 % cs2) | l1 == l2 = do
+composeChanges (Congruence l1 %% cs1) (Congruence l2 %% cs2) | l1 == l2 = do
   cs <- List.zip cs1 cs2 # traverse (uncurry composeChanges)
-  pure $ Congruence l1 % cs
+  pure $ Congruence l1 %% cs
 
-composeChanges (Congruence l1 % cs1) (Plus (Tooth l2 l r) % (c2 : Nil)) = do
+composeChanges (Congruence l1 %% cs1) (Plus (Tooth l2 l r) %% (c2 : Nil)) = do
   guard $ l1 == l2
   l' <-
     traverse (uncurry composeChanges) $
@@ -226,9 +228,9 @@ composeChanges (Congruence l1 % cs1) (Plus (Tooth l2 l r) % (c2 : Nil)) = do
       List.zip
         (cs1 # List.takeEnd (length r))
         (r # map id)
-  pure $ Plus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) % (c : Nil)
+  pure $ Plus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) %% (c : Nil)
 
-composeChanges (Minus (Tooth l1 l r) % (c1 : Nil)) (Congruence l2 % cs2) = do
+composeChanges (Minus (Tooth l1 l r) %% (c1 : Nil)) (Congruence l2 %% cs2) = do
   guard $ l1 == l2
   l' <-
     traverse (uncurry composeChanges) $
@@ -244,9 +246,9 @@ composeChanges (Minus (Tooth l1 l r) % (c1 : Nil)) (Congruence l2 % cs2) = do
       List.zip
         (r # map id)
         (cs2 # List.takeEnd (length r))
-  pure $ Minus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) % (c : Nil)
+  pure $ Minus (Tooth l2 (l' # map outerEndpoint) (r' # map outerEndpoint)) %% (c : Nil)
 
-composeChanges c1_@(Minus (Tooth lbl1 l1 r1) % (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r2) % (c2 : Nil)) = do
+composeChanges c1_@(Minus (Tooth lbl1 l1 r1) %% (c1 : Nil)) c2_@(Plus (Tooth lbl2 l2 r2) %% (c2 : Nil)) = do
   guard $ lbl1 == lbl2
   if l1 == l2 && r1 == r2 then do
     -- c <- composeChanges c1 c2
@@ -256,52 +258,52 @@ composeChanges c1_@(Minus (Tooth lbl1 l1 r1) % (c1 : Nil)) c2_@(Plus (Tooth lbl2
     guard $ (c2_ # outerEndpoint) == (c1_ # innerEndpoint)
     let t = c2_ # innerEndpoint
     let t' = c1_ # outerEndpoint
-    pure $ Replace t t' % Nil
+    pure $ Replace t t' %% Nil
 
-composeChanges c1 (Minus th2 % (c2 : Nil)) = do
+composeChanges c1 (Minus th2 %% (c2 : Nil)) = do
   c <- composeChanges c1 c2
-  pure $ Minus th2 % (c : Nil)
+  pure $ Minus th2 %% (c : Nil)
 
-composeChanges (Plus th % (c1 : Nil)) c2 = do
+composeChanges (Plus th %% (c1 : Nil)) c2 = do
   c <- composeChanges c1 c2
-  pure $ Plus th % (c : Nil)
+  pure $ Plus th %% (c : Nil)
 
-composeChanges c1 (Replace t2 t2' % Nil) = do
+composeChanges c1 (Replace t2 t2' %% Nil) = do
   c <- composeChanges c1 (t2' # id)
-  pure $ Replace t2 (c # outerEndpoint) % Nil
+  pure $ Replace t2 (c # outerEndpoint) %% Nil
 
-composeChanges (Replace t1 t1' % Nil) c2 = do
+composeChanges (Replace t1 t1' %% Nil) c2 = do
   c <- composeChanges (t1 # id) c2
-  pure $ Replace (c # innerEndpoint) t1' % Nil
+  pure $ Replace (c # innerEndpoint) t1' %% Nil
 
 composeChanges _ _ = empty
 
 invertChange :: forall l. Tree (ChangeL l) -> Tree (ChangeL l)
 invertChange c | not (isValidChange c) = bug "invalid Change"
-invertChange (Congruence l % cs) = Congruence l % (cs # map invertChange)
-invertChange (Plus th % (c : Nil)) = Minus th % ((c # invertChange) : Nil)
-invertChange (Minus th % (c : Nil)) = Plus th % ((c # invertChange) : Nil)
-invertChange (Replace t t' % Nil) = Replace t' t % Nil
+invertChange (Congruence l %% cs) = Congruence l %% (cs # map invertChange)
+invertChange (Plus th %% (c : Nil)) = Minus th %% ((c # invertChange) : Nil)
+invertChange (Minus th %% (c : Nil)) = Plus th %% ((c # invertChange) : Nil)
+invertChange (Replace t t' %% Nil) = Replace t' t %% Nil
 invertChange _ = bug "impossible"
 
 innerEndpoint :: forall l. Tree (ChangeL l) -> Tree l
 innerEndpoint c | not (isValidChange c) = bug "invalid Change"
-innerEndpoint (Congruence l % cs) = Tree l (innerEndpoint <$> cs)
-innerEndpoint (Plus _ % (c : Nil)) = innerEndpoint c
-innerEndpoint (Minus th % (c : Nil)) = unTooth th (innerEndpoint c)
-innerEndpoint (Replace t _ % Nil) = t
-innerEndpoint (_ % _) = bug "impossible"
+innerEndpoint (Congruence l %% cs) = Tree l (innerEndpoint <$> cs)
+innerEndpoint (Plus _ %% (c : Nil)) = innerEndpoint c
+innerEndpoint (Minus th %% (c : Nil)) = unTooth th (innerEndpoint c)
+innerEndpoint (Replace t _ %% Nil) = t
+innerEndpoint (_ %% _) = bug "impossible"
 
 innerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeL l)) -> Tree (f l)
 innerEndpoint' = sequence >>> map innerEndpoint >>> sequence
 
 outerEndpoint :: forall l. Tree (ChangeL l) -> Tree l
 outerEndpoint c | not (isValidChange c) = bug "invalid Change"
-outerEndpoint (Congruence l % cs) = Tree l (outerEndpoint <$> cs)
-outerEndpoint (Plus th % (c : Nil)) = unTooth th (outerEndpoint c)
-outerEndpoint (Minus _ % (c : Nil)) = outerEndpoint c
-outerEndpoint (Replace t _ % Nil) = t
-outerEndpoint (_ % _) = bug "impossible"
+outerEndpoint (Congruence l %% cs) = Tree l (outerEndpoint <$> cs)
+outerEndpoint (Plus th %% (c : Nil)) = unTooth th (outerEndpoint c)
+outerEndpoint (Minus _ %% (c : Nil)) = outerEndpoint c
+outerEndpoint (Replace t _ %% Nil) = t
+outerEndpoint (_ %% _) = bug "impossible"
 
 outerEndpoint' :: forall f l. Applicative f => Traversable f => Tree (f (ChangeL l)) -> Tree (f l)
 outerEndpoint' = sequence >>> map outerEndpoint >>> sequence

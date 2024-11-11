@@ -3,17 +3,32 @@ module SuperType where
 import Prelude
 
 import Data.Either (Either)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe)
+import Pantograph.TypeList (type (:*), TypeList)
+import Pantograph.TypeList as TL
 
 --------------------------------------------------------------------------------
--- SuperType
+-- SuperTypeStep
 --------------------------------------------------------------------------------
 
-class SuperType l1 l2 | l1 -> l2 where
-  inject :: l2 -> l1
+class SuperTypeStep l1 l2 | l1 -> l2 where
+  injectStep :: l2 -> l1
 
-instance SuperType (Maybe a) a where
-  inject = pure
+instance SuperTypeStep (Maybe a) a where
+  injectStep = pure
 
-instance SuperType (Either a b) b where
-  inject = pure
+instance SuperTypeStep (Either a b) b where
+  injectStep = pure
+
+--------------------------------------------------------------------------------
+-- SuperTypeChain
+--------------------------------------------------------------------------------
+
+class SuperTypeChain a (ts :: TypeList) b | a b -> ts where
+  inject :: b -> a
+
+instance SuperTypeChain a TL.Nil a where
+  inject = identity
+else instance (SuperTypeStep a b, SuperTypeChain b ts c) => SuperTypeChain a (b :* ts) c where
+  inject = injectStep <<< inject
+
