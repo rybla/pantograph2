@@ -32,3 +32,15 @@ instance SuperTypeChain a TL.Nil a where
 else instance (SuperTypeStep a b, SuperTypeChain b ts c) => SuperTypeChain a (b :* ts) c where
   inject = injectStep <<< inject
 
+--------------------------------------------------------------------------------
+-- Example
+--------------------------------------------------------------------------------
+
+ex1 :: Maybe Int
+ex1 = inject 1
+
+ex2 :: Maybe (Maybe Int)
+ex2 = inject 1
+
+ex3 :: Maybe (Maybe (Maybe Int))
+ex3 = inject 1

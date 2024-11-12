@@ -18,7 +18,7 @@ import MetaVar as MetaVar
 import Pantograph.RevList as RevList
 import Pantograph.Trifunctor (class Trifunctor)
 import Pantograph.Utility (todo)
-import SuperType (class SuperTypeStep)
+import SuperType (class SuperTypeChain, class SuperTypeStep, inject)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -136,10 +136,13 @@ applyFunction f a = f a
 infixl 2 applyFunction as <<
 infixl 2 applyFunction as >>
 
-makeAdjBdryDown ch kid = InjMetaL (AdjBdry Down ch) %* [ kid ]
+makeAdjBdryDown :: forall d ch s ls l. SuperTypeChain l ls (AdjL d ch s) => Tree ch -> Tree l -> Tree l
+makeAdjBdryDown ch kid = inject (AdjBdry Down ch :: AdjL d ch s) %* [ kid ]
 
 infix 2 makeAdjBdryDown as ↓
-makeAdjBdryUp ch kid = InjMetaL (AdjBdry Up ch) %* [ kid ]
+
+makeAdjBdryUp :: forall d ch s ls l. SuperTypeChain l ls (AdjL d ch s) => Tree ch -> Tree l -> Tree l
+makeAdjBdryUp ch kid = inject (AdjBdry Up ch :: AdjL d ch s) %* [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
 
@@ -149,12 +152,12 @@ type AdjPat d s = Tree (MetaL (AdjL d (MetaL (ChangeL s)) (MetaL s)))
 
 type AdjSubst d s =
   { adjs :: MetaVar.Subst (Tree (AdjL d (ChangeL s) s))
-  , changes :: MetaVar.Subst (Tree (ChangeL s))
+  , chs :: MetaVar.Subst (Tree (ChangeL s))
   , sorts :: MetaVar.Subst (Tree s)
   }
 
 _adjs = Proxy :: Proxy "adjs"
-_changes = Proxy :: Proxy "changes"
+_chs = Proxy :: Proxy "chs"
 _sorts = Proxy :: Proxy "sorts"
 
 --------------------------------------------------------------------------------
@@ -173,7 +176,7 @@ data AdjRule d s = AdjRule
   , output :: Tree (MetaL (AdjL d (MetaL (ChangeL s)) (MetaL s)))
   }
 
-makeAdjRule input trans output = AdjRule { atTop: empty, input, trans, output }
+makeAdjRule input trans output = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
 makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
 makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }

@@ -41,3 +41,4 @@ getMetaVar x sigma = Map.lookup x sigma # fromMaybe' \_ ->
 getMetaVarFlipped = flip getMetaVar
 
 infix 3 getMetaVarFlipped as !!
+

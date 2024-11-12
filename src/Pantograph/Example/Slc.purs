@@ -12,12 +12,14 @@ import Prelude
 
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
+import Data.List (List(..), intercalate, (:))
 import Data.List as List
 import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
-import MetaVar (getMetaVar, (!!))
+import MetaVar ((!!))
+import Pantograph.Utility (bug)
 import Type.Proxy (Proxy(..))
 
 data S
@@ -31,15 +33,17 @@ derive instance Generic S _
 instance Show S where
   show x = genericShow x
 
--- instance PrettyTreeLbl S where
---   prettyTree Emp Nil = "∅"
---   prettyTree Ext (g : Nil) = "E" <> g
---   prettyTree Var (g : Nil) = "Var " <> g
---   prettyTree Term (g : Nil) = "Term " <> g
---   prettyTree _ _ = bug "invalid S"
+instance PrettyTreeL S where
+  prettyTree Emp Nil = "∅"
+  prettyTree Ext (g : Nil) = "E" <> g
+  prettyTree Var (g : Nil) = "Var " <> g
+  prettyTree Term (g : Nil) = "Term " <> g
+  prettyTree s ss = bug $ "invalid S: " <> show s <> "(" <> (ss # intercalate ", ") <> ")"
 
 instance Eq S where
   eq x = genericEq x
+
+instance IsSortL S
 
 data D
   = Free
@@ -61,15 +65,17 @@ instance Eq D where
 instance Ord D where
   compare x = genericCompare x
 
--- instance PrettyTreeLbl D where
---   prettyTree Free Nil = "F"
---   prettyTree Zero Nil = "Z"
---   prettyTree Suc (n : Nil) = "S" <> n
---   prettyTree Ref (x : Nil) = "#" <> x
---   prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
---   prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
---   prettyTree Hole Nil = "?"
---   prettyTree _ _ = bug "invalid D"
+instance PrettyTreeL D where
+  prettyTree Free Nil = "F"
+  prettyTree Zero Nil = "Z"
+  prettyTree Suc (n : Nil) = "S" <> n
+  prettyTree Ref (x : Nil) = "#" <> x
+  prettyTree Lam (b : Nil) = "(λ " <> b <> ")"
+  prettyTree App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
+  prettyTree Hole Nil = "?"
+  prettyTree d ss = bug $ "invalid D: " <> show d <> "(" <> (ss # intercalate ", ") <> ")"
+
+instance IsDerL D
 
 instance HasDerRules D S where
   derRules = Map.fromFoldable
@@ -115,18 +121,17 @@ instance HasAdjRules D S where
     _dg /\ dg = makeMetaVarAndExpr "dg" (Proxy :: Proxy (ChangeL S))
 
     modifyAdjRules = List.fromFoldable
-      [ makeAdjRule
-          (Var % [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
-          ( \sigma@{ sorts, changes } -> pure sigma
-              { sorts = sorts # Map.insert _g' (changes !! _dg # outerEndpoint) }
-          )
-          (Free // [ _g /\ g' ] % [])
-      , makeAdjRule
-          (Var % [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
-          ( \sigma -> pure sigma
-              { sorts = sigma.sorts #
-                  Map.insert _g (sigma.changes # getMetaVar _dg # outerEndpoint)
-              }
-          )
-          (Zero // [ _g /\ g ] % [])
-      ]
+      -- [ makeAdjRule
+      --     (Var % [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
+      --     ( \{ sorts: _, chs, adjs: _ } ->
+      --         pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+      --     )
+      --     (Free // [ _g /\ g' ] % [])
+      -- , makeAdjRule
+      --     (Var % [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
+      --     ( \{ sorts: _, chs, adjs: _ } ->
+      --         pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+      --     )
+      --     (Zero // [ _g /\ g' ] % [])
+      -- ]
+      []
