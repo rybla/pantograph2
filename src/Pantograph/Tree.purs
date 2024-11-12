@@ -28,17 +28,6 @@ import SuperType (class SuperTypeStep, inject, injectStep)
 
 data Tree a = Tree a (List (Tree a))
 
-infix 3 Tree as %%
-
-makeTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
-makeTree a = Tree a <<< List.fromFoldable
-
-infix 3 makeTree as %*
-
-makeTreeInject a' = Tree (inject a') <<< List.fromFoldable
-
-infix 3 makeTreeInject as %
-
 derive instance Generic (Tree a) _
 
 instance Show a => Show (Tree a) where
@@ -61,6 +50,17 @@ instance Bind Tree where
   bind (Tree x ts) f = let Tree x' ts' = f x in Tree x' (ts' <> map (_ >>= f) ts)
 
 instance Monad Tree
+
+infix 3 Tree as %%
+
+makeTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
+makeTree a = Tree a <<< List.fromFoldable
+
+infix 3 makeTree as %*
+
+makeTreeInject a' = Tree (inject a') <<< List.fromFoldable
+
+infix 3 makeTreeInject as %
 
 class PrettyTreeL a where
   prettyTree :: a -> List String -> String

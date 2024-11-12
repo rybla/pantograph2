@@ -8,8 +8,10 @@ import Data.Bifunctor (class Bifunctor)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.List as List
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe)
+import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
 import MetaVar (MetaVar)
 import MetaVar as MetaVar
@@ -20,12 +22,22 @@ import SuperType (class SuperTypeStep)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
+-- SortL
+--------------------------------------------------------------------------------
+
+class PrettyTreeL d <= IsSortL d
+
+--------------------------------------------------------------------------------
 -- MetaL
 --------------------------------------------------------------------------------
 
 data MetaL l
   = MetaVar MetaVar
   | InjMetaL l
+
+derive instance Functor MetaL
+derive instance Foldable MetaL
+derive instance Traversable MetaL
 
 instance SuperTypeStep (MetaL l) l where
   injectStep = InjMetaL
@@ -35,6 +47,9 @@ makeMetaVarExpr x = MetaVar (MetaVar.MetaVar x) %* []
 
 makeMetaVarAndExpr :: forall l. String -> Proxy l -> MetaVar /\ Tree (MetaL l)
 makeMetaVarAndExpr x _ = MetaVar.MetaVar x /\ makeMetaVarExpr x
+
+makeMetaVarExpr' :: forall l. MetaVar -> Tree (MetaL l)
+makeMetaVarExpr' x = MetaVar x %* []
 
 --------------------------------------------------------------------------------
 -- DerL
@@ -50,11 +65,13 @@ makeDerL d sigma = DerL d (sigma # Map.fromFoldable)
 
 infix 4 makeDerL as //
 
+class PrettyTreeL d <= IsDerL d
+
 --------------------------------------------------------------------------------
 -- DerRule
 --------------------------------------------------------------------------------
 
-type DerRules d s = Map.Map d (DerRule s)
+type DerRules d s = Map d (DerRule s)
 
 class HasDerRules d s where
   derRules :: DerRules d s
@@ -77,6 +94,12 @@ infix 1 makeDerRule as -|
 makeDerRuleFlipped = flip makeDerRule
 
 infix 1 makeDerRuleFlipped as |-
+
+--------------------------------------------------------------------------------
+-- IsLanguage
+--------------------------------------------------------------------------------
+
+class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 
 --------------------------------------------------------------------------------
 -- AdjL
