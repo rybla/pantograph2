@@ -14,7 +14,7 @@ import Data.Symbol (class IsSymbol)
 import Data.Traversable (class Traversable, foldl)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
-import Data.Variant as Variant
+import Data.Variant as V
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
@@ -72,32 +72,32 @@ infix 3 makeTreeInject as %
 class PrettyTreeL a where
   prettyTreeL :: a -> List String -> String
 
-instance PrettyTreeL_Row l => PrettyTreeL (Variant l) where
+instance PrettyTreeLR l => PrettyTreeL (Variant l) where
   prettyTreeL = prettyTreeL_Row (Proxy :: Proxy l)
 
-class PrettyTreeL_Row (l :: Row Type) where
+class PrettyTreeLR (l :: Row Type) where
   prettyTreeL_Row :: Proxy l -> Variant l -> List String -> String
 
-instance (RowToList l rl, PrettyTreeL_RowList l rl) => PrettyTreeL_Row l where
+instance (RowToList l rl, PrettyTreeLRL l rl) => PrettyTreeLR l where
   prettyTreeL_Row p_l = prettyTreeL_RowList p_l (Proxy :: Proxy rl)
 
-class PrettyTreeL_RowList (l :: Row Type) (rl :: RowList Type) | rl -> l where
+class PrettyTreeLRL (l :: Row Type) (rl :: RowList Type) | rl -> l where
   prettyTreeL_RowList :: Proxy l -> Proxy rl -> Variant l -> List String -> String
 
 instance
   ( RowToList l rl
-  , PrettyTreeL_RowList l rl
+  , PrettyTreeLRL l rl
   , Cons x a l l'
   , IsSymbol x
   , PrettyTreeL a
   ) =>
-  PrettyTreeL_RowList l' (RowList.Cons x a rl) where
+  PrettyTreeLRL l' (RowList.Cons x a rl) where
   prettyTreeL_RowList _ _ =
     prettyTreeL_RowList (Proxy :: Proxy l) (Proxy :: Proxy rl)
-      # Variant.on (Proxy :: Proxy x) prettyTreeL
+      # V.on (Proxy :: Proxy x) prettyTreeL
 
-instance PrettyTreeL_RowList () RowList.Nil where
-  prettyTreeL_RowList _ _ = Variant.case_
+instance PrettyTreeLRL () RowList.Nil where
+  prettyTreeL_RowList _ _ = V.case_
 
 --------------------------------------------------------------------------------
 -- Tooth
@@ -178,7 +178,7 @@ _minus = Proxy :: Proxy "minus"
 _replace = Proxy :: Proxy "replace"
 
 id :: forall l l_. Union l l_ (ChangeL l) => TreeV l -> TreeV (ChangeL l)
-id = map Variant.expand
+id = map V.expand
 
 composeChanges :: forall l. TreeV (ChangeL l) -> TreeV (ChangeL l) -> Maybe (TreeV (ChangeL l))
 composeChanges _ _ = todo "composeChanges"
@@ -188,35 +188,35 @@ invertChange _ = todo "invertChange"
 
 innerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
 innerEndpoint (l %% kids) =
-  Variant.case_
+  V.case_
     # (\_ l' -> l' %% (kids <#> innerEndpoint))
-    # Variant.on _plus
+    # V.on _plus
         ( \_ -> case kids of
             c : Nil -> c # innerEndpoint
             _ -> bug "invalid Change"
         )
-    # Variant.on _minus
+    # V.on _minus
         ( \th -> case kids of
             c : Nil -> unTooth th (c # innerEndpoint)
             _ -> bug "invalid Change"
         )
-    # Variant.on _replace (\(t0 /\ _t1) -> t0)
+    # V.on _replace (\(t0 /\ _t1) -> t0)
     $ l
 
 outerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
 outerEndpoint (l %% kids) =
-  Variant.case_
+  V.case_
     # (\_ l' -> l' %% (kids <#> outerEndpoint))
-    # Variant.on _plus
+    # V.on _plus
         ( \th -> case kids of
             c : Nil -> unTooth th (c # outerEndpoint)
             _ -> bug "invalid Change"
         )
-    # Variant.on _minus
+    # V.on _minus
         ( \_ -> case kids of
             c : Nil -> c # outerEndpoint
             _ -> bug "invalid Change"
         )
-    # Variant.on _replace (\(_t0 /\ t1) -> t1)
+    # V.on _replace (\(_t0 /\ t1) -> t1)
     $ l
 

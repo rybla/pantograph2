@@ -10,6 +10,7 @@ import Data.Maybe (fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Pantograph.Pretty (class Pretty, pretty)
+import Pantograph.Tree (class PrettyTreeL)
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -25,6 +26,9 @@ instance Show MetaVar where
 
 instance Pretty MetaVar where
   pretty (MetaVar str) = "$" <> str
+
+instance PrettyTreeL MetaVar where
+  prettyTreeL x _ = pretty x
 
 instance Eq MetaVar where
   eq x = genericEq x
