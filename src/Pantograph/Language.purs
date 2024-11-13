@@ -22,7 +22,7 @@ import Type.Proxy (Proxy(..))
 -- SortL
 --------------------------------------------------------------------------------
 
-class (Eq d, Ord d, PrettyTreeL d) <= IsSortL d
+class (Eq (Variant l), Ord (Variant l), PrettyTreeLR l) <= IsSortL l
 
 --------------------------------------------------------------------------------
 -- MetaL
@@ -52,7 +52,7 @@ makeDer d sigma = Der d (sigma # Map.fromFoldable)
 
 infix 4 makeDer as //
 
-class (Eq d, Ord d, PrettyTreeL d) <= IsDerL d
+class (Eq (Variant d), Ord (Variant d), PrettyTreeLR d) <= IsDerL d
 
 --------------------------------------------------------------------------------
 -- DerRule
@@ -81,6 +81,8 @@ infix 1 makeDerRule as -|
 makeDerRuleFlipped = flip makeDerRule
 
 infix 1 makeDerRuleFlipped as |-
+
+class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 
 --------------------------------------------------------------------------------
 -- AdjL
@@ -132,7 +134,8 @@ _sorts = Proxy :: Proxy "sorts"
 class HasAdjRules d s where
   adjRules :: AdjRules d s
 
-type AdjRules d s = List (AdjRule d s)
+-- type AdjRules d s :: Row Type -> Row Type -> Type
+type AdjRules (d :: Row Type) (s :: Row Type) = List (AdjRule d s)
 
 data AdjRule d s = AdjRule
   { atTop :: Maybe Boolean
