@@ -22,7 +22,6 @@ import Pantograph.Utility (bug, todo)
 import Prim.Row (class Cons, class Union)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
-import SuperType (inject)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -41,7 +40,7 @@ instance Eq a => Eq (Tree a) where
   eq x = genericEq x
 
 instance PrettyTreeL l => Pretty (Tree l) where
-  pretty (l % kids) = prettyTreeL l (pretty <$> kids)
+  pretty (l %% kids) = prettyTreeL l (pretty <$> kids)
 
 derive instance Functor Tree
 derive instance Foldable Tree
@@ -58,12 +57,12 @@ instance Bind Tree where
 
 instance Monad Tree
 
-infix 3 Tree as %
+infixl 4 Tree as %%
 
 makeTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
 makeTree a = Tree a <<< List.fromFoldable
 
-infix 3 makeTree as %*
+infixl 4 makeTree as %
 
 class PrettyTreeL a where
   prettyTreeL :: a -> List String -> String
@@ -183,9 +182,9 @@ invertChange :: forall l. TreeV (ChangeL l) -> TreeV (ChangeL l)
 invertChange _ = todo "invertChange"
 
 innerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
-innerEndpoint (l % kids) =
+innerEndpoint (l %% kids) =
   V.case_
-    # (\_ l' -> l' % (kids <#> innerEndpoint))
+    # (\_ l' -> l' %% (kids <#> innerEndpoint))
     # V.on _plus
         ( \_ -> case kids of
             c : Nil -> c # innerEndpoint
@@ -200,9 +199,9 @@ innerEndpoint (l % kids) =
     $ l
 
 outerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
-outerEndpoint (l % kids) =
+outerEndpoint (l %% kids) =
   V.case_
-    # (\_ l' -> l' % (kids <#> outerEndpoint))
+    # (\_ l' -> l' %% (kids <#> outerEndpoint))
     # V.on _plus
         ( \th -> case kids of
             c : Nil -> unTooth th (c # outerEndpoint)

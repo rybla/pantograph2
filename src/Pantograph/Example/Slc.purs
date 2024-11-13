@@ -18,9 +18,9 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
-import MetaVar as MV
+import MetaVar ((!!))
+import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.Utility (bug)
-import Type.Proxy (Proxy(..))
 
 data S
   = Emp
@@ -80,61 +80,62 @@ instance PrettyTreeL D where
 
 instance IsDerL D
 
--- instance HasDerRules D S where
---   derRules = Map.fromFoldable
---     [ Free /\
---         ( []
---             |- (Var % [ g ])
---         )
---     , Zero /\
---         ( [] |-
---             (Var % [ Ext % [ g ] ])
---         )
---     , Suc /\
---         ( [ Var % [ g ] ] |-
---             (Var % [ Ext % [ g ] ])
---         )
---     , Ref /\
---         ( [ Var % [ g ] ] |-
---             (Term % [ g ])
---         )
---     , Lam /\
---         ( [ Term % [ Ext % [ g ] ] ] |-
---             (Term % [ g ])
---         )
---     , App /\
---         ( [ Term % [ g ]
---           , Term % [ g ]
---           ] |-
---             (Term % [ g ])
---         )
---     , Hole /\
---         ( [] |-
---             (Term % [ g ])
---         )
---     ]
---     where
---     g = makeMetaVarExpr "g"
+instance HasDerRules D S where
+  derRules = Map.fromFoldable
+    [ Free /\
+        ( []
+            |- (Var %^ [ g ])
+        )
+    , Zero /\
+        ( [] |-
+            (Var %^ [ Ext %^ [ g ] ])
+        )
+    , Suc /\
+        ( [ Var %^ [ g ] ] |-
+            (Var %^ [ Ext %^ [ g ] ])
+        )
+    , Ref /\
+        ( [ Var %^ [ g ] ] |-
+            (Term %^ [ g ])
+        )
+    , Lam /\
+        ( [ Term %^ [ Ext %^ [ g ] ] ] |-
+            (Term %^ [ g ])
+        )
+    , App /\
+        ( [ Term %^ [ g ]
+          , Term %^ [ g ]
+          ] |-
+            (Term %^ [ g ])
+        )
+    , Hole /\
+        ( [] |-
+            (Term %^ [ g ])
+        )
+    ]
+    where
+    g = makeMetaVar' "g"
 
--- instance HasAdjRules D S where
---   adjRules = modifyAdjRules
---     where
---     _g /\ g = makeMetaVarAndExpr "g" (Proxy :: Proxy S)
---     _g' /\ g' = makeMetaVarAndExpr "g'" (Proxy :: Proxy S)
---     _dg /\ dg = makeMetaVarAndExpr "dg" (Proxy :: Proxy (ChangeL S))
+instance IsLanguage D S
 
---     modifyAdjRules = List.fromFoldable
---       -- [ makeAdjRule
---       --     (Var % [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
---       --     ( \{ sorts: _, chs, adjs: _ } ->
---       --         pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
---       --     )
---       --     (Free // [ _g /\ g' ] % [])
---       -- , makeAdjRule
---       --     (Var % [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
---       --     ( \{ sorts: _, chs, adjs: _ } ->
---       --         pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
---       --     )
---       --     (Zero // [ _g /\ g' ] % [])
---       -- ]
---       []
+instance HasAdjRules D S where
+  adjRules = modifyAdjRules <> propagationAdjRules
+    where
+    _g /\ g = defAndMakeMetaVar "g"
+    _g' /\ g' = defAndMakeMetaVar "g'"
+    _dg /\ dg = defAndMakeMetaVar "dg"
+
+    modifyAdjRules = List.fromFoldable
+      [ makeAdjRule
+          (Var %^ [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
+          (Free // [ _g /\ g' ] % [])
+          ( \{ sorts: _, chs, adjs: _ } ->
+              pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+          )
+      , makeAdjRule
+          (Var %^ [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
+          (Zero // [ _g /\ g' ] % [])
+          ( \{ sorts: _, chs, adjs: _ } ->
+              pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+          )
+      ]

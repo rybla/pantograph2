@@ -27,6 +27,10 @@ type SortL s l = (sort :: s | l)
 
 _sort = Proxy :: Proxy "sort"
 
+makeSort s kids = V.inj _sort s % kids
+
+infix 3 makeSort as %^
+
 class (Eq s, Ord s, PrettyTreeL s) <= IsSortL s
 
 --------------------------------------------------------------------------------
@@ -38,7 +42,7 @@ type MetaL l = (metaVar :: MetaVar | l)
 _metaVar = Proxy :: Proxy "metaVar"
 
 makeMetaVar :: forall l. MetaVar -> TreeV (metaVar :: MetaVar | l)
-makeMetaVar x = V.inj _metaVar x %* []
+makeMetaVar x = V.inj _metaVar x % []
 
 defAndMakeMetaVar :: forall l. String -> MetaVar /\ TreeV (metaVar :: MetaVar | l)
 defAndMakeMetaVar str = x /\ makeMetaVar x
@@ -46,7 +50,7 @@ defAndMakeMetaVar str = x /\ makeMetaVar x
   x = MetaVar.MetaVar str
 
 makeMetaVar' :: forall l. String -> TreeV (metaVar :: MetaVar | l)
-makeMetaVar' x = V.inj _metaVar (MetaVar.MetaVar x) %* []
+makeMetaVar' x = V.inj _metaVar (MetaVar.MetaVar x) % []
 
 --------------------------------------------------------------------------------
 -- DerL
@@ -60,7 +64,7 @@ data Der d sl = Der d (MetaVar.Subst (TreeV sl))
 
 makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
 
-infix 4 makeDer as //
+infix 5 makeDer as //
 
 class (Eq d, Ord d, PrettyTreeL d) <= IsDerL d
 
@@ -105,8 +109,8 @@ _bdry = Proxy :: Proxy "bdry"
 
 data BdryDir = Up | Down
 
-makeAdjBdryDownPlus l ls kid rs = V.inj _plus (Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %* [ kid ]
-makeAdjBdryDownMinus l ls kid rs = V.inj _minus (Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %* [ kid ]
+makeAdjBdryDownPlus l ls kid rs = V.inj _plus (Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
+makeAdjBdryDownMinus l ls kid rs = V.inj _minus (Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
 
 infixl 2 makeAdjBdryDownPlus as %+
 infixl 2 makeAdjBdryDownMinus as %-
@@ -117,12 +121,12 @@ infixl 2 applyFunction as <<
 infixl 2 applyFunction as >>
 
 makeAdjBdryDown :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
-makeAdjBdryDown ch kid = V.inj _bdry (Bdry Down ch) %* [ kid ]
+makeAdjBdryDown ch kid = V.inj _bdry (Bdry Down ch) % [ kid ]
 
 infix 2 makeAdjBdryDown as ↓
 
 makeAdjBdryUp :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
-makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) %* [ kid ]
+makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
 
@@ -152,7 +156,7 @@ data AdjRule d s = AdjRule
   , output :: TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
   }
 
-makeAdjRule input trans output = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
+makeAdjRule input output trans = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
 makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
 makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
