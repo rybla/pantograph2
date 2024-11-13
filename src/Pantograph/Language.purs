@@ -4,18 +4,18 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (empty)
+import Data.Foldable (fold)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Variant (Variant)
 import Data.Variant as V
 import MetaVar (MetaVar)
 import MetaVar as MetaVar
 import Pantograph.RevList as RevList
-import Pantograph.Utility (todo)
+import Pantograph.Utility (expand1, todo, uniqueList)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -51,6 +51,23 @@ defAndMakeMetaVar str = x /\ makeMetaVar x
 
 makeMetaVar' :: forall l. String -> TreeV (metaVar :: MetaVar | l)
 makeMetaVar' x = V.inj _metaVar (MetaVar.MetaVar x) % []
+
+renameMVs :: forall l. (MetaVar -> MetaVar) -> TreeV (MetaL l) -> TreeV (MetaL l)
+renameMVs f = map
+  ( V.case_
+      # (\_ l -> expand1 (Proxy :: Proxy "metaVar") l)
+      # V.on _metaVar (\x -> V.inj _metaVar (f x))
+  )
+
+collectMVs :: forall l. TreeV (MetaL l) -> List MetaVar
+collectMVs =
+  map
+    ( V.case_
+        # mempty
+        # V.on _metaVar pure
+    )
+    >>> fold
+    >>> uniqueList
 
 --------------------------------------------------------------------------------
 -- DerL

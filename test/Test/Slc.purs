@@ -1,20 +1,21 @@
 module Test.Slc where
 
-import Pantograph.Example.Slc
-import Pantograph.Language
-import Pantograph.Propagation
-import Pantograph.Tree
+-- import Pantograph.Example.Slc
+-- import Pantograph.Language
+-- import Pantograph.Propagation
+-- import Pantograph.Tree
 import Prelude hiding (zero)
 
-import Data.Map as Map
-import Data.Maybe (Maybe(..))
-import Data.Tuple.Nested ((/\))
-import Effect.Aff (Error)
-import Effect.Class.Console as Console
-import Pantograph.EitherF (EitherF(..))
-import Pantograph.Pretty (pretty)
-import Test.Common (shouldEqual_pretty)
-import Test.Spec (Spec, describe, it)
+-- import Data.Map as Map
+-- import Data.Maybe (Maybe(..))
+-- import Data.Tuple.Nested ((/\))
+-- import Effect.Aff (Error)
+-- import Effect.Class.Console as Console
+-- import Pantograph.EitherF (EitherF(..))
+-- import Pantograph.Pretty (pretty)
+-- import Test.Common (shouldEqual_pretty)
+-- import Test.Spec (Spec, describe, it)
+import Test.Spec (Spec, describe)
 
 -- emp = Empty %^ []
 -- ext g = Ext %^ [ g ]

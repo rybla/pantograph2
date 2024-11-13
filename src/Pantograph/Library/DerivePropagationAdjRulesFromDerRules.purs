@@ -11,10 +11,8 @@ import Data.List as List
 import Data.Map as Map
 import Data.Tuple.Nested ((/\))
 import Data.Variant as V
-import MetaVar (MetaVar, addPrefix, addSuffix)
+import MetaVar (addPrefix, addSuffix)
 import MetaVar as MV
-import Pantograph.Utility (expand1, uniqueList)
-import Type.Prelude (Proxy(..))
 
 propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
 propagationAdjRules =
@@ -56,20 +54,3 @@ propagationAdjRules =
                   }
               )
           ]
-
-renameMVs :: forall l. (MetaVar -> MetaVar) -> TreeV (MetaL l) -> TreeV (MetaL l)
-renameMVs f = map
-  ( V.case_
-      # (\_ l -> expand1 (Proxy :: Proxy "metaVar") l)
-      # V.on _metaVar (\x -> V.inj _metaVar (f x))
-  )
-
-collectMVs :: forall l. TreeV (MetaL l) -> List MetaVar
-collectMVs =
-  map
-    ( V.case_
-        # mempty
-        # V.on _metaVar pure
-    )
-    >>> fold
-    >>> uniqueList
