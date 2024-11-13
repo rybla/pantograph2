@@ -17,4 +17,4 @@ main = do
 ex1 :: forall a. Union a a a => Proxy a -> Record a -> Record a
 ex1 _ = identity
 
-ex1_ = ex1 (Proxy :: Proxy (x :: Int))
+-- ex1_ = ex1 (Proxy :: Proxy (x :: Int))

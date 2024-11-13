@@ -10,12 +10,14 @@ import Data.List (List(..))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Monoid (mempty)
 import Data.Set as Set
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
 import MetaVar (MetaVar, (!!))
 import MetaVar as MetaVar
+import Pantograph.Utility (todo, uniqueList)
 import Prim.Row (class Nub, class Union)
 import SuperType (inject)
 import Type.Prelude (Proxy(..))
@@ -36,17 +38,28 @@ propagationAdjRules =
               -- freshen each sort metavar in output sort as a new sort change metavar which will be matched against in the down change of the adjust boundary here
               ( ( sort # map
                     ( V.case_
-                        # (\_ l -> ?a) -- expand' (Proxy :: Proxy (MetaL (ChangeL s))) (l :: Variant s))
+                        # V.on _sort (\s -> V.inj _sort s)
                         # V.on _metaVar (\(MetaVar.MetaVar x) -> V.inj _metaVar (MetaVar.MetaVar ("chi_" <> x)))
                     )
                 )
                   ↓
-                    ?A
+                    d
+                  //
+                    ( kids
+                        # map (\{ sort: s } -> s)
+                        # foldMap collectMetaVars
+                        # map (\x -> x /\ makeMetaVar x)
+                    )
+                  %*
+                    ( kidMetaVars
+                        # map (\x -> makeMetaVar x)
+                    )
               )
               ( \{ chs, sorts, adjs } -> pure
                   { chs: [], sorts: [], adjs: [] }
               )
-              ?a
+              -- ?a
+              (todo "")
           ]
 
 -- propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
@@ -54,12 +67,15 @@ propagationAdjRules =
 --   (derRules :: Map d (DerRule s))
 --     # (Map.toUnfoldable :: _ -> List _)
 
--- collectMetaVars =
---   map
---     ( \x -> x # foldMap case _ of
---         InjMetaL l -> Nil
---         MetaVar x -> pure x
---     )
---     >>> fold
---     >>> Set.fromFoldable
---     >>> Set.toUnfoldable
+collectMetaVars
+  :: forall l
+   . TreeV (MetaL l)
+  -> List MetaVar
+collectMetaVars =
+  map
+    ( V.case_
+        # mempty
+        # V.on _metaVar pure
+    )
+    >>> fold
+    >>> uniqueList

@@ -37,11 +37,16 @@ type MetaL l = (metaVar :: MetaVar | l)
 
 _metaVar = Proxy :: Proxy "metaVar"
 
-makeMetaVarTreeV :: forall l. String -> TreeV (metaVar :: MetaVar | l)
-makeMetaVarTreeV x = V.inj _metaVar (MetaVar.MetaVar x) %* []
+makeMetaVar :: forall l. MetaVar -> TreeV (metaVar :: MetaVar | l)
+makeMetaVar x = V.inj _metaVar x %* []
 
-makeMetaVarAndTreeV :: forall l. String -> MetaVar /\ TreeV (metaVar :: MetaVar | l)
-makeMetaVarAndTreeV x = MetaVar.MetaVar x /\ makeMetaVarTreeV x
+defAndMakeMetaVar :: forall l. String -> MetaVar /\ TreeV (metaVar :: MetaVar | l)
+defAndMakeMetaVar str = x /\ makeMetaVar x
+  where
+  x = MetaVar.MetaVar str
+
+makeMetaVar' :: forall l. String -> TreeV (metaVar :: MetaVar | l)
+makeMetaVar' x = V.inj _metaVar (MetaVar.MetaVar x) %* []
 
 --------------------------------------------------------------------------------
 -- DerL
@@ -53,7 +58,7 @@ _der = Proxy :: Proxy "der"
 
 data Der d sl = Der d (MetaVar.Subst (TreeV sl))
 
-makeDer d sigma = Der d (sigma # Map.fromFoldable)
+makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
 
 infix 4 makeDer as //
 

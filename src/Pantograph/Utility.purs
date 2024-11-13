@@ -2,20 +2,19 @@ module Pantograph.Utility where
 
 import Prelude
 
+import Data.Set as Set
 import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
-import Data.Either (Either(..))
+import Data.Either (Either)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Symbol (class IsSymbol, reflectSymbol)
-import Data.Tuple.Nested (type (/\), (/\))
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.Row (class Cons, class Lacks)
-import Prim.Row as Row
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
 import Record as Record
@@ -46,6 +45,9 @@ tryFirst _ Nil = empty
 tryFirst f (x : xs) = case f x of
   Nothing -> tryFirst f xs
   Just y -> pure y
+
+uniqueList :: forall a. Ord a => List a -> List a
+uniqueList = Set.fromFoldable >>> Set.toUnfoldable
 
 --------------------------------------------------------------------------------
 -- FromObjectToRecord
