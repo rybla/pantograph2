@@ -22,7 +22,12 @@ import Type.Proxy (Proxy(..))
 -- SortL
 --------------------------------------------------------------------------------
 
-class (Eq (Variant l), Ord (Variant l), PrettyTreeLR l) <= IsSortL l
+type SortL :: Type -> Row Type -> Row Type
+type SortL s l = (sort :: s | l)
+
+_sort = Proxy :: Proxy "sort"
+
+class (Eq s, Ord s, PrettyTreeL s) <= IsSortL s
 
 --------------------------------------------------------------------------------
 -- MetaL
@@ -42,33 +47,32 @@ makeMetaVarAndTreeV x = MetaVar.MetaVar x /\ makeMetaVarTreeV x
 -- DerL
 --------------------------------------------------------------------------------
 
-type DerL d s l = (der :: Der d s | l)
+type DerL d sl l = (der :: Der d sl | l)
 
 _der = Proxy :: Proxy "der"
 
-data Der d s = Der (Variant d) (MetaVar.Subst (TreeV s))
+data Der d sl = Der d (MetaVar.Subst (TreeV sl))
 
 makeDer d sigma = Der d (sigma # Map.fromFoldable)
 
 infix 4 makeDer as //
 
-class (Eq (Variant d), Ord (Variant d), PrettyTreeLR d) <= IsDerL d
+class (Eq d, Ord d, PrettyTreeL d) <= IsDerL d
 
 --------------------------------------------------------------------------------
 -- DerRule
 --------------------------------------------------------------------------------
 
-type DerRules d s = Map (Variant d) (DerRule s)
+type DerRules d s = Map d (DerRule s)
 
 class HasDerRules d s where
   derRules :: DerRules d s
 
 data DerRule s = DerRule
-  { sort :: TreeV (MetaL s)
-  , kids :: List { sort :: TreeV (MetaL s) }
+  { sort :: TreeV (MetaL (SortL s ()))
+  , kids :: List { sort :: TreeV (MetaL (SortL s ())) }
   }
 
-_sort = Proxy :: Proxy "sort"
 _kids = Proxy :: Proxy "kids"
 
 makeDerRule sort kids = DerRule
@@ -107,20 +111,20 @@ applyFunction f a = f a
 infixl 2 applyFunction as <<
 infixl 2 applyFunction as >>
 
-makeAdjBdryDown :: forall l ch. TreeV ch -> TreeV (bdry :: Bdry ch | l) -> TreeV (bdry :: Bdry ch | l)
+makeAdjBdryDown :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
 makeAdjBdryDown ch kid = V.inj _bdry (Bdry Down ch) %* [ kid ]
 
 infix 2 makeAdjBdryDown as ↓
 
-makeAdjBdryUp :: forall l ch. TreeV ch -> TreeV (bdry :: Bdry ch | l) -> TreeV (bdry :: Bdry ch | l)
+makeAdjBdryUp :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
 makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) %* [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
 
 type AdjSubst d s =
-  { adjs :: MetaVar.Subst (TreeV (AdjL (ChangeL s) (DerL d s ())))
-  , chs :: MetaVar.Subst (TreeV (ChangeL s))
-  , sorts :: MetaVar.Subst (TreeV s)
+  { adjs :: MetaVar.Subst (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+  , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
+  , sorts :: MetaVar.Subst (TreeV (SortL s ()))
   }
 
 _adjs = Proxy :: Proxy "adjs"
@@ -134,14 +138,13 @@ _sorts = Proxy :: Proxy "sorts"
 class HasAdjRules d s where
   adjRules :: AdjRules d s
 
--- type AdjRules d s :: Row Type -> Row Type -> Type
-type AdjRules (d :: Row Type) (s :: Row Type) = List (AdjRule d s)
+type AdjRules d s = List (AdjRule d s)
 
 data AdjRule d s = AdjRule
   { atTop :: Maybe Boolean
-  , input :: TreeV (MetaL (AdjL (MetaL (ChangeL s)) (DerL d (MetaL s) ())))
+  , input :: TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
   , trans :: AdjSubst d s -> Maybe (AdjSubst d s)
-  , output :: TreeV (MetaL (AdjL (MetaL (ChangeL s)) (DerL d (MetaL s) ())))
+  , output :: TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
   }
 
 makeAdjRule input trans output = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
@@ -155,8 +158,8 @@ makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pu
 
 matchTreeAdjL
   :: forall d s
-   . TreeV (MetaL (AdjL (MetaL (ChangeL s)) (DerL d (MetaL s) ())))
-  -> TreeV (AdjL (ChangeL s) (DerL d s ()))
+   . TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
+  -> TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
   -> Maybe (AdjSubst d s)
 matchTreeAdjL = todo "matchTreeAdjL"
 

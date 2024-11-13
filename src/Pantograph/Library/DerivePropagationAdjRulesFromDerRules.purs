@@ -12,9 +12,17 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.Variant (Variant)
+import Data.Variant as V
 import MetaVar (MetaVar, (!!))
 import MetaVar as MetaVar
+import Prim.Row (class Nub, class Union)
 import SuperType (inject)
+import Type.Prelude (Proxy(..))
+import Unsafe.Coerce (unsafeCoerce)
+
+-- expand' :: forall lt a gt gt'. Union a lt gt => Nub gt gt' => Proxy a -> Variant lt -> Variant gt'
+-- expand' _ = unsafeCoerce
 
 propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
 propagationAdjRules =
@@ -26,52 +34,19 @@ propagationAdjRules =
         in
           [ makeAdjRule
               -- freshen each sort metavar in output sort as a new sort change metavar which will be matched against in the down change of the adjust boundary here
-              ( ( (
-                    -- sort # map case _ of
-                    --   MetaVar (MetaVar.MetaVar x) -> MetaVar (MetaVar.MetaVar ("chi_" <> x))
-                    --   InjMetaL s -> InjMetaL (inject s)
-                    sort
-                      # map ?a
-
-                  ) :: TreeV (MetaL (ChangeL s))
-                )
-                  ↓ d
-                  //
-                    ( -- the sort metavars here are basically redundant, since we'll get all necessary information from the unified sort change metavars matched against in the down change
-                      kids
-                        # map (\{ sort: s } -> s)
-                        # ?collectMetaVars
-                        -- # map (\x -> x /\ ((MetaVar x :: MetaL s) % [])) :: List (MetaVar /\ Tree (MetaL s))
-                        # map (\x -> x /\ ?a) :: List (MetaVar /\ TreeV (MetaL s))
+              ( ( sort # map
+                    ( V.case_
+                        # (\_ l -> ?a) -- expand' (Proxy :: Proxy (MetaL (ChangeL s))) (l :: Variant s))
+                        # V.on _metaVar (\(MetaVar.MetaVar x) -> V.inj _metaVar (MetaVar.MetaVar ("chi_" <> x)))
                     )
-                  %
-                    -- ( ( kidMetaVars
-                    --       # map ?makeMetaVarExpr'
-                    --   ) :: List (TreeV (MetaL (AdjL (MetaL (ChangeL s)) (DerL d (MetaL s) ()))))
-                    -- )
-                    ?a
+                )
+                  ↓
+                    ?A
               )
               ( \{ chs, sorts, adjs } -> pure
-                  { chs: []
-                  , sorts: []
-                  , adjs: [] -- kidMetaVars # map \x -> x /\ (?a ↓ (adjs !! x))
-                  }
+                  { chs: [], sorts: [], adjs: [] }
               )
-              ( d
-                  //
-                    ( kids
-                        # map (\{ sort: s } -> s)
-                        # ?collectMetaVars
-                        -- # map (\x -> x /\ ((MetaVar x :: MetaL s) % [])) :: List (MetaVar /\ Tree (MetaL s))
-                        # map (\x -> x /\ ?a) :: List (MetaVar /\ TreeV (MetaL s))
-                    )
-                  %
-                    ( ( kidMetaVars
-                          -- # map makeMetaVarExpr'
-                          # map ?a
-                      ) :: List (TreeV (MetaL (AdjL (MetaL (ChangeL s)) (DerL d (MetaL s) ()))))
-                    )
-              )
+              ?a
           ]
 
 -- propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
