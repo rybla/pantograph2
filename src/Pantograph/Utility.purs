@@ -2,7 +2,6 @@ module Pantograph.Utility where
 
 import Prelude
 
-import Data.Set as Set
 import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
 import Data.Either (Either)
@@ -10,7 +9,9 @@ import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Set as Set
 import Data.Symbol (class IsSymbol, reflectSymbol)
+import Data.Variant (Variant)
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
@@ -19,6 +20,7 @@ import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
 import Record as Record
 import Type.Prelude (Proxy(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 todo :: forall a. String -> a
 todo msg = unsafeCrashWith $ "TODO: " <> msg
@@ -48,6 +50,9 @@ tryFirst f (x : xs) = case f x of
 
 uniqueList :: forall a. Ord a => List a -> List a
 uniqueList = Set.fromFoldable >>> Set.toUnfoldable
+
+expand1 :: forall x a l l'. Cons x a l l' => Proxy x -> Variant l -> Variant l'
+expand1 _ = unsafeCoerce
 
 --------------------------------------------------------------------------------
 -- FromObjectToRecord

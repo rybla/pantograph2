@@ -6,71 +6,65 @@ import Pantograph.Tree
 import Prelude
 
 import Data.FunctorWithIndex (mapWithIndex)
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as List
-import Data.Map (Map)
 import Data.Map as Map
-import Data.Monoid (mempty)
-import Data.Set as Set
-import Data.Tuple.Nested (type (/\), (/\))
-import Data.Variant (Variant)
+import Data.Tuple.Nested ((/\))
 import Data.Variant as V
-import MetaVar (MetaVar, (!!))
-import MetaVar as MetaVar
-import Pantograph.Utility (todo, uniqueList)
-import Prim.Row (class Nub, class Union)
-import SuperType (inject)
+import MetaVar (MetaVar, addPrefix, addSuffix)
+import MetaVar as MV
+import Pantograph.Utility (expand1, uniqueList)
 import Type.Prelude (Proxy(..))
-import Unsafe.Coerce (unsafeCoerce)
-
--- expand' :: forall lt a gt gt'. Union a lt gt => Nub gt gt' => Proxy a -> Variant lt -> Variant gt'
--- expand' _ = unsafeCoerce
 
 propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
 propagationAdjRules =
   (derRules :: DerRules d s)
     # (Map.toUnfoldable :: _ -> List _)
-    # foldMap \(d /\ DerRule { sort, kids }) -> List.fromFoldable
+    # foldMap \(d /\ DerRule rule) -> List.fromFoldable
         let
-          kidMetaVars = kids # mapWithIndex \i _ -> MetaVar.MetaVar ("kid_" <> show i)
+          kidMVs = rule.kids # mapWithIndex \i _ -> MV.MetaVar ("kid_" <> show i)
+          -- kidSortChMVs = kidSortMVs # map (MV.addPrefix "ch")
+          kidSortMVs = rule.kids # map (\{ sort: s } -> s) # foldMap collectMetaVars
         in
           [ makeAdjRule
               -- freshen each sort metavar in output sort as a new sort change metavar which will be matched against in the down change of the adjust boundary here
-              ( ( sort # map
-                    ( V.case_
-                        # V.on _sort (\s -> V.inj _sort s)
-                        # V.on _metaVar (\(MetaVar.MetaVar x) -> V.inj _metaVar (MetaVar.MetaVar ("chi_" <> x)))
-                    )
-                )
+              ( (rule.sort # map V.expand # renameMVs (addPrefix "ch"))
                   ↓
                     d
                   //
-                    ( kids
-                        # map (\{ sort: s } -> s)
-                        # foldMap collectMetaVars
-                        # map (\x -> x /\ makeMetaVar x)
-                    )
+                    (kidSortMVs # map (\x -> x /\ makeMetaVar x))
                   %*
-                    ( kidMetaVars
-                        # map (\x -> makeMetaVar x)
+                    (kidMVs # map (\x -> makeMetaVar x))
+              )
+              ( \{ chs, sorts: _, adjs } -> pure
+                  { chs: Map.toUnfoldable chs :: List _
+                  , sorts: kidSortMVs # map (\x -> (x # addPrefix "outer") /\ (chs MV.!! (x # addPrefix "ch") # outerEndpoint))
+                  , adjs: Map.toUnfoldable adjs :: List _
+                  }
+              )
+              ( d
+                  //
+                    (kidSortMVs # map (addSuffix "outer") # map (\x -> x /\ makeMetaVar x))
+                  %*
+                    ( kidMVs `List.zip` rule.kids
+                        # map
+                            ( \(kidMV /\ { sort }) ->
+                                (sort # map V.expand # renameMVs (MV.addPrefix "ch"))
+                                  ↓
+                                    makeMetaVar kidMV
+                            )
                     )
               )
-              ( \{ chs, sorts, adjs } -> pure
-                  { chs: [], sorts: [], adjs: [] }
-              )
-              -- ?a
-              (todo "")
           ]
 
--- propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
--- propagationAdjRules =
---   (derRules :: Map d (DerRule s))
---     # (Map.toUnfoldable :: _ -> List _)
+renameMVs :: forall l. (MetaVar -> MetaVar) -> TreeV (MetaL l) -> TreeV (MetaL l)
+renameMVs f = map
+  ( V.case_
+      # (\_ l -> expand1 (Proxy :: Proxy "metaVar") l)
+      # V.on _metaVar (\x -> V.inj _metaVar (f x))
+  )
 
-collectMetaVars
-  :: forall l
-   . TreeV (MetaL l)
-  -> List MetaVar
+collectMetaVars :: forall l. TreeV (MetaL l) -> List MetaVar
 collectMetaVars =
   map
     ( V.case_

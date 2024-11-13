@@ -46,3 +46,8 @@ getMetaVarFlipped = flip getMetaVar
 
 infix 3 getMetaVarFlipped as !!
 
+addPrefix :: String -> MetaVar -> MetaVar
+addPrefix str1 (MetaVar str2) = MetaVar (str1 <> "_" <> str2)
+
+addSuffix :: String -> MetaVar -> MetaVar
+addSuffix str1 (MetaVar str2) = MetaVar (str2 <> "_" <> str1)
