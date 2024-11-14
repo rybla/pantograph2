@@ -52,15 +52,3 @@ spec = describe "Slc" do
 
   pure unit
 
--- shouldEqual_propagateFixpoint
---   :: forall d s
---    . IsAdjustLanguage d s
---   => Tree (DerLbl d s)
---   -> Tree (AdjustLbl d s)
---   -> Spec Unit
--- shouldEqual_propagateFixpoint d pd = do
---   it (pretty pd) $
---     shouldEqual_pretty
---       d
---       (fromAdjustDerivToDeriv $ propagateFixpoint adjustRules $ pd)
---   pure unit

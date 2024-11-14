@@ -4,18 +4,23 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (empty)
+import Data.Eq.Generic (genericEq)
 import Data.Foldable (fold)
-import Data.List (List)
+import Data.Generic.Rep (class Generic)
+import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe)
+import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MetaVar
+import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (expand1, todo, uniqueList)
+import Pantograph.Utility (bug, expand1, todo, uniqueList)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -31,7 +36,7 @@ makeSort s kids = V.inj _sort s % kids
 
 infix 3 makeSort as %^
 
-class (Eq s, Ord s, PrettyTreeL s) <= IsSortL s
+class (Eq s, Ord s, Show s, PrettyTreeL s) <= IsSortL s
 
 --------------------------------------------------------------------------------
 -- MetaL
@@ -79,11 +84,22 @@ _der = Proxy :: Proxy "der"
 
 data Der d sl = Der d (MetaVar.Subst (TreeV sl))
 
+derive instance Generic (Der d sl) _
+
+instance (Eq d, Eq (Variant sl)) => Eq (Der d sl) where
+  eq x = genericEq x
+
+instance (Show d, Show (Variant sl)) => Show (Der d sl) where
+  show x = genericShow x
+
+instance PrettyTreeL d => PrettyTreeL (Der d sl) where
+  prettyTreeL (Der d _sigma) kids = prettyTreeL d kids
+
 makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
 
 infix 5 makeDer as //
 
-class (Eq d, Ord d, PrettyTreeL d) <= IsDerL d
+class (Eq d, Ord d, Show d, PrettyTreeL d) <= IsDerL d
 
 --------------------------------------------------------------------------------
 -- DerRule
@@ -122,12 +138,35 @@ type AdjL ch l = (bdry :: Bdry ch | l)
 
 data Bdry ch = Bdry BdryDir (TreeV ch)
 
+derive instance Generic (Bdry ch) _
+
+instance Eq (Variant ch) => Eq (Bdry ch) where
+  eq x = genericEq x
+
+instance Show (Variant ch) => Show (Bdry ch) where
+  show x = genericShow x
+
+instance PrettyTreeL_R ch => PrettyTreeL (Bdry ch) where
+  prettyTreeL (Bdry dir ch) (kid : Nil) = pretty ch <> " " <> pretty dir <> " " <> pretty kid
+  prettyTreeL (Bdry dir ch) _ = bug "invalid Bdry"
+
 _bdry = Proxy :: Proxy "bdry"
 
 data BdryDir = Up | Down
 
-makeAdjBdryDownPlus l ls kid rs = V.inj _plus (Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
-makeAdjBdryDownMinus l ls kid rs = V.inj _minus (Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
+derive instance Generic BdryDir _
+
+derive instance Eq BdryDir
+
+instance Show BdryDir where
+  show x = genericShow x
+
+instance Pretty BdryDir where
+  pretty Up = "↑"
+  pretty Down = "↓"
+
+makeAdjBdryDownPlus l ls kid rs = V.inj _plus (PlusChange $ Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
+makeAdjBdryDownMinus l ls kid rs = V.inj _minus (MinusChange $ Tooth (V.inj _sort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) % [ kid ]
 
 infixl 2 makeAdjBdryDownPlus as %+
 infixl 2 makeAdjBdryDownMinus as %-
@@ -160,6 +199,8 @@ _sorts = Proxy :: Proxy "sorts"
 --------------------------------------------------------------------------------
 -- AdjRules
 --------------------------------------------------------------------------------
+
+class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
 class HasAdjRules d s where
   adjRules :: AdjRules d s

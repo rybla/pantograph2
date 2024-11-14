@@ -15,8 +15,13 @@ import Data.String as String
 import Data.Symbol (class IsSymbol, reflectSymbol)
 import Data.Tuple (Tuple)
 import Data.Tuple.Nested ((/\))
-import Prim.Row (class Nub)
+import Data.Variant (Variant)
+import Data.Variant as V
+import Pantograph.Utility (todo)
+import Prim.Row (class Cons, class Nub)
+import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RL
+import Prim.RowList as RowList
 import Record.Unsafe (unsafeGet)
 import Type.Prelude (Proxy(..))
 
@@ -61,6 +66,10 @@ instance (Pretty k, Pretty v) => Pretty (Map k v) where
 instance Pretty (a -> b) where
   pretty _ = "<function>"
 
+--------------------------------------------------------------------------------
+-- Record
+--------------------------------------------------------------------------------
+
 instance prettyRecord ::
   ( Nub rs rs
   , RL.RowToList rs ls
@@ -97,6 +106,40 @@ else instance prettyRecordFieldsCons ::
     key = reflectSymbol (Proxy :: Proxy key)
     focus = unsafeGet key record :: focus
     tail = prettyRecordFields (Proxy :: Proxy rowlistTail) record
+
+--------------------------------------------------------------------------------
+-- Variant
+--------------------------------------------------------------------------------
+
+instance PrettyVariantR r => Pretty (Variant r) where
+  pretty = todo ""
+
+class PrettyVariantR r where
+  prettyVariantR :: Proxy r -> Variant r -> String
+
+instance (RowToList r rl, PrettyVariantRL r rl) => PrettyVariantR r where
+  prettyVariantR p_r = prettyVariantRL p_r (Proxy :: Proxy rl)
+
+class PrettyVariantRL r (rl :: RowList Type) | rl -> r where
+  prettyVariantRL :: Proxy r -> Proxy rl -> Variant r -> String
+
+instance PrettyVariantRL () RowList.Nil where
+  prettyVariantRL _ _ = V.case_
+
+instance
+  ( IsSymbol x
+  , Pretty a
+  , Cons x a r r'
+  , PrettyVariantRL r rl
+  ) =>
+  PrettyVariantRL r' (RowList.Cons x a rl) where
+  prettyVariantRL _ _ =
+    V.on (Proxy :: Proxy x) pretty
+      $ prettyVariantRL (Proxy :: Proxy r) (Proxy :: Proxy rl)
+
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
 
 indent :: Int -> String -> String
 indent i str =

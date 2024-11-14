@@ -4,7 +4,7 @@ import Prelude
 
 import Control.MonadPlus (class Plus, empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable)
+import Data.Foldable (class Foldable, fold)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -15,7 +15,7 @@ import Data.Traversable (class Traversable, foldl)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
-import Pantograph.Pretty (class Pretty, pretty)
+import Pantograph.Pretty (class Pretty, braces, parens, pretty)
 import Pantograph.RevList (RevList(..))
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, todo)
@@ -67,31 +67,30 @@ infixl 4 makeTree as %
 class PrettyTreeL a where
   prettyTreeL :: a -> List String -> String
 
-instance PrettyTreeLR l => PrettyTreeL (Variant l) where
+instance PrettyTreeL_R l => PrettyTreeL (Variant l) where
   prettyTreeL = prettyTreeL_Row (Proxy :: Proxy l)
 
-class PrettyTreeLR (l :: Row Type) where
+class PrettyTreeL_R (l :: Row Type) where
   prettyTreeL_Row :: Proxy l -> Variant l -> List String -> String
 
-instance (RowToList l rl, PrettyTreeLRL l rl) => PrettyTreeLR l where
+instance (RowToList l rl, PrettyTreeL_RL l rl) => PrettyTreeL_R l where
   prettyTreeL_Row p_l = prettyTreeL_RowList p_l (Proxy :: Proxy rl)
 
-class PrettyTreeLRL (l :: Row Type) (rl :: RowList Type) | rl -> l where
+class PrettyTreeL_RL (l :: Row Type) (rl :: RowList Type) | rl -> l where
   prettyTreeL_RowList :: Proxy l -> Proxy rl -> Variant l -> List String -> String
 
 instance
-  ( RowToList l rl
-  , PrettyTreeLRL l rl
-  , Cons x a l l'
+  ( Cons x a l l'
   , IsSymbol x
   , PrettyTreeL a
+  , PrettyTreeL_RL l rl
   ) =>
-  PrettyTreeLRL l' (RowList.Cons x a rl) where
+  PrettyTreeL_RL l' (RowList.Cons x a rl) where
   prettyTreeL_RowList _ _ =
-    prettyTreeL_RowList (Proxy :: Proxy l) (Proxy :: Proxy rl)
-      # V.on (Proxy :: Proxy x) prettyTreeL
+    V.on (Proxy :: Proxy x) prettyTreeL
+      $ prettyTreeL_RowList (Proxy :: Proxy l) (Proxy :: Proxy rl)
 
-instance PrettyTreeLRL () RowList.Nil where
+instance PrettyTreeL_RL () RowList.Nil where
   prettyTreeL_RowList _ _ = V.case_
 
 --------------------------------------------------------------------------------
@@ -169,15 +168,67 @@ unPath (Path (th : ths)) t = unPath (Path ths) (unTooth th t)
 --------------------------------------------------------------------------------
 
 type ChangeL l =
-  ( plus :: Tooth (Variant l)
-  , minus :: Tooth (Variant l)
-  , replace :: Tree (Variant l) /\ Tree (Variant l)
+  ( plus :: PlusChange l
+  , minus :: MinusChange l
+  , replace :: ReplaceChange l
   | l
   )
 
 _plus = Proxy :: Proxy "plus"
 _minus = Proxy :: Proxy "minus"
 _replace = Proxy :: Proxy "replace"
+
+data PlusChange l = PlusChange (Tooth (Variant l))
+
+derive instance Generic (PlusChange l) _
+
+instance Show (Variant l) => Show (PlusChange l) where
+  show x = genericShow x
+
+derive instance Eq (Variant l) => Eq (PlusChange l)
+
+instance PrettyTreeL_R l => PrettyTreeL (PlusChange l) where
+  prettyTreeL (PlusChange (Tooth a ls rs)) (kid : Nil) =
+    prettyTreeL a
+      $ fold
+          [ ls # map pretty # RevList.toList
+          , pure $ braces kid
+          , rs # map pretty
+          ]
+  prettyTreeL _ _ = bug "invalid "
+
+data MinusChange l = MinusChange (Tooth (Variant l))
+
+derive instance Generic (MinusChange l) _
+
+instance Show (Variant l) => Show (MinusChange l) where
+  show x = genericShow x
+
+derive instance Eq (Variant l) => Eq (MinusChange l)
+
+instance PrettyTreeL_R l => PrettyTreeL (MinusChange l) where
+  prettyTreeL (MinusChange (Tooth a ls rs)) (kid : Nil) =
+    prettyTreeL a
+      $ fold
+          [ ls # map pretty # RevList.toList
+          , pure $ braces kid
+          , rs # map pretty
+          ]
+  prettyTreeL _ _ = bug "invalid "
+
+data ReplaceChange l = ReplaceChange (Tree (Variant l)) (Tree (Variant l))
+
+derive instance Generic (ReplaceChange l) _
+
+instance Show (Variant l) => Show (ReplaceChange l) where
+  show x = genericShow x
+
+derive instance Eq (Variant l) => Eq (ReplaceChange l)
+
+instance PrettyTreeL_R l => PrettyTreeL (ReplaceChange l) where
+  prettyTreeL (ReplaceChange t t') Nil =
+    parens (pretty t) <> " ~~> " <> parens (pretty t')
+  prettyTreeL _ _ = bug "invalid "
 
 id :: forall l l_. Union l l_ (ChangeL l) => TreeV l -> TreeV (ChangeL l)
 id = map V.expand
@@ -193,16 +244,16 @@ innerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> innerEndpoint))
     # V.on _plus
-        ( \_ -> case kids of
+        ( \(PlusChange _) -> case kids of
             c : Nil -> c # innerEndpoint
             _ -> bug "invalid Change"
         )
     # V.on _minus
-        ( \th -> case kids of
+        ( \(MinusChange th) -> case kids of
             c : Nil -> unTooth th (c # innerEndpoint)
             _ -> bug "invalid Change"
         )
-    # V.on _replace (\(t0 /\ _t1) -> t0)
+    # V.on _replace (\(ReplaceChange t0 _t1) -> t0)
     $ l
 
 outerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
@@ -210,15 +261,15 @@ outerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> outerEndpoint))
     # V.on _plus
-        ( \th -> case kids of
+        ( \(PlusChange th) -> case kids of
             c : Nil -> unTooth th (c # outerEndpoint)
             _ -> bug "invalid Change"
         )
     # V.on _minus
-        ( \_ -> case kids of
+        ( \(MinusChange _) -> case kids of
             c : Nil -> c # outerEndpoint
             _ -> bug "invalid Change"
         )
-    # V.on _replace (\(_t0 /\ t1) -> t1)
+    # V.on _replace (\(ReplaceChange _t0 t1) -> t1)
     $ l
 
