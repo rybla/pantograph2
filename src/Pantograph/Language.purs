@@ -5,7 +5,7 @@ import Prelude
 
 import Control.Alternative (empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (fold)
+import Data.Foldable (class Foldable, fold, foldM, foldr)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -13,6 +13,8 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
+import Data.Traversable (traverse)
+import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
@@ -79,6 +81,9 @@ collectMVs =
 --------------------------------------------------------------------------------
 
 type DerT d s = TreeV (DerL d (SortL s ()) ())
+
+type MetaDerT d s = TreeV (MetaDerL d s)
+type MetaDerL d s = DerL d (MetaL (SortL s ())) ()
 
 type DerL d sl l = (der :: Der d sl | l)
 
@@ -204,7 +209,8 @@ _sorts = Proxy :: Proxy "sorts"
 -- AdjRules
 --------------------------------------------------------------------------------
 
-type MetaAdjT d s = TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
+type MetaAdjT d s = TreeV (MetaAdjL d s)
+type MetaAdjL d s = MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
 
 class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
@@ -232,6 +238,33 @@ applyAdjRule = todo "applyAdjRule"
 -- match stuff
 --------------------------------------------------------------------------------
 
-matchAdjTL :: forall d s. MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
-matchAdjTL = todo "matchAdjTL"
+matchDerT :: forall d s. MetaDerT d s -> DerT d s -> Maybe (AdjSubst d s)
+matchDerT = todo "matchDerT"
 
+matchDerL :: forall d s. Variant (MetaDerL d s) -> Variant (DerL d (SortL s ()) ()) -> Maybe (AdjSubst d s)
+matchDerL = todo "matchDerL"
+
+matchAdjL
+  :: forall d s
+   . Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
+  -> Variant (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+  -> Maybe (AdjSubst d s)
+matchAdjL = todo "matchDerL"
+
+matchAdjT :: forall d s. MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
+matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
+  V.case_
+    #
+      ( \_ l_ma' -> do
+          sigma <- matchAdjL l_ma' l_a
+          sigmas_kids <- (kids_ma `List.zip` kids_a) # traverse (uncurry matchAdjT)
+          union_AdjSubst sigma =<< unions_AdjSubst sigmas_kids
+      )
+    # V.on _metaVar (\x -> pure { adjs: Map.singleton x at, chs: Map.empty, sorts: Map.empty })
+    $ l_ma
+
+union_AdjSubst :: forall d s. AdjSubst d s -> AdjSubst d s -> Maybe (AdjSubst d s)
+union_AdjSubst = todo "union_AdjSubst"
+
+unions_AdjSubst :: forall f d s. Foldable f => f (AdjSubst d s) -> Maybe (AdjSubst d s)
+unions_AdjSubst = foldM union_AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty }
