@@ -5,6 +5,7 @@ import Prelude
 
 import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (class MonadPlus, guard)
+import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (class Foldable, fold, foldM, foldr)
 import Data.Generic.Rep (class Generic)
@@ -81,11 +82,6 @@ collectMVs =
 -- DerL
 --------------------------------------------------------------------------------
 
-type DerT d s = TreeV (DerL d (SortL s ()) ())
-
-type MetaDerT d s = TreeV (MetaDerL d s)
-type MetaDerL d s = DerL d (MetaL (SortL s ())) ()
-
 type DerL d sl l = (der :: Der d sl | l)
 
 _der = Proxy :: Proxy "der"
@@ -141,8 +137,6 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 --------------------------------------------------------------------------------
 -- AdjL
 --------------------------------------------------------------------------------
-
-type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
 
 type AdjL ch l = (bdry :: Bdry ch | l)
 
@@ -239,11 +233,37 @@ applyAdjRule = todo "applyAdjRule"
 -- match stuff
 --------------------------------------------------------------------------------
 
-matchDerT :: forall d s. IsLanguage d s => MetaDerT d s -> DerT d s -> Maybe (AdjSubst d s)
-matchDerT = todo "matchDerT"
+type SortSubst s = MetaVar.Subst (TreeV (SortL s ()))
+type MetaSortSubst s = MetaVar.Subst (TreeV (MetaL (SortL s ())))
 
-matchDerL :: forall d s. IsLanguage d s => Variant (MetaDerL d s) -> Variant (DerL d (SortL s ()) ()) -> Maybe (AdjSubst d s)
-matchDerL = todo "matchDerL"
+type MetaDerT d s = TreeV (MetaDerL d s)
+type DerT d s = TreeV (DerL d (SortL s ()) ())
+
+type MetaDerL d s = DerL d (MetaL (SortL s ())) ()
+
+type MetaDer d s = Der d (MetaL (SortL s ()))
+
+type MetaChT s = MetaL (ChangeL (SortL s ()))
+type ChT s = ChangeL (SortL s ())
+
+type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+
+type SortT s = TreeV (SortL s ())
+type MetaSortT s = TreeV (MetaL (SortL s ()))
+
+matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> Maybe (AdjSubst d s)
+matchSort = todo "matchSort"
+
+matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> Maybe (AdjSubst d s)
+matchSortSubst = todo "matchSortSubst"
+
+matchChT :: forall d s. IsLanguage d s => TreeV (MetaChT s) -> TreeV (ChT s) -> Maybe (AdjSubst d s)
+matchChT = todo "matchChT"
+
+matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> Maybe (AdjSubst d s)
+matchDer (Der d1 sigma1) (Der d2 sigma2) = do
+  guard $ d1 == d2
+  matchSortSubst sigma1 sigma2
 
 matchAdjL
   :: forall d s
@@ -251,7 +271,25 @@ matchAdjL
   => Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
   -> Variant (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
   -> Maybe (AdjSubst d s)
-matchAdjL = todo "matchDerL"
+matchAdjL a1 a2 =
+  a1 # V.match
+    { bdry: \(Bdry dir1 ch1) -> a2 # V.match
+        { bdry: \(Bdry dir2 ch2) -> do
+            guard $ dir1 == dir2
+            matchChT ch1 ch2
+        , der: const empty
+        }
+    -- , der: \(Der d1 sigma1) -> a2 # V.match
+    --     { bdry: const empty
+    --     , der: \(Der d2 sigma2) -> do
+    --         guard $ d1 == d2
+    --         matchSortSubst sigma1 sigma2
+    --     }
+    , der: \der1 -> a2 # V.match
+        { bdry: const empty
+        , der: \der2 -> matchDer der1 der2
+        }
+    }
 
 matchAdjT :: forall d s. IsLanguage d s => MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
 matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
