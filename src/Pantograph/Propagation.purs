@@ -22,13 +22,10 @@ import Pantograph.Utility (tryFirst)
 -- | tree.
 propagate
   :: forall m d s
-   . MonadWriter (List (AdjRule d s /\ TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))) m
+   . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
   => HasAdjRules d s
-  => TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-  -> m
-       ( TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())) \/
-           TreeV (DerL d (SortL s ()) ())
-       )
+  => AdjT d s
+  -> m (AdjT d s \/ DerT d s)
 propagate t = propagateStep t # runMaybeT >>= case _ of
   Nothing -> pure $ t # traverse
     ( V.case_
@@ -41,18 +38,18 @@ propagate t = propagateStep t # runMaybeT >>= case _ of
 -- | no possible applications).
 propagateStep
   :: forall d s m
-   . MonadWriter (List (AdjRule d s /\ TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))) m
+   . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
   => HasAdjRules d s
-  => TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-  -> MaybeT m (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+  => AdjT d s
+  -> MaybeT m (AdjT d s)
 propagateStep t0 = go mempty t0
   where
   rules = adjRules :: AdjRules d s
 
   go
     :: PathV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-    -> TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-    -> MaybeT m (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+    -> AdjT d s
+    -> MaybeT m (AdjT d s)
   go path t = case (\rule -> (rule /\ _) <$> rule `applyAdjRule` t) `tryFirst` rules of
     Just (rule /\ t') -> do
       let t'' = unPath path t'

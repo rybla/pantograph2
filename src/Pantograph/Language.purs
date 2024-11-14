@@ -78,6 +78,8 @@ collectMVs =
 -- DerL
 --------------------------------------------------------------------------------
 
+type DerT d s = TreeV (DerL d (SortL s ()) ())
+
 type DerL d sl l = (der :: Der d sl | l)
 
 _der = Proxy :: Proxy "der"
@@ -134,6 +136,8 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 -- AdjL
 --------------------------------------------------------------------------------
 
+type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+
 type AdjL ch l = (bdry :: Bdry ch | l)
 
 data Bdry ch = Bdry BdryDir (TreeV ch)
@@ -187,7 +191,7 @@ makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 infix 2 makeAdjBdryUp as ↑
 
 type AdjSubst d s =
-  { adjs :: MetaVar.Subst (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+  { adjs :: MetaVar.Subst (AdjT d s)
   , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
   , sorts :: MetaVar.Subst (TreeV (SortL s ()))
   }
@@ -200,6 +204,8 @@ _sorts = Proxy :: Proxy "sorts"
 -- AdjRules
 --------------------------------------------------------------------------------
 
+type MetaAdjT d s = TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
+
 class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
 class HasAdjRules d s where
@@ -209,9 +215,9 @@ type AdjRules d s = List (AdjRule d s)
 
 data AdjRule d s = AdjRule
   { atTop :: Maybe Boolean
-  , input :: TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
+  , input :: MetaAdjT d s
   , trans :: AdjSubst d s -> Maybe (AdjSubst d s)
-  , output :: TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
+  , output :: MetaAdjT d s
   }
 
 makeAdjRule input output trans = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
@@ -219,21 +225,13 @@ makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, ou
 makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
 makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
 
-applyAdjRule
-  :: forall d s
-   . AdjRule d s
-  -> TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-  -> Maybe (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+applyAdjRule :: forall d s. AdjRule d s -> AdjT d s -> Maybe (AdjT d s)
 applyAdjRule = todo "applyAdjRule"
 
 --------------------------------------------------------------------------------
 -- match stuff
 --------------------------------------------------------------------------------
 
-matchTreeAdjL
-  :: forall d s
-   . TreeV (MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ())))
-  -> TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
-  -> Maybe (AdjSubst d s)
-matchTreeAdjL = todo "matchTreeAdjL"
+matchAdjTL :: forall d s. MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
+matchAdjTL = todo "matchAdjTL"
 

@@ -9,6 +9,7 @@ package:
     - halogen
     - lists
     - maybe
+    - newtype
     - prelude
     - spec
     - spec-node
