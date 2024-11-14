@@ -18,9 +18,21 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
-import Pantograph.MetaVar ((!!))
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
+import Pantograph.MetaVar ((!!))
+import Pantograph.MetaVar as MV
 import Pantograph.Utility (bug)
+
+--------------------------------------------------------------------------------
+-- MetaVars
+--------------------------------------------------------------------------------
+
+_g = MV.MetaVar "g"
+g = makeMetaVar' "g"
+
+--------------------------------------------------------------------------------
+-- S
+--------------------------------------------------------------------------------
 
 data S
   = Emp
@@ -48,6 +60,19 @@ instance Ord S where
 
 instance IsSortL S
 
+emp = Emp %^ []
+ext g = Ext %^ [ g ]
+var g = Var %^ [ g ]
+term g = Term %^ [ g ]
+
+extN n | n < 0 = bug $ "invalid: extN " <> show n
+extN n | n == 0 = emp
+extN n = ext (extN (n - 1))
+
+--------------------------------------------------------------------------------
+-- D
+--------------------------------------------------------------------------------
+
 data D
   = Free
   | Zero
@@ -56,6 +81,20 @@ data D
   | Lam
   | App
   | Hole
+
+free g = Free // [ _g /\ g ] % []
+zero g = Zero // [ _g /\ g ] % []
+suc g x = Suc // [ _g /\ g ] % [ x ]
+ref g x = Ref // [ _g /\ g ] % [ x ]
+lam g b = Lam // [ _g /\ g ] % [ b ]
+app g f a = App // [ _g /\ g ] % [ f, a ]
+hole g = Hole // [ _g /\ g ] % []
+
+sucN g n | n < 0 = bug $ "invalid: sucN " <> show n
+sucN g n | n == 0 = zero g
+sucN g n = suc g (sucN (ext g) n)
+
+refN g n = ref g (sucN g n)
 
 derive instance Generic D _
 
@@ -79,6 +118,10 @@ instance PrettyTreeL D where
   prettyTreeL d ss = bug $ "invalid D: " <> show d <> "(" <> (ss # intercalate ", ") <> ")"
 
 instance IsDerL D
+
+--------------------------------------------------------------------------------
+-- HasDerRules
+--------------------------------------------------------------------------------
 
 instance HasDerRules D S where
   derRules = Map.fromFoldable
@@ -113,10 +156,16 @@ instance HasDerRules D S where
             (Term %^ [ g ])
         )
     ]
-    where
-    g = makeMetaVar' "g"
+
+--------------------------------------------------------------------------------
+-- IsLanguage
+--------------------------------------------------------------------------------
 
 instance IsLanguage D S
+
+--------------------------------------------------------------------------------
+-- HasAdjRules
+--------------------------------------------------------------------------------
 
 instance HasAdjRules D S where
   adjRules = modifyAdjRules <> propagationAdjRules
@@ -139,3 +188,9 @@ instance HasAdjRules D S where
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
           )
       ]
+
+--------------------------------------------------------------------------------
+-- IsAdjLanguage
+--------------------------------------------------------------------------------
+
+instance IsAdjLanguage D S
