@@ -18,7 +18,7 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
-import MetaVar ((!!))
+import Pantograph.MetaVar ((!!))
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.Utility (bug)
 

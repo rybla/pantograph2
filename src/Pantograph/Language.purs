@@ -12,8 +12,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant as V
-import MetaVar (MetaVar)
-import MetaVar as MetaVar
+import Pantograph.MetaVar (MetaVar)
+import Pantograph.MetaVar as MetaVar
 import Pantograph.RevList as RevList
 import Pantograph.Utility (expand1, todo, uniqueList)
 import Type.Proxy (Proxy(..))

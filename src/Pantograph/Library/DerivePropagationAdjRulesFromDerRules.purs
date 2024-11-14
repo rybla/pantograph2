@@ -11,8 +11,8 @@ import Data.List as List
 import Data.Map as Map
 import Data.Tuple.Nested ((/\))
 import Data.Variant as V
-import MetaVar (addPrefix, addSuffix)
-import MetaVar as MV
+import Pantograph.MetaVar (addPrefix, addSuffix)
+import Pantograph.MetaVar as MV
 
 propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
 propagationAdjRules =

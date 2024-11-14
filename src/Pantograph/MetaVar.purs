@@ -1,4 +1,4 @@
-module MetaVar where
+module Pantograph.MetaVar where
 
 import Prelude
 
