@@ -16,7 +16,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.Pretty (class Pretty, pretty)
-import Pantograph.RevList (RevList)
+import Pantograph.RevList (RevList(..))
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, todo)
 import Prim.Row (class Cons, class Union)
@@ -121,6 +121,13 @@ derive instance Traversable Tooth
 
 unTooth :: forall a. Tooth a -> Tree a -> Tree a
 unTooth (Tooth a kids_left kids_right) kid_middle = Tree a (RevList.toList kids_left <> kid_middle : kids_right)
+
+getTeeth :: forall a. Tree a -> List (Tooth a /\ Tree a)
+getTeeth (a %% kids) = go mempty mempty kids
+  where
+  go :: List (Tooth a /\ Tree a) -> RevList (Tree a) -> List (Tree a) -> List (Tooth a /\ Tree a)
+  go results _ls Nil = results
+  go results ls (t : rs) = go ((Tooth a ls rs /\ t) : results) (ls `RevList.snoc` t) rs
 
 --------------------------------------------------------------------------------
 -- Path

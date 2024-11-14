@@ -2,10 +2,13 @@ module Pantograph.Utility where
 
 import Prelude
 
+import Control.Alt (alt)
 import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
+import Control.Plus (class Plus, (<|>))
 import Data.Either (Either)
 import Data.List (List(..), (:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -42,11 +45,8 @@ fixpoint f a = case f a of
   Nothing -> a
   Just a' -> fixpoint f a'
 
-tryFirst :: forall a b. (a -> Maybe b) -> List a -> Maybe b
-tryFirst _ Nil = empty
-tryFirst f (x : xs) = case f x of
-  Nothing -> tryFirst f xs
-  Just y -> pure y
+tryFirst :: forall m a b. Plus m => (a -> m b) -> List a -> m b
+tryFirst f = List.foldr (f >>> alt) empty
 
 uniqueList :: forall a. Ord a => List a -> List a
 uniqueList = Set.fromFoldable >>> Set.toUnfoldable

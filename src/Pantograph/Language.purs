@@ -178,6 +178,13 @@ makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, ou
 makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
 makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
 
+applyAdjRule
+  :: forall d s
+   . AdjRule d s
+  -> TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+  -> Maybe (TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ())))
+applyAdjRule = todo "applyAdjRule"
+
 --------------------------------------------------------------------------------
 -- match stuff
 --------------------------------------------------------------------------------
