@@ -3,7 +3,8 @@ module Pantograph.Language where
 import Pantograph.Tree
 import Prelude
 
-import Control.Alternative (empty)
+import Control.Alternative (class Alternative, empty)
+import Control.MonadPlus (class MonadPlus, guard)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (class Foldable, fold, foldM, foldr)
 import Data.Generic.Rep (class Generic)
@@ -11,7 +12,7 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.Traversable (traverse)
 import Data.Tuple (uncurry)
@@ -195,7 +196,7 @@ makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
 
-type AdjSubst d s =
+newtype AdjSubst d s = AdjSubst
   { adjs :: MetaVar.Subst (AdjT d s)
   , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
   , sorts :: MetaVar.Subst (TreeV (SortL s ()))
@@ -226,7 +227,7 @@ data AdjRule d s = AdjRule
   , output :: MetaAdjT d s
   }
 
-makeAdjRule input output trans = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
+makeAdjRule input output trans = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
 makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
 makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
@@ -238,20 +239,21 @@ applyAdjRule = todo "applyAdjRule"
 -- match stuff
 --------------------------------------------------------------------------------
 
-matchDerT :: forall d s. MetaDerT d s -> DerT d s -> Maybe (AdjSubst d s)
+matchDerT :: forall d s. IsLanguage d s => MetaDerT d s -> DerT d s -> Maybe (AdjSubst d s)
 matchDerT = todo "matchDerT"
 
-matchDerL :: forall d s. Variant (MetaDerL d s) -> Variant (DerL d (SortL s ()) ()) -> Maybe (AdjSubst d s)
+matchDerL :: forall d s. IsLanguage d s => Variant (MetaDerL d s) -> Variant (DerL d (SortL s ()) ()) -> Maybe (AdjSubst d s)
 matchDerL = todo "matchDerL"
 
 matchAdjL
   :: forall d s
-   . Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
+   . IsLanguage d s
+  => Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
   -> Variant (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
   -> Maybe (AdjSubst d s)
 matchAdjL = todo "matchDerL"
 
-matchAdjT :: forall d s. MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
+matchAdjT :: forall d s. IsLanguage d s => MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
 matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
   V.case_
     #
@@ -260,11 +262,22 @@ matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
           sigmas_kids <- (kids_ma `List.zip` kids_a) # traverse (uncurry matchAdjT)
           union_AdjSubst sigma =<< unions_AdjSubst sigmas_kids
       )
-    # V.on _metaVar (\x -> pure { adjs: Map.singleton x at, chs: Map.empty, sorts: Map.empty })
+    # V.on _metaVar (\x -> pure $ AdjSubst { adjs: Map.singleton x at, chs: Map.empty, sorts: Map.empty })
     $ l_ma
 
-union_AdjSubst :: forall d s. AdjSubst d s -> AdjSubst d s -> Maybe (AdjSubst d s)
-union_AdjSubst = todo "union_AdjSubst"
+union_AdjSubst :: forall d s. IsLanguage d s => AdjSubst d s -> AdjSubst d s -> Maybe (AdjSubst d s)
+union_AdjSubst (AdjSubst sigma1) (AdjSubst sigma2) = do
+  adjs <- sigma1.adjs # Map.toUnfoldable # List.foldM insertIfEq sigma2.adjs
+  chs <- sigma1.chs # Map.toUnfoldable # List.foldM insertIfEq sigma2.chs
+  sorts <- sigma1.sorts # Map.toUnfoldable # List.foldM insertIfEq sigma2.sorts
+  pure $ AdjSubst { adjs, chs, sorts }
 
-unions_AdjSubst :: forall f d s. Foldable f => f (AdjSubst d s) -> Maybe (AdjSubst d s)
-unions_AdjSubst = foldM union_AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty }
+unions_AdjSubst :: forall f d s. IsLanguage d s => Foldable f => f (AdjSubst d s) -> Maybe (AdjSubst d s)
+unions_AdjSubst = foldM union_AdjSubst (AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty })
+
+insertIfEq :: forall m k v. Monad m => Alternative m => Ord k => Eq v => Map k v -> k /\ v -> m (Map k v)
+insertIfEq sigma (x /\ a) = case sigma # Map.lookup x of
+  Nothing -> pure $ sigma # Map.insert x a
+  Just a' -> do
+    guard $ a == a'
+    pure sigma
