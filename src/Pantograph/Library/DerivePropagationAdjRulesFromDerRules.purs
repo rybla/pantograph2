@@ -21,7 +21,6 @@ propagationAdjRules =
     # foldMap \(d /\ DerRule rule) -> List.fromFoldable
         let
           kidMVs = rule.kids # mapWithIndex \i _ -> MV.MetaVar ("kid_" <> show i)
-          -- kidSortChMVs = kidSortMVs # map (MV.addPrefix "ch")
           kidSortMVs = rule.kids # map (\{ sort: s } -> s) # foldMap collectMVs
         in
           [ makeAdjRule
