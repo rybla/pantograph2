@@ -4,6 +4,7 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (class Alternative, empty)
+import Control.Monad.State (StateT, get, modify_, put)
 import Control.MonadPlus (class MonadPlus, guard)
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
@@ -24,7 +25,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MetaVar
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug, expand1, todo, uniqueList)
+import Pantograph.Utility (bug, expand1, todo, uniqueList, (##))
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -258,21 +259,65 @@ type MetaDerL d s = DerL d (MetaL (SortL s ())) ()
 
 type MetaDer d s = Der d (MetaL (SortL s ()))
 
-type MetaChT s = MetaL (ChangeL (SortL s ()))
-type ChT s = ChangeL (SortL s ())
+type MetaChT s = TreeV (MetaL (ChangeL (SortL s ())))
+type ChT s = TreeV (ChangeL (SortL s ()))
 
 type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
 
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
 
-matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> Maybe (AdjSubst d s)
-matchSort = todo "matchSort"
+setSort :: forall d s. IsLanguage d s => MetaVar -> SortT s -> StateT (AdjSubst d s) Maybe Unit
+setSort x sort = do
+  AdjSubst sigma <- get
+  case sigma.sorts # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { sorts = sigma.sorts # Map.insert x sort }
+    Just sort' | sort == sort' -> pure unit
+    Just _ | otherwise -> empty
+
+setCh :: forall d s. IsLanguage d s => MetaVar -> ChT s -> StateT (AdjSubst d s) Maybe Unit
+setCh x ch = do
+  AdjSubst sigma <- get
+  case sigma.chs # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { chs = sigma.chs # Map.insert x ch }
+    Just ch' | ch == ch' -> pure unit
+    Just _ | otherwise -> empty
+
+setAdj :: forall d s. IsLanguage d s => MetaVar -> AdjT d s -> StateT (AdjSubst d s) Maybe Unit
+setAdj x adj = do
+  AdjSubst sigma <- get
+  case sigma.adjs # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { adjs = sigma.adjs # Map.insert x adj }
+    Just adj' | adj == adj' -> pure unit
+    Just _ | otherwise -> empty
+
+matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> StateT (AdjSubst d s) Maybe Unit
+matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
+  ms1 ## V.case_
+    # V.on _metaVar
+        ( \x -> do
+            -- pure $ AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.singleton x sort2 }
+            -- modify_ ?a
+            todo ""
+        )
+    # V.on _sort
+        ( \s1 -> do
+            -- guard $ s1 == s2
+            todo ""
+        )
+
+-- matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> Maybe (AdjSubst d s)
+-- matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
+--   ms1 ## V.case_
+--     # V.on _metaVar (\x -> pure $ AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.singleton x sort2 })
+--     # V.on _sort (\s1 -> do 
+--         guard $ s1 == s2 
+--         )
 
 matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> Maybe (AdjSubst d s)
 matchSortSubst = todo "matchSortSubst"
 
-matchChT :: forall d s. IsLanguage d s => TreeV (MetaChT s) -> TreeV (ChT s) -> Maybe (AdjSubst d s)
+matchChT :: forall d s. IsLanguage d s => MetaChT s -> ChT s -> Maybe (AdjSubst d s)
 matchChT = todo "matchChT"
 
 matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> Maybe (AdjSubst d s)

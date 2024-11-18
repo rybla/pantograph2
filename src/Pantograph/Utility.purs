@@ -7,6 +7,7 @@ import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
 import Control.Plus (class Plus, (<|>))
 import Data.Either (Either)
+import Data.Function (applyFlipped)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
@@ -24,6 +25,8 @@ import Prim.RowList as RowList
 import Record as Record
 import Type.Prelude (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
+
+infixl 0 applyFlipped as ##
 
 todo :: forall a. String -> a
 todo msg = unsafeCrashWith $ "TODO: " <> msg
