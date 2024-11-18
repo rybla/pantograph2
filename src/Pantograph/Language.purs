@@ -190,7 +190,7 @@ makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
 
-newtype AdjSubst d s = AdjSubst
+data AdjSubst d s = AdjSubst
   { adjs :: MetaVar.Subst (AdjT d s)
   , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
   , sorts :: MetaVar.Subst (TreeV (SortL s ()))
@@ -215,19 +215,34 @@ class HasAdjRules d s where
 type AdjRules d s = List (AdjRule d s)
 
 data AdjRule d s = AdjRule
-  { atTop :: Maybe Boolean
-  , input :: MetaAdjT d s
+  { input :: MetaAdjT d s
   , trans :: AdjSubst d s -> Maybe (AdjSubst d s)
   , output :: MetaAdjT d s
   }
 
-makeAdjRule input output trans = AdjRule { atTop: empty, input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
-makeAdjTopRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
-makeSimpleAdjRule input output = AdjRule { atTop: empty, input, trans: pure, output }
-makeSimpleTopAdjRule input output = AdjRule { atTop: pure true, input, trans: pure, output }
+makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
+makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
 
 applyAdjRule :: forall d s. AdjRule d s -> AdjT d s -> Maybe (AdjT d s)
 applyAdjRule = todo "applyAdjRule"
+
+--------------------------------------------------------------------------------
+-- EditRules
+--------------------------------------------------------------------------------
+
+class (IsAdjLanguage d s, HasEditRules d s) <= IsEditLanguage d s
+
+class HasEditRules d s where
+  editRules :: EditRules d s
+
+type EditRules d s = List (EditRule d s)
+
+data EditRule d s = EditRule
+  { label :: String
+  , input :: MetaAdjT d s
+  , trans :: AdjSubst d s -> Maybe (AdjSubst d s)
+  , output :: MetaAdjT d s
+  }
 
 --------------------------------------------------------------------------------
 -- match stuff
