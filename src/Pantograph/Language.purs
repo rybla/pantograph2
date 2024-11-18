@@ -8,7 +8,7 @@ import Control.Monad.State (StateT, get, modify_, put)
 import Control.MonadPlus (class MonadPlus, guard)
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldM, foldr)
+import Data.Foldable (class Foldable, fold, foldM, foldr, traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -294,25 +294,12 @@ setAdj x adj = do
 matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> StateT (AdjSubst d s) Maybe Unit
 matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
   ms1 ## V.case_
-    # V.on _metaVar
-        ( \x -> do
-            -- pure $ AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.singleton x sort2 }
-            -- modify_ ?a
-            todo ""
-        )
-    # V.on _sort
+    # const
         ( \s1 -> do
-            -- guard $ s1 == s2
-            todo ""
+            guard $ s1 == s2
+            List.zip kids1 kids2 # traverse_ (uncurry matchSort)
         )
-
--- matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> Maybe (AdjSubst d s)
--- matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
---   ms1 ## V.case_
---     # V.on _metaVar (\x -> pure $ AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.singleton x sort2 })
---     # V.on _sort (\s1 -> do 
---         guard $ s1 == s2 
---         )
+    # V.on _metaVar (\x -> setSort x sort2)
 
 matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> Maybe (AdjSubst d s)
 matchSortSubst = todo "matchSortSubst"
