@@ -294,12 +294,12 @@ setAdj x adj = do
 matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> StateT (AdjSubst d s) Maybe Unit
 matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
   ms1 ## V.case_
-    # const
+    # V.on _metaVar (\x -> setSort x sort2)
+    # V.on _sort
         ( \s1 -> do
-            guard $ s1 == s2
+            guard $ V.inj _sort s1 == s2
             List.zip kids1 kids2 # traverse_ (uncurry matchSort)
         )
-    # V.on _metaVar (\x -> setSort x sort2)
 
 matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> Maybe (AdjSubst d s)
 matchSortSubst = todo "matchSortSubst"
