@@ -178,13 +178,13 @@ instance HasAdjRules D S where
       [ makeAdjRule
           (Var %^ [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
           (Free // [ _g /\ g' ] % [])
-          ( \{ sorts: _, chs, adjs: _ } ->
+          ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
           )
       , makeAdjRule
           (Var %^ [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
           (Zero // [ _g /\ g' ] % [])
-          ( \{ sorts: _, chs, adjs: _ } ->
+          ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
           )
       ]

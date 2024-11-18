@@ -46,8 +46,14 @@ propagationAdjRules =
                             )
                     )
               )
-              ( \{ chs, sorts: _, adjs } -> pure
-                  { chs: Map.toUnfoldable chs :: List _
+              -- ( \{ chs, sorts: _, adjs } -> pure
+              --     { chs: Map.toUnfoldable chs :: List _
+              --     , sorts: kidSortMVs # map (\x -> (x # addPrefix "outer") /\ (chs MV.!! (x # addPrefix "ch") # outerEndpoint))
+              --     , adjs: Map.toUnfoldable adjs :: List _
+              --     }
+              -- )
+              ( \(AdjSubst { chs, sorts: _, adjs }) -> pure
+                  { chs: chs # Map.toUnfoldable :: List _
                   , sorts: kidSortMVs # map (\x -> (x # addPrefix "outer") /\ (chs MV.!! (x # addPrefix "ch") # outerEndpoint))
                   , adjs: Map.toUnfoldable adjs :: List _
                   }
