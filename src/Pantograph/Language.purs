@@ -203,6 +203,26 @@ _adjs = Proxy :: Proxy "adjs"
 _chs = Proxy :: Proxy "chs"
 _sorts = Proxy :: Proxy "sorts"
 
+applyAdjSubst_SortT :: forall d s. AdjSubst d s -> MetaSortT s -> SortT s
+applyAdjSubst_SortT = todo ""
+
+applyAdjSubst_ChT :: forall d s. AdjSubst d s -> MetaChT s -> ChT s
+applyAdjSubst_ChT = todo ""
+
+applyAdjSubst_AdjT :: forall d s. AdjSubst d s -> MetaAdjT d s -> AdjT d s
+applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
+  l ## V.match
+    { metaVar: \x -> case adjs # Map.lookup x of
+        Nothing -> bug $ "MetaVar in AdjT was not handled by AdjSubst: " <> show x
+        Just adj -> adj
+    , bdry: \(Bdry dir ch) ->
+        V.inj _bdry (Bdry dir (ch # applyAdjSubst_ChT sigma)) %%
+          (kids # map (applyAdjSubst_AdjT sigma))
+    , der: \(Der d sigma_d) ->
+        V.inj _der (Der d (sigma_d # (map (applyAdjSubst_SortT sigma)))) %%
+          (kids # map (applyAdjSubst_AdjT sigma))
+    }
+
 --------------------------------------------------------------------------------
 -- AdjRules
 --------------------------------------------------------------------------------
@@ -226,8 +246,11 @@ data AdjRule d s = AdjRule
 makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
 
-applyAdjRule :: forall d s. AdjRule d s -> AdjT d s -> Maybe (AdjT d s)
-applyAdjRule = todo "applyAdjRule"
+applyAdjRule :: forall d s. IsLanguage d s => AdjRule d s -> AdjT d s -> Maybe (AdjT d s)
+applyAdjRule (AdjRule { input, output, trans }) adj = do
+  sigma_input <- adj # matchAdjT input
+  sigma_output <- trans sigma_input
+  pure $ ?a sigma_output output
 
 --------------------------------------------------------------------------------
 -- EditRules
@@ -304,14 +327,14 @@ setAdj x adj = do
     Just _ | otherwise -> empty
 
 matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> MatchM d s
-matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
-  ms1 ## V.case_
+matchSort (msl1 %% kids1) sort2@(sl2 %% kids2) =
+  msl1 ## V.case_
+    #
+      ( \_ sl1 -> do
+          guard $ sl1 == sl2
+          List.zip kids1 kids2 # traverse_ (uncurry matchSort)
+      )
     # V.on _metaVar (\x -> setSort x sort2)
-    # V.on _sort
-        ( \s1 -> do
-            guard $ V.inj _sort s1 == s2
-            List.zip kids1 kids2 # traverse_ (uncurry matchSort)
-        )
 
 matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> MatchM d s
 matchSortSubst mss1 ss2 =
@@ -320,8 +343,15 @@ matchSortSubst mss1 ss2 =
     s2 <- ss2 # Map.lookup x # lift
     matchSort ms1 s2
 
-matchChT :: forall d s. IsLanguage d s => MetaChT s -> ChT s -> MatchM d s
-matchChT = todo "matchChT"
+matchCh :: forall d s. IsLanguage d s => MetaChT s -> ChT s -> MatchM d s
+matchCh (mch1 %% kids1) ch2@(chl2 %% kids2) =
+  mch1 ## V.case_
+    #
+      ( \_ chl1 -> do
+          guard $ chl1 == chl2
+          List.zip kids1 kids2 # traverse_ (uncurry matchCh)
+      )
+    # V.on _metaVar (\x -> setCh x ch2)
 
 matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> MatchM d s
 matchDer (Der md1 sigma1) (Der d2 sigma2) = do
@@ -340,7 +370,7 @@ matchAdjL a1 a2 =
         a2 # V.match
           { bdry: \(Bdry dir2 ch2) -> do
               guard $ dir1 == dir2
-              matchChT ch1 ch2 # runMatchM
+              matchCh ch1 ch2 # runMatchM
           , der: const empty
           }
     , der: \der1 ->
