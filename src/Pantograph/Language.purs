@@ -3,13 +3,13 @@ module Pantograph.Language where
 import Pantograph.Tree
 import Prelude
 
-import Control.Alternative (class Alternative, empty)
-import Control.Monad.State (StateT, execStateT, get, modify_, put)
+import Control.Alternative (class Alternative)
+import Control.Monad.State (StateT, execStateT, get, put)
 import Control.Monad.Trans.Class (lift)
-import Control.MonadPlus (class MonadPlus, guard)
+import Control.MonadPlus (guard)
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldM, foldr, traverse_)
+import Data.Foldable (class Foldable, fold, foldM, traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -27,7 +27,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MetaVar
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug, expand1, todo, uniqueList, (##))
+import Pantograph.Utility (bug, expand1, uniqueList, (##))
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -155,7 +155,7 @@ instance Show (Variant ch) => Show (Bdry ch) where
 
 instance PrettyTreeL_R ch => PrettyTreeL (Bdry ch) where
   prettyTreeL (Bdry dir ch) (kid : Nil) = pretty ch <> " " <> pretty dir <> " " <> pretty kid
-  prettyTreeL (Bdry dir ch) _ = bug "invalid Bdry"
+  prettyTreeL (Bdry _ _) _ = bug "invalid Bdry"
 
 _bdry = Proxy :: Proxy "bdry"
 
