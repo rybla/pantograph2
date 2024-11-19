@@ -9,7 +9,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (guard)
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldM, traverse_)
+import Data.Foldable (class Foldable, fold, foldM, intercalate, traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
@@ -23,9 +23,11 @@ import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
+import Pantograph.Config as Config
+import Pantograph.Debug as Debug
 import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MetaVar
-import Pantograph.Pretty (class Pretty, pretty)
+import Pantograph.Pretty (class Pretty, brackets, indent, pretty)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, expand1, uniqueList, (##))
 import Type.Proxy (Proxy(..))
@@ -99,8 +101,12 @@ instance (Eq d, Eq (Variant sl)) => Eq (Der d sl) where
 instance (Show d, Show (Variant sl)) => Show (Der d sl) where
   show x = genericShow x
 
-instance PrettyTreeL d => PrettyTreeL (Der d sl) where
-  prettyTreeL (Der d _sigma) kids = prettyTreeL d kids
+instance (PrettyTreeL d, PrettyTreeL_R sl) => PrettyTreeL (Der d sl) where
+  prettyTreeL =
+    if Config.pretty_der_sigma then
+      \(Der d sigma) kids -> brackets (pretty sigma) <> " " <> prettyTreeL d kids
+    else
+      \(Der d _sigma) kids -> prettyTreeL d kids
 
 makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
 
@@ -154,7 +160,7 @@ instance Show (Variant ch) => Show (Bdry ch) where
   show x = genericShow x
 
 instance PrettyTreeL_R ch => PrettyTreeL (Bdry ch) where
-  prettyTreeL (Bdry dir ch) (kid : Nil) = pretty ch <> " " <> pretty dir <> " " <> pretty kid
+  prettyTreeL (Bdry dir ch) (kid : Nil) = "(" <> pretty ch <> " " <> pretty dir <> " " <> kid <> ")"
   prettyTreeL (Bdry _ _) _ = bug "invalid Bdry"
 
 _bdry = Proxy :: Proxy "bdry"
@@ -198,6 +204,13 @@ data AdjSubst d s = AdjSubst
   , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
   , sorts :: MetaVar.Subst (TreeV (SortL s ()))
   }
+
+instance IsLanguage d s => Pretty (AdjSubst d s) where
+  pretty (AdjSubst { adjs, chs, sorts }) =
+    [ "adjs  : " <> pretty adjs
+    , "chs   : " <> pretty chs
+    , "sorts : " <> pretty sorts
+    ] # intercalate "\n"
 
 _adjs = Proxy :: Proxy "adjs"
 _chs = Proxy :: Proxy "chs"
@@ -254,7 +267,16 @@ applyAdjRule :: forall d s. IsLanguage d s => AdjRule d s -> AdjT d s -> Maybe (
 applyAdjRule (AdjRule { input, output, trans }) adj = do
   sigma_input <- adj # matchAdjT input
   sigma_output <- trans sigma_input
-  pure $ applyAdjSubst_AdjT sigma_output output
+  let output' = applyAdjSubst_AdjT sigma_output output
+  Debug.logM 0 $ intercalate "\n"
+    [ "applyAdjRule.try match"
+    , "  - input        = " <> pretty input
+    , "  - adj          = " <> pretty adj
+    , "  - output       = " <> pretty output
+    , "  - sigma_output =" <> indent 2 (pretty sigma_output)
+    , "  - output' = " <> pretty output'
+    ]
+  pure output'
 
 --------------------------------------------------------------------------------
 -- EditRules

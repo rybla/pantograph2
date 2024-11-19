@@ -1,0 +1,86 @@
+[
+  [
+    "Slc #SZ",
+    {
+      "timestamp": "1732058258646.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc #Z",
+    {
+      "timestamp": "1732058258646.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (Term -{E{∅}} ↓ #Z)",
+    {
+      "timestamp": "1732059085291.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc (Term -{E{∅}} ↓ [{$g ↦ E∅}] #[{$g ↦ E∅}] Z)",
+    {
+      "timestamp": "1732060209067.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (Term -{E{∅}} ↓ [{$g ↦ E∅}]@#[{$g ↦ E∅}]@Z)",
+    {
+      "timestamp": "1732059499830.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (λ #Z)",
+    {
+      "timestamp": "1732056488711.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc (λ (λ #Z))",
+    {
+      "timestamp": "1732057459259.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc Var - {E {∅} } ↓ #Z",
+    {
+      "timestamp": "1732057765535.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc Var - {E{∅}} ↓ #Z",
+    {
+      "timestamp": "1732057793041.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc Var -{E{∅}} ↓ #Z",
+    {
+      "timestamp": "1732058364723.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc Var E{∅} ↓ \"#Z\"",
+    {
+      "timestamp": "1732057501130.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc Var E{∅} ↓ #Z",
+    {
+      "timestamp": "1732057549308.0",
+      "success": false
+    }
+  ]
+]

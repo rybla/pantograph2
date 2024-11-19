@@ -161,3 +161,5 @@ brackets str = "[" <> str <> "]"
 braces :: String -> String
 braces str = "{" <> str <> "}"
 
+spaces :: String -> String
+spaces str = " " <> str <> " "

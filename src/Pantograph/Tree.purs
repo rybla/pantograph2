@@ -16,7 +16,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.Pretty (class Pretty, braces, parens, pretty)
-import Pantograph.RevList (RevList(..))
+import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, todo)
 import Prim.Row (class Cons, class Union)
@@ -189,12 +189,15 @@ derive instance Eq (Variant l) => Eq (PlusChange l)
 
 instance PrettyTreeL_R l => PrettyTreeL (PlusChange l) where
   prettyTreeL (PlusChange (Tooth a ls rs)) (kid : Nil) =
-    prettyTreeL a
-      $ fold
-          [ ls # map pretty # RevList.toList
-          , pure $ braces kid
-          , rs # map pretty
-          ]
+    "+" <>
+      ( braces
+          $ prettyTreeL a
+          $ fold
+              [ ls # map pretty # RevList.toList
+              , pure $ braces kid
+              , rs # map pretty
+              ]
+      )
   prettyTreeL _ _ = bug "invalid "
 
 data MinusChange l = MinusChange (Tooth (Variant l))
@@ -208,12 +211,14 @@ derive instance Eq (Variant l) => Eq (MinusChange l)
 
 instance PrettyTreeL_R l => PrettyTreeL (MinusChange l) where
   prettyTreeL (MinusChange (Tooth a ls rs)) (kid : Nil) =
-    prettyTreeL a
-      $ fold
-          [ ls # map pretty # RevList.toList
-          , pure $ braces kid
-          , rs # map pretty
-          ]
+    "-" <>
+      ( braces $ prettyTreeL a
+          $ fold
+              [ ls # map pretty # RevList.toList
+              , pure $ braces kid
+              , rs # map pretty
+              ]
+      )
   prettyTreeL _ _ = bug "invalid "
 
 data ReplaceChange l = ReplaceChange (Tree (Variant l)) (Tree (Variant l))

@@ -20,7 +20,7 @@ import Pantograph.Propagation (propagate)
 import Test.Spec (Spec, it)
 import Test.Spec.Assertions (fail)
 
-also_show = true :: Boolean
+also_show = false :: Boolean
 
 shouldEqual_pretty :: forall m a. Eq a => MonadThrow Error m => Pretty a => Show a => a -> a -> m Unit
 shouldEqual_pretty expected actual =
@@ -28,21 +28,21 @@ shouldEqual_pretty expected actual =
     fail
       ( [ [ "expected"
           , ""
-          , pretty expected
+          , "    " <> pretty expected
           ]
         , if also_show then
             [ ""
-            , show expected
+            , "    " <> show expected
             ]
           else []
         , [ ""
           , "but actually got"
           , ""
-          , pretty actual
+          , "    " <> pretty actual
           ]
         , if also_show then
             [ ""
-            , show actual
+            , "    " <> show actual
             ]
           else []
         , []

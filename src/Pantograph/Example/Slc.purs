@@ -65,9 +65,9 @@ ext g = Ext %^ [ g ]
 var g = Var %^ [ g ]
 term g = Term %^ [ g ]
 
-extN n | n < 0 = bug $ "invalid: extN " <> show n
-extN n | n == 0 = emp
-extN n = ext (extN (n - 1))
+ctxN n | n < 0 = bug $ "invalid: ctxN " <> show n
+ctxN n | n == 0 = emp
+ctxN n = ext (ctxN (n - 1))
 
 --------------------------------------------------------------------------------
 -- D
@@ -90,11 +90,11 @@ lam g b = Lam // [ _g /\ g ] % [ b ]
 app g f a = App // [ _g /\ g ] % [ f, a ]
 hole g = Hole // [ _g /\ g ] % []
 
-sucN g n | n < 0 = bug $ "invalid: sucN " <> show n
-sucN g n | n == 0 = zero g
-sucN g n = suc g (sucN (ext g) n)
+varN g n | n < 0 = bug $ "invalid: varN " <> show n
+varN g n | n == 0 = zero g
+varN g n = suc g (varN (ext g) (n - 1))
 
-refN g n = ref g (sucN g n)
+refN g n = ref g (varN g n)
 
 derive instance Generic D _
 

@@ -16,9 +16,19 @@ import Test.Spec (Spec, describe)
 
 spec :: Spec Unit
 spec = describe "Slc" do
+  when false do
+    shouldEqual_propagate
+      (refN (ctxN 1) 0 # pure)
+      (refN (ctxN 1) 0)
+
+    shouldEqual_propagate
+      (refN (ctxN 2) 1 # pure)
+      (refN (ctxN 2) 1)
+
   shouldEqual_propagate
-    (refN (extN 1) 0 # pure)
-    (refN (extN 1) 0)
+    (ref (ctxN 0) (free (ctxN 0)) # pure)
+    (term (Ext %- [] << ctxN 0 >> []) ↓ ref (ctxN 1) (zero (ctxN 1)))
+
   -- shouldEqual_propagateFixpoint
   --   -- (DerLbl Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
   --   (lam emp (ref (ext emp) ?a))

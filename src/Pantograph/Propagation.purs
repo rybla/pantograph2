@@ -23,7 +23,7 @@ import Pantograph.Utility (tryFirst)
 propagate
   :: forall m d s
    . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
-  => HasAdjRules d s
+  => IsAdjLanguage d s
   => AdjT d s
   -> m (AdjT d s \/ DerT d s)
 propagate t = propagateStep t # runMaybeT >>= case _ of
@@ -39,7 +39,7 @@ propagate t = propagateStep t # runMaybeT >>= case _ of
 propagateStep
   :: forall d s m
    . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
-  => HasAdjRules d s
+  => IsAdjLanguage d s
   => AdjT d s
   -> MaybeT m (AdjT d s)
 propagateStep t0 = go mempty t0
