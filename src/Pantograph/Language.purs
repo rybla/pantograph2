@@ -204,17 +204,21 @@ _chs = Proxy :: Proxy "chs"
 _sorts = Proxy :: Proxy "sorts"
 
 applyAdjSubst_SortT :: forall d s. AdjSubst d s -> MetaSortT s -> SortT s
-applyAdjSubst_SortT = todo ""
+applyAdjSubst_SortT (sigma@(AdjSubst { sorts })) (l %% kids) =
+  l ## V.case_
+    # (\_ l' -> l' %% (kids # map (applyAdjSubst_SortT sigma)))
+    # V.on _metaVar (\x -> sorts MetaVar.!! x)
 
 applyAdjSubst_ChT :: forall d s. AdjSubst d s -> MetaChT s -> ChT s
-applyAdjSubst_ChT = todo ""
+applyAdjSubst_ChT (sigma@(AdjSubst { chs })) (l %% kids) =
+  l ## V.case_
+    # (\_ l' -> l' %% (kids # map (applyAdjSubst_ChT sigma)))
+    # V.on _metaVar (\x -> chs MetaVar.!! x)
 
 applyAdjSubst_AdjT :: forall d s. AdjSubst d s -> MetaAdjT d s -> AdjT d s
 applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
   l ## V.match
-    { metaVar: \x -> case adjs # Map.lookup x of
-        Nothing -> bug $ "MetaVar in AdjT was not handled by AdjSubst: " <> show x
-        Just adj -> adj
+    { metaVar: \x -> adjs MetaVar.!! x
     , bdry: \(Bdry dir ch) ->
         V.inj _bdry (Bdry dir (ch # applyAdjSubst_ChT sigma)) %%
           (kids # map (applyAdjSubst_AdjT sigma))
