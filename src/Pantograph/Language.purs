@@ -250,7 +250,7 @@ applyAdjRule :: forall d s. IsLanguage d s => AdjRule d s -> AdjT d s -> Maybe (
 applyAdjRule (AdjRule { input, output, trans }) adj = do
   sigma_input <- adj # matchAdjT input
   sigma_output <- trans sigma_input
-  pure $ ?a sigma_output output
+  pure $ applyAdjSubst_AdjT sigma_output output
 
 --------------------------------------------------------------------------------
 -- EditRules
