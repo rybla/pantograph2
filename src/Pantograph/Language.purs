@@ -4,7 +4,8 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (class Alternative, empty)
-import Control.Monad.State (StateT, get, modify_, put)
+import Control.Monad.State (StateT, execStateT, get, modify_, put)
+import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (class MonadPlus, guard)
 import Control.Plus (empty)
 import Data.Eq.Generic (genericEq)
@@ -15,6 +16,7 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Traversable (traverse)
 import Data.Tuple (uncurry)
@@ -249,6 +251,16 @@ data EditRule d s = EditRule
 -- match stuff
 --------------------------------------------------------------------------------
 
+type MatchM d s = StateT (AdjSubst d s) Maybe Unit
+
+runMatchM :: forall d s. MatchM d s -> Maybe (AdjSubst d s)
+runMatchM = flip execStateT
+  $ AdjSubst
+      { adjs: Map.empty
+      , chs: Map.empty
+      , sorts: Map.empty
+      }
+
 type SortSubst s = MetaVar.Subst (TreeV (SortL s ()))
 type MetaSortSubst s = MetaVar.Subst (TreeV (MetaL (SortL s ())))
 
@@ -267,7 +279,7 @@ type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
 
-setSort :: forall d s. IsLanguage d s => MetaVar -> SortT s -> StateT (AdjSubst d s) Maybe Unit
+setSort :: forall d s. IsLanguage d s => MetaVar -> SortT s -> MatchM d s
 setSort x sort = do
   AdjSubst sigma <- get
   case sigma.sorts # Map.lookup x of
@@ -275,7 +287,7 @@ setSort x sort = do
     Just sort' | sort == sort' -> pure unit
     Just _ | otherwise -> empty
 
-setCh :: forall d s. IsLanguage d s => MetaVar -> ChT s -> StateT (AdjSubst d s) Maybe Unit
+setCh :: forall d s. IsLanguage d s => MetaVar -> ChT s -> MatchM d s
 setCh x ch = do
   AdjSubst sigma <- get
   case sigma.chs # Map.lookup x of
@@ -283,7 +295,7 @@ setCh x ch = do
     Just ch' | ch == ch' -> pure unit
     Just _ | otherwise -> empty
 
-setAdj :: forall d s. IsLanguage d s => MetaVar -> AdjT d s -> StateT (AdjSubst d s) Maybe Unit
+setAdj :: forall d s. IsLanguage d s => MetaVar -> AdjT d s -> MatchM d s
 setAdj x adj = do
   AdjSubst sigma <- get
   case sigma.adjs # Map.lookup x of
@@ -291,7 +303,7 @@ setAdj x adj = do
     Just adj' | adj == adj' -> pure unit
     Just _ | otherwise -> empty
 
-matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> StateT (AdjSubst d s) Maybe Unit
+matchSort :: forall d s. IsLanguage d s => MetaSortT s -> SortT s -> MatchM d s
 matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
   ms1 ## V.case_
     # V.on _metaVar (\x -> setSort x sort2)
@@ -301,15 +313,19 @@ matchSort (ms1 %% kids1) sort2@(s2 %% kids2) =
             List.zip kids1 kids2 # traverse_ (uncurry matchSort)
         )
 
-matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> Maybe (AdjSubst d s)
-matchSortSubst = todo "matchSortSubst"
+matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> MatchM d s
+matchSortSubst mss1 ss2 =
+  Map.keys mss1 `Set.union` Map.keys ss2 # traverse_ \x -> do
+    ms1 <- mss1 # Map.lookup x # lift
+    s2 <- ss2 # Map.lookup x # lift
+    matchSort ms1 s2
 
-matchChT :: forall d s. IsLanguage d s => MetaChT s -> ChT s -> Maybe (AdjSubst d s)
+matchChT :: forall d s. IsLanguage d s => MetaChT s -> ChT s -> MatchM d s
 matchChT = todo "matchChT"
 
-matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> Maybe (AdjSubst d s)
-matchDer (Der d1 sigma1) (Der d2 sigma2) = do
-  guard $ d1 == d2
+matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> MatchM d s
+matchDer (Der md1 sigma1) (Der d2 sigma2) = do
+  guard $ md1 == d2
   matchSortSubst sigma1 sigma2
 
 matchAdjL
@@ -320,22 +336,18 @@ matchAdjL
   -> Maybe (AdjSubst d s)
 matchAdjL a1 a2 =
   a1 # V.match
-    { bdry: \(Bdry dir1 ch1) -> a2 # V.match
-        { bdry: \(Bdry dir2 ch2) -> do
-            guard $ dir1 == dir2
-            matchChT ch1 ch2
-        , der: const empty
-        }
-    -- , der: \(Der d1 sigma1) -> a2 # V.match
-    --     { bdry: const empty
-    --     , der: \(Der d2 sigma2) -> do
-    --         guard $ d1 == d2
-    --         matchSortSubst sigma1 sigma2
-    --     }
-    , der: \der1 -> a2 # V.match
-        { bdry: const empty
-        , der: \der2 -> matchDer der1 der2
-        }
+    { bdry: \(Bdry dir1 ch1) ->
+        a2 # V.match
+          { bdry: \(Bdry dir2 ch2) -> do
+              guard $ dir1 == dir2
+              matchChT ch1 ch2 # runMatchM
+          , der: const empty
+          }
+    , der: \der1 ->
+        a2 # V.match
+          { bdry: const empty
+          , der: \der2 -> matchDer der1 der2 # runMatchM
+          }
     }
 
 matchAdjT :: forall d s. IsLanguage d s => MetaAdjT d s -> AdjT d s -> Maybe (AdjSubst d s)
