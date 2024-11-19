@@ -5,10 +5,10 @@ import Prelude
 import Control.Alt (alt)
 import Control.Alternative (empty)
 import Control.Monad.Error.Class (throwError)
-import Control.Plus (class Plus, (<|>))
+import Control.Plus (class Plus)
 import Data.Either (Either)
 import Data.Function (applyFlipped)
-import Data.List (List(..), (:))
+import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
