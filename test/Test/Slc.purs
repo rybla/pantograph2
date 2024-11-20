@@ -13,35 +13,37 @@ import Test.Spec (SpecT, describe)
 
 spec :: forall m g. Monad m => Applicative g => MonadThrow Error g => SpecT g Unit m Unit
 spec = describe "Slc" do
-  when false do
+  when true do
     shouldEqual_propagate
-      (refN 1 0 # pure)
-      (refN 1 0)
+      (refVarN 1 0 # pure)
+      (refVarN 1 0)
     shouldEqual_propagate
-      (refN 2 1 # pure)
-      (refN 2 1)
+      (refVarN 2 1 # pure)
+      (refVarN 2 1)
     shouldEqual_propagate
-      ((ref (ctxN 0) $ free (ctxN 0)) # pure)
-      (term (Ext %- [] << ctxN 0 >> []) ↓ refN 1 0)
+      -- ((ref (ctxN 0) $ free (ctxN 0)) # pure)
+      (refFreeN 0 0 # pure)
+      (term (Ext %- [] << ctxN 0 >> []) ↓ refVarN 1 0)
     shouldEqual_propagate
       (free (ctxN 1) # pure)
       (var (Ext %- [] << ctxN 1 >> []) ↓ varN 2 0)
     shouldEqual_propagate
-      ((ref (ctxN 1) $ free (ctxN 1)) # pure)
-      (term (Ext %- [] << ctxN 1 >> []) ↓ refN 2 0)
+      (refFreeN 1 0 # pure)
+      (term (Ext %- [] << ctxN 1 >> []) ↓ refVarN 2 0)
+    shouldEqual_propagate
+      (freeN 1 1 # pure)
+      (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 2 1)
   when true do
     -- shouldEqual_propagate
     --   ((lam (ctxN 0) $ refFreeN (ctxN 1) 1) # pure)
-    --   (term (Ext %- [] << ctxN 0 >> []) ↓ (lam (ctxN 1) $ refN (ctxN 2) 1))
+    --   (term (Ext %- [] << ctxN 0 >> []) ↓ (lam (ctxN 1) $ refVarN (ctxN 2) 1))
     {-
     -- this shouldn't happen since S[EE∅] can't rewrite to S[∅] by this step!
     -- _should_ rewrite to S[E∅] (only removing the single E)
     {{ Var E-{E{∅}} ↓ S[EE∅]Z[EEE∅] }} ~~>
     S[∅]{{ Var -{E{∅}} ↓ Z[EEE∅] }}
     -}
-    -- shouldEqual_propagate
-    --   (free (ctxN 0) # pure)
-    --   (var (ext $ Ext %- [] << ctxN 0 >> []) ↓ (suc (ctxN 1) $ zero (ctxN 0)))
+
     pure unit
 
   -- shouldEqual_propagateFixpoint

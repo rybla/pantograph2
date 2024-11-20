@@ -96,11 +96,11 @@ varN g 0 = zero (ctxN g)
 varN g n = suc (ctxN g) (varN (g - 1) (n - 1))
 
 freeN g n | n < 0 = bug $ "invalid: freeN; n = " <> show n
-freeN g 0 = zero (ctxN g)
-freeN g 1 = suc (ctxN g) (zero (ctxN (g - 1)))
+freeN g 0 = free (ctxN g)
+freeN g 1 = suc (ctxN g) (free (ctxN g))
 freeN g n = suc (ctxN g) (freeN (g - 1) (n - 1))
 
-refN g n = ref (ctxN g) (varN g n)
+refVarN g n = ref (ctxN g) (varN g n)
 refFreeN g n = ref (ctxN g) (freeN g n)
 
 derive instance Generic D _

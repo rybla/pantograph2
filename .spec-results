@@ -16,14 +16,14 @@
   [
     "Slc #[EE∅]S[EE∅]Z[E∅]",
     {
-      "timestamp": "1732068863202.0",
+      "timestamp": "1732069445827.0",
       "success": true
     }
   ],
   [
     "Slc #[E∅]Z[E∅]",
     {
-      "timestamp": "1732068863202.0",
+      "timestamp": "1732069445827.0",
       "success": true
     }
   ],
@@ -175,9 +175,16 @@
     }
   ],
   [
+    "Slc {{ Term -{E{E∅}} ↓ #[EE∅]S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732069398210.0",
+      "success": false
+    }
+  ],
+  [
     "Slc {{ Term -{E{E∅}} ↓ #[EE∅]Z[EE∅] }}",
     {
-      "timestamp": "1732069074309.0",
+      "timestamp": "1732069445827.0",
       "success": true
     }
   ],
@@ -219,8 +226,8 @@
   [
     "Slc {{ Term -{E{∅}} ↓ #[E∅]Z[E∅] }}",
     {
-      "timestamp": "1732069062020.0",
-      "success": false
+      "timestamp": "1732069445827.0",
+      "success": true
     }
   ],
   [
@@ -261,8 +268,22 @@
   [
     "Slc {{ Var -{E{E∅}} ↓ Z[EE∅] }}",
     {
-      "timestamp": "1732069014325.0",
+      "timestamp": "1732069445827.0",
       "success": true
+    }
+  ],
+  [
+    "Slc {{ Var E-{E{E∅}} ↓ S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732069445827.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc {{ Var E-{E{E∅}} ↓ S[E∅]Z[∅] }}",
+    {
+      "timestamp": "1732069212828.0",
+      "success": false
     }
   ],
   [
@@ -275,7 +296,14 @@
   [
     "Slc {{ Var E-{E{∅}} ↓ S[E∅]Z[∅] }}",
     {
-      "timestamp": "1732068551541.0",
+      "timestamp": "1732069166506.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc {{ Var E-{E{∅}} ↓ S[∅]Z[∅] }}",
+    {
+      "timestamp": "1732069129401.0",
       "success": false
     }
   ],
