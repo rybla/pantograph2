@@ -191,7 +191,7 @@
   [
     "Slc outerEndpoint xxx",
     {
-      "timestamp": "1732073068524.0",
+      "timestamp": "1732121438214.0",
       "success": true
     }
   ],
@@ -234,6 +234,20 @@
     "Slc propagage {{ Term E-{E{E∅}} ↓ #[EEE∅]S[EE∅]Z[E∅] }}",
     {
       "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Var +{E{∅}} ↓ #[∅]F[∅] }}",
+    {
+      "timestamp": "1732121212564.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc propagage {{ Var +{E{∅}} ↓ F[∅] }}",
+    {
+      "timestamp": "1732121438214.0",
       "success": true
     }
   ],

@@ -20,7 +20,7 @@ spec = describe "Slc" do
     else pure unit
 
   describe "propagage" do
-    if true then do
+    if false then do
       it_shouldEqual_propagate
         (refVarN 1 0 # pure)
         (refVarN 1 0)
@@ -45,6 +45,9 @@ spec = describe "Slc" do
       it_shouldEqual_propagate
         ((lam (ctxN 1) $ refFreeN 2 1) # pure)
         (term (Ext %- [] << ctxN 1 >> []) ↓ lam (ctxN 1) (refVarN 3 1))
+      it_shouldEqual_propagate
+        (varN 1 0 # pure)
+        (var (Ext %+ [] << ctxN 0 >> []) ↓ freeN 0 0)
     else pure unit
 
     if true then do

@@ -195,6 +195,10 @@ instance HasAdjRules D S where
           ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
           )
+      -- , makeAdjRule
+      --     (Var ^% [ Ext %-  ])
+      --     ?a
+      --     ?A
       ]
 
 --------------------------------------------------------------------------------
