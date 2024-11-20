@@ -21,6 +21,7 @@ import Data.Tuple.Nested ((/\))
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
+import Pantograph.Pretty (brackets)
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -60,12 +61,12 @@ instance Ord S where
 
 instance IsSortL S
 
-emp = Emp %^ []
-ext g = Ext %^ [ g ]
-var g = Var %^ [ g ]
-term g = Term %^ [ g ]
+emp = Emp ^% []
+ext g = Ext ^% [ g ]
+var g = Var ^% [ g ]
+term g = Term ^% [ g ]
 
-ctxN n | n < 0 = bug $ "invalid: ctxN " <> show n
+ctxN n | n < 0 = bug $ "invalid: ctxN; n = " <> show n
 ctxN n | n == 0 = emp
 ctxN n = ext (ctxN (n - 1))
 
@@ -90,11 +91,17 @@ lam g b = Lam // [ _g /\ g ] % [ b ]
 app g f a = App // [ _g /\ g ] % [ f, a ]
 hole g = Hole // [ _g /\ g ] % []
 
-varN g n | n < 0 = bug $ "invalid: varN " <> show n
-varN g n | n == 0 = zero g
-varN g n = suc g (varN (ext g) (n - 1))
+varN g n | n < 0 = bug $ "invalid: varN; n = " <> show n
+varN g 0 = zero (ctxN g)
+varN g n = suc (ctxN g) (varN (g - 1) (n - 1))
 
-refN g n = ref g (varN g n)
+freeN g n | n < 0 = bug $ "invalid: freeN; n = " <> show n
+freeN g 0 = zero (ctxN g)
+freeN g 1 = suc (ctxN g) (zero (ctxN (g - 1)))
+freeN g n = suc (ctxN g) (freeN (g - 1) (n - 1))
+
+refN g n = ref (ctxN g) (varN g n)
+refFreeN g n = ref (ctxN g) (freeN g n)
 
 derive instance Generic D _
 
@@ -107,15 +114,15 @@ instance Eq D where
 instance Ord D where
   compare x = genericCompare x
 
-instance PrettyTreeL D where
-  prettyTreeL Free Nil = "F"
-  prettyTreeL Zero Nil = "Z"
-  prettyTreeL Suc (n : Nil) = "S" <> n
-  prettyTreeL Ref (x : Nil) = "#" <> x
-  prettyTreeL Lam (b : Nil) = "(λ " <> b <> ")"
-  prettyTreeL App (f : a : Nil) = "(" <> f <> " " <> a <> ")"
-  prettyTreeL Hole Nil = "?"
-  prettyTreeL d ss = bug $ "invalid D: " <> show d <> "(" <> (ss # intercalate ", ") <> ")"
+instance PrettyTreeDerL D where
+  prettyTreeDerL Free sigma Nil = "F" <> brackets (sigma MV.!! _g)
+  prettyTreeDerL Zero sigma Nil = "Z" <> brackets (sigma MV.!! _g)
+  prettyTreeDerL Suc sigma (n : Nil) = "S" <> brackets (sigma MV.!! _g) <> n
+  prettyTreeDerL Ref sigma (x : Nil) = "#" <> brackets (sigma MV.!! _g) <> x
+  prettyTreeDerL Lam sigma (b : Nil) = "(λ" <> brackets (sigma MV.!! _g) <> " " <> b <> ")"
+  prettyTreeDerL App sigma (f : a : Nil) = "(" <> brackets (sigma MV.!! _g) <> " " <> f <> " " <> a <> ")"
+  prettyTreeDerL Hole sigma Nil = "?" <> brackets (sigma MV.!! _g)
+  prettyTreeDerL d sigma ss = bug $ "invalid D: " <> show d <> "(" <> (ss # intercalate ", ") <> ")"
 
 instance IsDerL D
 
@@ -127,33 +134,33 @@ instance HasDerRules D S where
   derRules = Map.fromFoldable
     [ Free /\
         ( []
-            |- (Var %^ [ g ])
+            |- (Var ^% [ g ])
         )
     , Zero /\
         ( [] |-
-            (Var %^ [ Ext %^ [ g ] ])
+            (Var ^% [ Ext ^% [ g ] ])
         )
     , Suc /\
-        ( [ Var %^ [ g ] ] |-
-            (Var %^ [ Ext %^ [ g ] ])
+        ( [ Var ^% [ g ] ] |-
+            (Var ^% [ Ext ^% [ g ] ])
         )
     , Ref /\
-        ( [ Var %^ [ g ] ] |-
-            (Term %^ [ g ])
+        ( [ Var ^% [ g ] ] |-
+            (Term ^% [ g ])
         )
     , Lam /\
-        ( [ Term %^ [ Ext %^ [ g ] ] ] |-
-            (Term %^ [ g ])
+        ( [ Term ^% [ Ext ^% [ g ] ] ] |-
+            (Term ^% [ g ])
         )
     , App /\
-        ( [ Term %^ [ g ]
-          , Term %^ [ g ]
+        ( [ Term ^% [ g ]
+          , Term ^% [ g ]
           ] |-
-            (Term %^ [ g ])
+            (Term ^% [ g ])
         )
     , Hole /\
         ( [] |-
-            (Term %^ [ g ])
+            (Term ^% [ g ])
         )
     ]
 
@@ -176,13 +183,13 @@ instance HasAdjRules D S where
 
     modifyAdjRules = List.fromFoldable
       [ makeAdjRule
-          (Var %^ [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
+          (Var ^% [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
           (Free // [ _g /\ g' ] % [])
           ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
           )
       , makeAdjRule
-          (Var %^ [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
+          (Var ^% [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
           (Zero // [ _g /\ g' ] % [])
           ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
               pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }

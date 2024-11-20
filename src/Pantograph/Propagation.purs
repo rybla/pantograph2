@@ -15,6 +15,8 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant as V
 import Pantograph.Utility (tryFirst)
 
+type PropagationLog d s = AdjT d s
+
 -- | Does fixpoint of `propagateStep`, then attempts to project away `AdjL`
 -- | label (can throw the tree that still has `AdjL` label).
 -- |
@@ -22,7 +24,7 @@ import Pantograph.Utility (tryFirst)
 -- | tree.
 propagate
   :: forall m d s
-   . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
+   . MonadWriter (List (PropagationLog d s)) m
   => IsAdjLanguage d s
   => AdjT d s
   -> m (AdjT d s \/ DerT d s)
@@ -38,7 +40,7 @@ propagate t = propagateStep t # runMaybeT >>= case _ of
 -- | no possible applications).
 propagateStep
   :: forall d s m
-   . MonadWriter (List (AdjRule d s /\ AdjT d s)) m
+   . MonadWriter (List (PropagationLog d s)) m
   => IsAdjLanguage d s
   => AdjT d s
   -> MaybeT m (AdjT d s)
@@ -51,8 +53,8 @@ propagateStep t0 = go mempty t0
     -> AdjT d s
     -> MaybeT m (AdjT d s)
   go path t = case (\rule -> (rule /\ _) <$> rule `applyAdjRule` t) `tryFirst` rules of
-    Just (rule /\ t') -> do
+    Just (_rule /\ t') -> do
       let t'' = unPath path t'
-      tell $ pure $ rule /\ t''
+      tell $ pure t''
       pure t''
     Nothing -> (\(th /\ t') -> go (path `stepPath` th) t') `tryFirst` getTeeth t

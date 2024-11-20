@@ -8,6 +8,7 @@ import Control.Monad.Error.Class (throwError)
 import Control.Plus (class Plus)
 import Data.Either (Either)
 import Data.Function (applyFlipped)
+import Data.Function as Function
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
@@ -25,6 +26,8 @@ import Prim.RowList as RowList
 import Record as Record
 import Type.Prelude (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
+
+infixr 1 Function.apply as $$
 
 infixl 0 applyFlipped as ##
 

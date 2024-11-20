@@ -26,7 +26,7 @@ import Data.Variant as V
 import Pantograph.Config as Config
 import Pantograph.Debug as Debug
 import Pantograph.MetaVar (MetaVar)
-import Pantograph.MetaVar as MetaVar
+import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, brackets, indent, pretty)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, expand1, uniqueList, (##))
@@ -43,7 +43,7 @@ _sort = Proxy :: Proxy "sort"
 
 makeSort s kids = V.inj _sort s % kids
 
-infix 3 makeSort as %^
+infix 3 makeSort as ^%
 
 class (Eq s, Ord s, Show s, PrettyTreeL s) <= IsSortL s
 
@@ -61,10 +61,10 @@ makeMetaVar x = V.inj _metaVar x % []
 defAndMakeMetaVar :: forall l. String -> MetaVar /\ TreeV (metaVar :: MetaVar | l)
 defAndMakeMetaVar str = x /\ makeMetaVar x
   where
-  x = MetaVar.MetaVar str
+  x = MV.MetaVar str
 
 makeMetaVar' :: forall l. String -> TreeV (metaVar :: MetaVar | l)
-makeMetaVar' x = V.inj _metaVar (MetaVar.MetaVar x) % []
+makeMetaVar' x = V.inj _metaVar (MV.MetaVar x) % []
 
 renameMVs :: forall l. (MetaVar -> MetaVar) -> TreeV (MetaL l) -> TreeV (MetaL l)
 renameMVs f = map
@@ -91,7 +91,7 @@ type DerL d sl l = (der :: Der d sl | l)
 
 _der = Proxy :: Proxy "der"
 
-data Der d sl = Der d (MetaVar.Subst (TreeV sl))
+data Der d sl = Der d (MV.Subst (TreeV sl))
 
 derive instance Generic (Der d sl) _
 
@@ -101,18 +101,17 @@ instance (Eq d, Eq (Variant sl)) => Eq (Der d sl) where
 instance (Show d, Show (Variant sl)) => Show (Der d sl) where
   show x = genericShow x
 
-instance (PrettyTreeL d, PrettyTreeL_R sl) => PrettyTreeL (Der d sl) where
-  prettyTreeL =
-    if Config.pretty_der_sigma then
-      \(Der d sigma) kids -> brackets (pretty sigma) <> " " <> prettyTreeL d kids
-    else
-      \(Der d _sigma) kids -> prettyTreeL d kids
+class PrettyTreeDerL d where
+  prettyTreeDerL :: d -> MV.Subst String -> List String -> String
+
+instance (PrettyTreeDerL d, PrettyTreeL_R sl) => PrettyTreeL (Der d sl) where
+  prettyTreeL (Der d sigma) kids = prettyTreeDerL d (sigma # map pretty) kids
 
 makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
 
 infix 5 makeDer as //
 
-class (Eq d, Ord d, Show d, PrettyTreeL d) <= IsDerL d
+class (Eq d, Ord d, Show d, PrettyTreeDerL d) <= IsDerL d
 
 --------------------------------------------------------------------------------
 -- DerRule
@@ -160,7 +159,7 @@ instance Show (Variant ch) => Show (Bdry ch) where
   show x = genericShow x
 
 instance PrettyTreeL_R ch => PrettyTreeL (Bdry ch) where
-  prettyTreeL (Bdry dir ch) (kid : Nil) = "(" <> pretty ch <> " " <> pretty dir <> " " <> kid <> ")"
+  prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
   prettyTreeL (Bdry _ _) _ = bug "invalid Bdry"
 
 _bdry = Proxy :: Proxy "bdry"
@@ -200,9 +199,9 @@ makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 infix 2 makeAdjBdryUp as ↑
 
 data AdjSubst d s = AdjSubst
-  { adjs :: MetaVar.Subst (AdjT d s)
-  , chs :: MetaVar.Subst (TreeV (ChangeL (SortL s ())))
-  , sorts :: MetaVar.Subst (TreeV (SortL s ()))
+  { adjs :: MV.Subst (AdjT d s)
+  , chs :: MV.Subst (TreeV (ChangeL (SortL s ())))
+  , sorts :: MV.Subst (TreeV (SortL s ()))
   }
 
 instance IsLanguage d s => Pretty (AdjSubst d s) where
@@ -220,18 +219,18 @@ applyAdjSubst_SortT :: forall d s. AdjSubst d s -> MetaSortT s -> SortT s
 applyAdjSubst_SortT (sigma@(AdjSubst { sorts })) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjSubst_SortT sigma)))
-    # V.on _metaVar (\x -> sorts MetaVar.!! x)
+    # V.on _metaVar (\x -> sorts MV.!! x)
 
 applyAdjSubst_ChT :: forall d s. AdjSubst d s -> MetaChT s -> ChT s
 applyAdjSubst_ChT (sigma@(AdjSubst { chs })) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjSubst_ChT sigma)))
-    # V.on _metaVar (\x -> chs MetaVar.!! x)
+    # V.on _metaVar (\x -> chs MV.!! x)
 
 applyAdjSubst_AdjT :: forall d s. AdjSubst d s -> MetaAdjT d s -> AdjT d s
 applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
   l ## V.match
-    { metaVar: \x -> adjs MetaVar.!! x
+    { metaVar: \x -> adjs MV.!! x
     , bdry: \(Bdry dir ch) ->
         V.inj _bdry (Bdry dir (ch # applyAdjSubst_ChT sigma)) %%
           (kids # map (applyAdjSubst_AdjT sigma))
@@ -310,8 +309,8 @@ runMatchM = flip execStateT
       , sorts: Map.empty
       }
 
-type SortSubst s = MetaVar.Subst (TreeV (SortL s ()))
-type MetaSortSubst s = MetaVar.Subst (TreeV (MetaL (SortL s ())))
+type SortSubst s = MV.Subst (TreeV (SortL s ()))
+type MetaSortSubst s = MV.Subst (TreeV (MetaL (SortL s ())))
 
 type MetaDerT d s = TreeV (MetaDerL d s)
 type DerT d s = TreeV (DerL d (SortL s ()) ())
