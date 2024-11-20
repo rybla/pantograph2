@@ -7,7 +7,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.FunctorWithIndex (mapWithIndex)
-import Data.List (List, (:))
+import Data.List (List)
 import Data.List as List
 import Data.Map as Map
 import Data.Tuple.Nested ((/\))
