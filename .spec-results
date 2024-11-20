@@ -21,9 +21,23 @@
     }
   ],
   [
+    "Slc #[EE∅]S[E∅]Z[∅]",
+    {
+      "timestamp": "1732070655585.0",
+      "success": true
+    }
+  ],
+  [
     "Slc #[E∅]Z[E∅]",
     {
       "timestamp": "1732069506228.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc #[E∅]Z[∅]",
+    {
+      "timestamp": "1732070976210.0",
       "success": true
     }
   ],
@@ -175,6 +189,76 @@
     }
   ],
   [
+    "Slc outerEndpoint xxx",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage #[EE∅]S[E∅]Z[∅]",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage #[E∅]Z[∅]",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Term -{E{E∅}} ↓ #[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Term -{E{E∅}} ↓ (λ[E∅] #[EEE∅]S[EE∅]Z[E∅]) }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Term -{E{∅}} ↓ #[E∅]Z[∅] }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Term E-{E{E∅}} ↓ #[EEE∅]S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Var -{E{E∅}} ↓ Z[E∅] }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc propagage {{ Var E-{E{E∅}} ↓ S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732073068524.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc xxx",
+    {
+      "timestamp": "1732073014341.0",
+      "success": true
+    }
+  ],
+  [
     "Slc {{ Term -{E{E∅}} ↓ #[EE∅]S[EE∅]Z[E∅] }}",
     {
       "timestamp": "1732069398210.0",
@@ -185,6 +269,20 @@
     "Slc {{ Term -{E{E∅}} ↓ #[EE∅]Z[EE∅] }}",
     {
       "timestamp": "1732069506228.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc {{ Term -{E{E∅}} ↓ #[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732071167096.0",
+      "success": true
+    }
+  ],
+  [
+    "Slc {{ Term -{E{E∅}} ↓ (λ[E∅] #[EEE∅]S[EE∅]Z[E∅]) }}",
+    {
+      "timestamp": "1732073014341.0",
       "success": true
     }
   ],
@@ -231,6 +329,13 @@
     }
   ],
   [
+    "Slc {{ Term -{E{∅}} ↓ #[E∅]Z[∅] }}",
+    {
+      "timestamp": "1732070986610.0",
+      "success": true
+    }
+  ],
+  [
     "Slc {{ Term -{E{∅}} ↓ (λ[E∅] #[EE∅]S[EE∅]Z[EEE∅]) }}",
     {
       "timestamp": "1732068148161.0",
@@ -240,7 +345,14 @@
   [
     "Slc {{ Term -{E{∅}} ↓ (λ[E∅] #[EE∅]S[EE∅]Z[E∅]) }}",
     {
-      "timestamp": "1732069506228.0",
+      "timestamp": "1732070198344.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc {{ Term -{E{∅}} ↓ (λ[E∅] #[EE∅]S[E∅]Z[∅]) }}",
+    {
+      "timestamp": "1732070614717.0",
       "success": false
     }
   ],
@@ -266,6 +378,13 @@
     }
   ],
   [
+    "Slc {{ Term E-{E{E∅}} ↓ #[EEE∅]S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732072956025.0",
+      "success": true
+    }
+  ],
+  [
     "Slc {{ Term E-{E{∅}} ↓ #[EE∅]Z[EE∅] }}",
     {
       "timestamp": "1732066952600.0",
@@ -273,23 +392,44 @@
     }
   ],
   [
+    "Slc {{ Var -{E{E∅}} ↓ S[EE∅]Z[E∅] }}",
+    {
+      "timestamp": "1732070747895.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc {{ Var -{E{E∅}} ↓ S[E∅]Z[∅] }}",
+    {
+      "timestamp": "1732071004925.0",
+      "success": false
+    }
+  ],
+  [
     "Slc {{ Var -{E{E∅}} ↓ Z[EE∅] }}",
     {
-      "timestamp": "1732069506228.0",
+      "timestamp": "1732070697642.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc {{ Var -{E{E∅}} ↓ Z[E∅] }}",
+    {
+      "timestamp": "1732071041481.0",
       "success": true
     }
   ],
   [
     "Slc {{ Var E-{E{E∅}} ↓ S[EE∅]Z[E∅] }}",
     {
-      "timestamp": "1732069506228.0",
+      "timestamp": "1732072747432.0",
       "success": true
     }
   ],
   [
     "Slc {{ Var E-{E{E∅}} ↓ S[E∅]Z[∅] }}",
     {
-      "timestamp": "1732069212828.0",
+      "timestamp": "1732072693305.0",
       "success": false
     }
   ],
@@ -303,8 +443,8 @@
   [
     "Slc {{ Var E-{E{∅}} ↓ S[E∅]Z[∅] }}",
     {
-      "timestamp": "1732069166506.0",
-      "success": false
+      "timestamp": "1732072730035.0",
+      "success": true
     }
   ],
   [

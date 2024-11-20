@@ -15,12 +15,13 @@ import Data.Newtype (unwrap)
 import Data.Newtype (unwrap)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
+import Effect.Aff (Aff)
 import Effect.Exception (Error)
 import Pantograph.Debug (logM)
 import Pantograph.Pretty (class Pretty, indent, pretty)
 import Pantograph.Propagation (propagate)
 import Test.Spec (class Example, Spec, SpecT, it)
-import Test.Spec.Assertions (fail)
+import Test.Spec.Assertions (fail, shouldEqual)
 
 also_show = false :: Boolean
 
@@ -54,7 +55,7 @@ shouldEqual_pretty expected actual =
           # indent 1
       )
 
-shouldEqual_propagate d pd = do
+it_shouldEqual_propagate d pd = do
   it (pretty pd) do
     let result /\ logs = propagate pd # runWriter
     logM 0 $
@@ -65,3 +66,16 @@ shouldEqual_propagate d pd = do
         # fold
         # intercalate "\n"
     shouldEqual_pretty d result
+
+it_shouldEqual
+  :: forall g m @a
+   . Eq a
+  => Pretty a
+  => Show a
+  => MonadThrow Error g
+  => Monad m
+  => String
+  -> a
+  -> a
+  -> SpecT g Unit m Unit
+it_shouldEqual name a a' = it name (shouldEqual_pretty a a')

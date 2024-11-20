@@ -2,19 +2,22 @@ module Pantograph.Tree where
 
 import Prelude
 
+import Control.Alternative (guard)
 import Control.MonadPlus (class Plus, empty)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold)
+import Data.Foldable (class Foldable, fold, length)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe, fromMaybe')
 import Data.Show.Generic (genericShow)
 import Data.Symbol (class IsSymbol)
 import Data.Traversable (class Traversable, foldl)
+import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant)
 import Data.Variant as V
+import Debug as Debug
 import Pantograph.Pretty (class Pretty, braces, parens, pretty)
 import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
@@ -244,12 +247,13 @@ composeChanges _ _ = todo "composeChanges"
 invertChange :: forall l. TreeV (ChangeL l) -> TreeV (ChangeL l)
 invertChange _ = todo "invertChange"
 
-innerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
+innerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeL l) -> TreeV l
 innerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> innerEndpoint))
     # V.on _plus
-        ( \(PlusChange _) -> case kids of
+        ( \(PlusChange th) -> case kids of
+            -- c : Nil -> c # innerEndpoint # minusTooth th # fromMaybe' \_ -> bug "invalid change since can't minusTooth when getting inner endpoint of a PlusChange"
             c : Nil -> c # innerEndpoint
             _ -> bug "invalid Change"
         )
@@ -261,7 +265,7 @@ innerEndpoint (l %% kids) =
     # V.on _replace (\(ReplaceChange t0 _t1) -> t0)
     $ l
 
-outerEndpoint :: forall l. TreeV (ChangeL l) -> TreeV l
+outerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeL l) -> TreeV l
 outerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> outerEndpoint))
@@ -271,10 +275,23 @@ outerEndpoint (l %% kids) =
             _ -> bug "invalid Change"
         )
     # V.on _minus
-        ( \(MinusChange _) -> case kids of
+        ( \(MinusChange th) -> case kids of
+            -- c : Nil -> c # outerEndpoint # minusTooth th # fromMaybe' \_ -> bug "invalid change since can't minusTooth when getting outer endpoint of a MinusChange"
             c : Nil -> c # outerEndpoint
             _ -> bug "invalid Change"
         )
     # V.on _replace (\(ReplaceChange _t0 t1) -> t1)
     $ l
 
+minusTooth :: forall l. Eq (Variant l) => ToothV l -> TreeV l -> Maybe (TreeV l)
+minusTooth (Tooth l ls rs) (l' %% ts) = do
+  guard $ l == l'
+  Debug.traceM "l == l'"
+  if not ((ls # length) < ((ts # length) - 1 :: Int)) then bug "invalid label since wrong number of kids" else pure unit
+  guard $ List.zip (ls # List.fromFoldable) (ts # List.take (ls # length)) # List.all (uncurry eq)
+  Debug.traceM "ls ok"
+  Debug.traceM "rs ok"
+  if not ((rs # length) < ((ts # length) - 1 :: Int)) then bug "invalid label since wrong number of kids" else pure unit
+  guard $ List.zip rs (ts # List.takeEnd (rs # length)) # List.all (uncurry eq)
+  let t = ts List.!! (ls # length) # fromMaybe' \_ -> bug "impossible"
+  pure t

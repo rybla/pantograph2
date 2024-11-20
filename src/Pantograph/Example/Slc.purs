@@ -92,15 +92,16 @@ app g f a = App // [ _g /\ g ] % [ f, a ]
 hole g = Hole // [ _g /\ g ] % []
 
 varN g n | n < 0 = bug $ "invalid: varN; n = " <> show n
-varN g 0 = zero (ctxN g)
-varN g n = suc (ctxN g) (varN (g - 1) (n - 1))
-
-freeN g n | n < 0 = bug $ "invalid: freeN; n = " <> show n
-freeN g 0 = free (ctxN g)
-freeN g 1 = suc (ctxN g) (free (ctxN g))
-freeN g n = suc (ctxN g) (freeN (g - 1) (n - 1))
+varN g 0 = zero (ctxN (g - 1))
+varN g n = suc (ctxN (g - 1)) (varN (g - 1) (n - 1))
 
 refVarN g n = ref (ctxN g) (varN g n)
+
+-- `freeN g n` is the free var with `n` sucs in context `g`
+freeN g n | n < 0 = bug $ "invalid: freeN; n = " <> show n
+freeN g 0 = free (ctxN g)
+freeN g n = suc (ctxN (g - 1)) (freeN (g - 1) (n - 1))
+
 refFreeN g n = ref (ctxN g) (freeN g n)
 
 derive instance Generic D _

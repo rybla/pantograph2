@@ -2,57 +2,69 @@ module Test.Slc where
 
 import Pantograph.Example.Slc
 import Pantograph.Language
+import Pantograph.Tree
 import Prelude hiding (zero)
 
 import Control.Monad.Error.Class (class MonadThrow)
-import Data.Tuple.Nested ((/\))
 import Effect.Exception (Error)
-import Pantograph.Tree ((%))
-import Test.Common (shouldEqual_propagate)
+import Test.Common (it_shouldEqual, it_shouldEqual_propagate)
 import Test.Spec (SpecT, describe)
 
-spec :: forall m g. Monad m => Applicative g => MonadThrow Error g => SpecT g Unit m Unit
+spec :: forall m g. MonadThrow Error g => Monad m => SpecT g Unit m Unit
 spec = describe "Slc" do
-  when true do
-    shouldEqual_propagate
-      (refVarN 1 0 # pure)
-      (refVarN 1 0)
-    shouldEqual_propagate
-      (refVarN 2 1 # pure)
-      (refVarN 2 1)
-    shouldEqual_propagate
-      -- ((ref (ctxN 0) $ free (ctxN 0)) # pure)
-      (refFreeN 0 0 # pure)
-      (term (Ext %- [] << ctxN 0 >> []) ↓ refVarN 1 0)
-    shouldEqual_propagate
-      (free (ctxN 1) # pure)
-      (var (Ext %- [] << ctxN 1 >> []) ↓ varN 2 0)
-    shouldEqual_propagate
-      (refFreeN 1 0 # pure)
-      (term (Ext %- [] << ctxN 1 >> []) ↓ refVarN 2 0)
-    shouldEqual_propagate
-      (freeN 1 1 # pure)
-      (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 2 1)
-  when true do
-    shouldEqual_propagate
-      ((lam (ctxN 0) $ refFreeN 1 1) # pure)
-      (term (Ext %- [] << ctxN 0 >> []) ↓ (lam (ctxN 1) $ refVarN 2 1))
-    pure unit
+  describe "outerEndpoint" do
+    if true then do
+      it_shouldEqual @(SortT S) "xxx"
+        ((Ext ^% [ Ext %- [] << (Ext ^% [ Emp ^% [] ]) >> [] ]) # outerEndpoint)
+        (Ext ^% [ Ext ^% [ Emp ^% [] ] ])
+    else pure unit
 
-  -- shouldEqual_propagateFixpoint
+  describe "propagage" do
+    if true then do
+      it_shouldEqual_propagate
+        (refVarN 1 0 # pure)
+        (refVarN 1 0)
+      it_shouldEqual_propagate
+        (refVarN 2 1 # pure)
+        (refVarN 2 1)
+      it_shouldEqual_propagate
+        (refFreeN 0 0 # pure)
+        (term (Ext %- [] << ctxN 0 >> []) ↓ refVarN 1 0)
+      it_shouldEqual_propagate
+        (freeN 1 0 # pure)
+        (var (Ext %- [] << ctxN 1 >> []) ↓ varN 2 0)
+      it_shouldEqual_propagate
+        (refFreeN 1 0 # pure)
+        (term (Ext %- [] << ctxN 1 >> []) ↓ refVarN 2 0)
+      it_shouldEqual_propagate
+        (freeN 2 1 # pure)
+        (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 3 1)
+      it_shouldEqual_propagate
+        (refFreeN 2 1 # pure)
+        (term (ext $ Ext %- [] << ctxN 1 >> []) ↓ refVarN 3 1)
+      it_shouldEqual_propagate
+        ((lam (ctxN 1) $ refFreeN 2 1) # pure)
+        (term (Ext %- [] << ctxN 1 >> []) ↓ lam (ctxN 1) (refVarN 3 1))
+    else pure unit
+
+    if true then do
+      pure unit
+    else pure unit
+
+  -- it_shouldEqual_propagateFixpoint
   --   -- (DerLbl Lam (Map.fromFoldable [ RulialVar "gamma" /\ (Empty %^ []) ]) %* [ ?b ])
   --   (lam emp (ref (ext emp) ?a))
   --   (RightF (DerLbl Lam ?a) %* [])
 
-  -- shouldEqual_propagateFixpoint
+  -- it_shouldEqual_propagateFixpoint
   --   (lam emp (ref (ext emp) (zero emp)))
   --   (lam_p emp (ref_p (ext emp) (zero_p emp)))
 
-  -- shouldEqual_propagateFixpoint
+  -- it_shouldEqual_propagateFixpoint
   --   (ref (ext emp) (zero emp))
   --   (term_c (ext_0 %∂- id emp) ↓ ref_p (ext emp) (zero_p emp))
 
-  -- when false $ shouldEqual_propagateFixpoint
+  -- when false $ it_shouldEqual_propagateFixpoint
   --   (ref (ext (ext emp)) (suc (ext (ext emp)) (zero emp)))
   --   (term_c (ext_0 %∂+ id (ext emp)) ↓ ref_p (ext emp) (zero_p emp))
 
