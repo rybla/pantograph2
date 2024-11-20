@@ -183,22 +183,19 @@ instance HasAdjRules D S where
     _dg /\ dg = defAndMakeMetaVar "dg"
 
     modifyAdjRules = List.fromFoldable
+      -- these really should be the only necessary rules since we don't have types
       [ makeAdjRule
           (Var ^% [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
           (Free // [ _g /\ g' ] % [])
           ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-              pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+              pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
           )
       , makeAdjRule
           (Var ^% [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
           (Zero // [ _g /\ g' ] % [])
           ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-              pure { sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ], chs: [], adjs: [] }
+              pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
           )
-      -- , makeAdjRule
-      --     (Var ^% [ Ext %-  ])
-      --     ?a
-      --     ?A
       ]
 
 --------------------------------------------------------------------------------
