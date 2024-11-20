@@ -6,12 +6,18 @@ import Pantograph.Tree
 import Prelude hiding (zero)
 
 import Control.Monad.Error.Class (class MonadThrow)
+import Data.Foldable (intercalate)
+import Data.List (List)
+import Debug as Debug
 import Effect.Exception (Error)
+import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
+import Pantograph.Pretty (pretty)
 import Test.Common (it_shouldEqual, it_shouldEqual_propagate)
 import Test.Spec (SpecT, describe)
 
 spec :: forall m g. MonadThrow Error g => Monad m => SpecT g Unit m Unit
 spec = describe "Slc" do
+  Debug.traceM $ "adjRules: " <> ((propagationAdjRules :: List (AdjRule D S)) # map pretty # intercalate "\n" # ("\n" <> _))
   describe "outerEndpoint" do
     if true then do
       it_shouldEqual @(SortT S) "xxx"

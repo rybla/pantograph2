@@ -18,10 +18,11 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Debug as Debug
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
-import Pantograph.Pretty (brackets)
+import Pantograph.Pretty (brackets, pretty)
 import Pantograph.Utility (bug)
 
 --------------------------------------------------------------------------------
@@ -123,7 +124,7 @@ instance PrettyTreeDerL D where
   prettyTreeDerL Lam sigma (b : Nil) = "(λ" <> brackets (sigma MV.!! _g) <> " " <> b <> ")"
   prettyTreeDerL App sigma (f : a : Nil) = "(" <> brackets (sigma MV.!! _g) <> " " <> f <> " " <> a <> ")"
   prettyTreeDerL Hole sigma Nil = "?" <> brackets (sigma MV.!! _g)
-  prettyTreeDerL d sigma ss = bug $ "invalid D: " <> show d <> "(" <> (ss # intercalate ", ") <> ")"
+  prettyTreeDerL d sigma ss = bug $ "invalid D: " <> show d <> brackets (pretty sigma) <> "(" <> (ss # intercalate ", ") <> ")"
 
 instance IsDerL D
 
@@ -178,6 +179,7 @@ instance IsLanguage D S
 instance HasAdjRules D S where
   adjRules = modifyAdjRules <> propagationAdjRules
     where
+
     _g /\ g = defAndMakeMetaVar "g"
     _g' /\ g' = defAndMakeMetaVar "g'"
     _dg /\ dg = defAndMakeMetaVar "dg"

@@ -6,7 +6,7 @@ import Pantograph.Tree
 import Prelude
 
 import Data.FunctorWithIndex (mapWithIndex)
-import Data.List (List)
+import Data.List (List, (:))
 import Data.List as List
 import Data.Map as Map
 import Data.Tuple.Nested ((/\))
@@ -21,7 +21,8 @@ propagationAdjRules =
     # foldMap \(d /\ DerRule rule) -> List.fromFoldable
         let
           kidMVs = rule.kids # mapWithIndex \i _ -> MV.MetaVar ("kid_" <> show i)
-          kidSortMVs = rule.kids # map (\{ sort: s } -> s) # foldMap collectMVs
+          -- sortMVs = (rule.sort : (rule.kids # map (\{ sort: s } -> s))) # foldMap collectMVs
+          sortMVs = rule.sort # collectMVs
         in
           -- propagate down rules
           [ makeAdjRule
@@ -30,13 +31,13 @@ propagationAdjRules =
                   ↓
                     d
                   //
-                    (kidSortMVs # map (\x -> x /\ makeMetaVar x))
+                    (sortMVs # map (\x -> x /\ makeMetaVar x))
                   %
                     (kidMVs # map (\x -> makeMetaVar x))
               )
               ( d
                   //
-                    (kidSortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "outer")))
+                    (sortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "outer")))
                   %
                     ( kidMVs `List.zip` rule.kids
                         # map
@@ -49,7 +50,7 @@ propagationAdjRules =
               )
               ( \(AdjSubst { chs, sorts: _, adjs }) -> pure
                   { chs: chs # Map.toUnfoldable :: List _
-                  , sorts: kidSortMVs # map (\x -> (x # addSuffix "outer") /\ (chs MV.!! (x # addPrefix "ch") # outerEndpoint))
+                  , sorts: sortMVs # map (\x -> (x # addSuffix "outer") /\ (chs MV.!! (x # addPrefix "ch") # outerEndpoint))
                   , adjs: Map.toUnfoldable adjs :: List _
                   }
               )

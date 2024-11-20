@@ -259,6 +259,14 @@ data AdjRule d s = AdjRule
   , output :: MetaAdjT d s
   }
 
+instance (Show d, Show s) => Show (AdjRule d s) where
+  show (AdjRule { input, trans: _, output }) =
+    "AdjRule { input: " <> show input <> ", output: " <> show output <> ", trans: <function>" <> " }"
+
+instance (Show d, Show s, PrettyTreeDerL d, PrettyTreeL s) => Pretty (AdjRule d s) where
+  pretty (AdjRule { input, trans: _, output }) =
+    pretty input <> "  ~~>  " <> pretty output <> "  with  <function>"
+
 makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
 
