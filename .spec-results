@@ -16,14 +16,14 @@
   [
     "Slc #[EE∅]S[EE∅]Z[E∅]",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],
   [
     "Slc #[E∅]Z[E∅]",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],
@@ -184,7 +184,7 @@
   [
     "Slc {{ Term -{E{E∅}} ↓ #[EE∅]Z[EE∅] }}",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],
@@ -226,7 +226,7 @@
   [
     "Slc {{ Term -{E{∅}} ↓ #[E∅]Z[E∅] }}",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],
@@ -234,6 +234,13 @@
     "Slc {{ Term -{E{∅}} ↓ (λ[E∅] #[EE∅]S[EE∅]Z[EEE∅]) }}",
     {
       "timestamp": "1732068148161.0",
+      "success": false
+    }
+  ],
+  [
+    "Slc {{ Term -{E{∅}} ↓ (λ[E∅] #[EE∅]S[EE∅]Z[E∅]) }}",
+    {
+      "timestamp": "1732069506228.0",
       "success": false
     }
   ],
@@ -268,14 +275,14 @@
   [
     "Slc {{ Var -{E{E∅}} ↓ Z[EE∅] }}",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],
   [
     "Slc {{ Var E-{E{E∅}} ↓ S[EE∅]Z[E∅] }}",
     {
-      "timestamp": "1732069445827.0",
+      "timestamp": "1732069506228.0",
       "success": true
     }
   ],

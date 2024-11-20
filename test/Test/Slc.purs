@@ -34,16 +34,9 @@ spec = describe "Slc" do
       (freeN 1 1 # pure)
       (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 2 1)
   when true do
-    -- shouldEqual_propagate
-    --   ((lam (ctxN 0) $ refFreeN (ctxN 1) 1) # pure)
-    --   (term (Ext %- [] << ctxN 0 >> []) ↓ (lam (ctxN 1) $ refVarN (ctxN 2) 1))
-    {-
-    -- this shouldn't happen since S[EE∅] can't rewrite to S[∅] by this step!
-    -- _should_ rewrite to S[E∅] (only removing the single E)
-    {{ Var E-{E{∅}} ↓ S[EE∅]Z[EEE∅] }} ~~>
-    S[∅]{{ Var -{E{∅}} ↓ Z[EEE∅] }}
-    -}
-
+    shouldEqual_propagate
+      ((lam (ctxN 0) $ refFreeN 1 1) # pure)
+      (term (Ext %- [] << ctxN 0 >> []) ↓ (lam (ctxN 1) $ refVarN 2 1))
     pure unit
 
   -- shouldEqual_propagateFixpoint
