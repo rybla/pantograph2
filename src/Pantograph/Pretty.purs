@@ -106,31 +106,31 @@ else instance
 -- Variant
 --------------------------------------------------------------------------------
 
-instance PrettyVariantR r => Pretty (Variant r) where
-  pretty = prettyVariantR Proxy
+instance PrettyVariant_R r => Pretty (Variant r) where
+  pretty = prettyVariant_R Proxy
 
-class PrettyVariantR r where
-  prettyVariantR :: Proxy r -> Variant r -> String
+class PrettyVariant_R r where
+  prettyVariant_R :: Proxy r -> Variant r -> String
 
-instance (RowToList r rl, PrettyVariantRL r rl) => PrettyVariantR r where
-  prettyVariantR p_r = prettyVariantRL p_r (Proxy :: Proxy rl)
+instance (RowToList r rl, PrettyVariant_RL r rl) => PrettyVariant_R r where
+  prettyVariant_R p_r = prettyVariant_RL p_r (Proxy :: Proxy rl)
 
-class PrettyVariantRL r (rl :: RowList Type) | rl -> r where
-  prettyVariantRL :: Proxy r -> Proxy rl -> Variant r -> String
+class PrettyVariant_RL r (rl :: RowList Type) | rl -> r where
+  prettyVariant_RL :: Proxy r -> Proxy rl -> Variant r -> String
 
-instance PrettyVariantRL () RowList.Nil where
-  prettyVariantRL _ _ = V.case_
+instance PrettyVariant_RL () RowList.Nil where
+  prettyVariant_RL _ _ = V.case_
 
 instance
   ( IsSymbol x
   , Pretty a
   , Cons x a r r'
-  , PrettyVariantRL r rl
+  , PrettyVariant_RL r rl
   ) =>
-  PrettyVariantRL r' (RowList.Cons x a rl) where
-  prettyVariantRL _ _ =
+  PrettyVariant_RL r' (RowList.Cons x a rl) where
+  prettyVariant_RL _ _ =
     V.on (Proxy :: Proxy x) (\a -> "(" <> "@" <> reflectSymbol (Proxy :: Proxy x) <> " " <> pretty a <> ")")
-      $ prettyVariantRL (Proxy :: Proxy r) (Proxy :: Proxy rl)
+      $ prettyVariant_RL (Proxy :: Proxy r) (Proxy :: Proxy rl)
 
 --------------------------------------------------------------------------------
 -- Utilities

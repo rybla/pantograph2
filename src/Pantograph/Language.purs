@@ -27,9 +27,9 @@ import Pantograph.Config as Config
 import Pantograph.Debug as Debug
 import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
-import Pantograph.Pretty (class Pretty, class PrettyVariantR, indent, pretty)
+import Pantograph.Pretty (class Pretty, class PrettyVariant_R, indent, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug, expand1, todo, uniqueList, (##))
+import Pantograph.Utility (bug, expand1, unsafeCoerce_because, todo, uniqueList, (##))
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -160,8 +160,8 @@ instance Eq (Variant (ChangeL (SortL s l_s))) => Eq (Bdry s l_s) where
 instance Show (Variant (ChangeL (SortL s l_s))) => Show (Bdry s l_s) where
   show x = genericShow x
 
-instance Pretty (Variant (ChangeL (SortL s l_s))) => Pretty (Bdry s l_s) where
-  pretty x = todo ""
+instance PrettyTreeL_R (ChangeL (SortL s l_s)) => Pretty (Bdry s l_s) where
+  pretty (Bdry dir ch) = "{{ " <> pretty ch <> pretty dir <> " _ }}"
 
 instance PrettyTreeL_R (ChangeL (SortL s l_s)) => PrettyTreeL (Bdry s l_s) where
   prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
@@ -210,13 +210,18 @@ data AdjSubst d l_d s l_s = AdjSubst
   , sorts :: MV.Subst (SortT s l_s)
   }
 
-instance (PrettyVariantR (AdjL d l_d s l_s), IsLanguage d s) => Pretty (AdjSubst d l_d s l_s) where
+instance
+  ( PrettyTreeL_R (AdjL d l_d s l_s)
+  , PrettyTreeL_R (SortL s l_s)
+  , PrettyTreeL_R (SortChL s l_s)
+  , IsLanguage d s
+  ) =>
+  Pretty (AdjSubst d l_d s l_s) where
   pretty (AdjSubst { adjs, chs, sorts }) =
-    -- [ "adjs  : " <> pretty adjs
-    -- , "chs   : " <> pretty chs
-    -- , "sorts : " <> pretty sorts
-    -- ] # intercalate "\n"
-    todo ""
+    [ "adjs  : " <> pretty adjs
+    , "chs   : " <> pretty chs
+    , "sorts : " <> pretty sorts
+    ] # intercalate "\n"
 
 _adjs = Proxy :: Proxy "adjs"
 _chs = Proxy :: Proxy "chs"
@@ -225,31 +230,36 @@ _sorts = Proxy :: Proxy "sorts"
 emptyAdjSubst :: AdjSubst _ _ _ _
 emptyAdjSubst = AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty }
 
-applyAdjSubst_SortT :: forall d s. AdjSubst d () s () -> MetaSortT s () -> SortT s ()
+applyAdjSubst_SortT :: forall d l_d s l_s. AdjSubst d l_d s l_s -> MetaSortT s l_s -> SortT s l_s
 applyAdjSubst_SortT (sigma@(AdjSubst { sorts })) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjSubst_SortT sigma)))
     # V.on _metaVar (\x -> sorts MV.!! x)
 
-applyAdjSubst_SortChT :: forall d s. AdjSubst d () s () -> MetaSortChT s () -> SortChT s ()
+applyAdjSubst_SortChT :: forall d l_d s l_s. AdjSubst d l_d s l_s -> MetaSortChT s l_s -> SortChT s l_s
 applyAdjSubst_SortChT (sigma@(AdjSubst { chs })) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjSubst_SortChT sigma)))
     # V.on _metaVar (\x -> chs MV.!! x)
 
-applyAdjSubst_AdjT :: forall d s. AdjSubst d () s () -> MetaAdjT d () s () -> AdjT d () s ()
+applyAdjSubst_AdjT :: forall d l_d s l_s. AdjSubst d l_d s l_s -> MetaAdjT d l_d s l_s -> AdjT d l_d s l_s
 applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
-  -- l ## V.match
-  --   -- { metaVar: \x -> adjs MV.!! x
-  --   -- , bdry: \(Bdry dir ch) ->
-  --   --     V.inj _bdry (Bdry dir (ch # applyAdjSubst_SortChT sigma)) %%
-  --   --       (kids # map (applyAdjSubst_AdjT sigma))
-  --   -- , der: \(Der d sigma_d) ->
-  --   --     V.inj _der (Der d (sigma_d # (map (applyAdjSubst_SortT sigma)))) %%
-  --   --       (kids # map (applyAdjSubst_AdjT sigma))
-  --   -- }
-  --   {}
-  todo ""
+  l ## V.case_
+    #
+      ( \_ l' -> unsafeCoerce_because "constant expansion of variant" l' %%
+          (kids # map (applyAdjSubst_AdjT sigma))
+      )
+    # V.on _metaVar (\x -> adjs MV.!! x)
+    # V.on _der
+        ( \(Der d sigma_d) ->
+            V.inj _der (Der d (sigma_d # map (applyAdjSubst_SortT sigma))) %%
+              (kids # map (applyAdjSubst_AdjT sigma))
+        )
+    # V.on _bdry
+        ( \(Bdry dir ch) ->
+            V.inj _bdry (Bdry dir (ch # applyAdjSubst_SortChT sigma)) %%
+              (kids # map (applyAdjSubst_AdjT sigma))
+        )
 
 --------------------------------------------------------------------------------
 -- AdjRules
@@ -457,18 +467,26 @@ matchAdjL a1 a2 =
             # V.on _bdry (\bdry2 -> matchBdry bdry1 bdry2 # runMatchM)
         )
 
-matchAdjT :: forall d s. IsLanguage d s => MetaAdjT d () s () -> AdjT d () s () -> Maybe (AdjSubst d () s ())
+matchAdjT
+  :: forall d l_d s l_s
+   . Eq (Variant l_d)
+  => Eq (Variant (SortL s l_s))
+  => Eq (Variant (SortChL s l_s))
+  => Eq (Variant (AdjL d l_d s l_s))
+  => IsLanguage d s
+  => MetaAdjT d l_d s l_s
+  -> AdjT d l_d s l_s
+  -> Maybe (AdjSubst d l_d s l_s)
 matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
-  -- V.case_
-  --   #
-  --     ( \_ l_ma' -> do
-  --         sigma <- matchAdjL l_ma' l_a
-  --         sigmas_kids <- (kids_ma `List.zip` kids_a) # traverse (uncurry matchAdjT)
-  --         union_AdjSubst sigma =<< unions_AdjSubst sigmas_kids
-  --     )
-  --   # V.on _metaVar (\x -> pure $ AdjSubst { adjs: Map.singleton x at, chs: Map.empty, sorts: Map.empty })
-  --   $ l_ma
-  todo ""
+  V.case_
+    #
+      ( \_ l_ma' -> do
+          sigma <- matchAdjL l_ma' l_a
+          sigmas_kids <- (kids_ma `List.zip` kids_a) # traverse (uncurry matchAdjT)
+          union_AdjSubst sigma =<< unions_AdjSubst sigmas_kids
+      )
+    # V.on _metaVar (\x -> pure $ AdjSubst { adjs: Map.singleton x at, chs: Map.empty, sorts: Map.empty })
+    $ l_ma
 
 union_AdjSubst
   :: forall d l_d s l_s

@@ -31,6 +31,9 @@ infixr 1 Function.apply as $$
 
 infixl 0 applyFlipped as ##
 
+unsafeCoerce_because :: forall a b. String -> a -> b
+unsafeCoerce_because _ = unsafeCoerce
+
 todo :: forall a. String -> a
 todo msg = unsafeCrashWith $ "TODO: " <> msg
 
