@@ -150,6 +150,7 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 type AdjL d l_d s l_s = (bdry :: Bdry s l_s | DerL d l_d s l_s)
 
 data Bdry (s :: Type) (l_s :: Row Type) = Bdry BdryDir (TreeV (ChangeL (SortL s l_s)))
+type MetaBdry s l_s = Bdry s (MetaL l_s)
 
 derive instance Generic (Bdry s l_s) _
 
@@ -220,6 +221,9 @@ instance (PrettyVariantR (AdjL d l_d s l_s), IsLanguage d s) => Pretty (AdjSubst
 _adjs = Proxy :: Proxy "adjs"
 _chs = Proxy :: Proxy "chs"
 _sorts = Proxy :: Proxy "sorts"
+
+emptyAdjSubst :: AdjSubst _ _ _ _
+emptyAdjSubst = AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty }
 
 applyAdjSubst_SortT :: forall d s. AdjSubst d () s () -> MetaSortT s () -> SortT s ()
 applyAdjSubst_SortT (sigma@(AdjSubst { sorts })) (l %% kids) =
@@ -416,27 +420,42 @@ matchDer (Der md1 sigma1) (Der d2 sigma2) = do
 matchDerT :: forall d l_d s l_s. IsLanguage d s => MetaDerT d l_d s l_s -> DerT d l_d s l_s -> MatchM d l_d s l_s
 matchDerT = todo "matchDerT"
 
+matchBdry :: forall d l_d s l_s. Eq (Variant (SortChL s l_s)) => IsLanguage d s => MetaBdry s l_s -> Bdry s l_s -> MatchM d l_d s l_s
+matchBdry (Bdry dir1 ch1) (Bdry dir2 ch2) = do
+  guard $ dir1 == dir2
+  matchSortCh ch1 ch2
+
 matchAdjL
-  :: forall d s
-   . IsLanguage d s
-  => Variant (AdjL d () s (MetaL ()))
-  -> Variant (AdjL d () s ())
-  -> Maybe (AdjSubst d () s ())
+  :: forall d l_d s l_s
+   . Eq (Variant l_d)
+  => Eq (Variant (SortL s l_s))
+  => Eq (Variant (SortChL s l_s))
+  => IsLanguage d s
+  => Variant (AdjL d l_d s (MetaL l_s))
+  -> Variant (AdjL d l_d s l_s)
+  -> Maybe (AdjSubst d l_d s l_s)
 matchAdjL a1 a2 =
-  a1 # V.match
-    { bdry: \(Bdry dir1 ch1) ->
-        a2 # V.match
-          { bdry: \(Bdry dir2 ch2) -> do
-              guard $ dir1 == dir2
-              matchSortCh ch1 ch2 # runMatchM
-          , der: const empty
-          }
-    , der: \der1 ->
-        a2 # V.match
-          { bdry: const empty
-          , der: \der2 -> matchDer der1 der2 # runMatchM
-          }
-    }
+  a1 ## V.case_
+    #
+      ( \_ l1 -> a2 ## V.case_
+          #
+            ( \_ l2 -> do
+                guard $ (l1 :: Variant l_d) == l2
+                pure emptyAdjSubst
+            )
+          # V.on _der (\_ -> empty)
+          # V.on _bdry (\_ -> empty)
+      )
+    # V.on _der
+        ( \der1 -> a2 ## V.case_
+            # (\_ _ -> empty)
+            # V.on _der (\der2 -> matchDer der1 der2 # runMatchM)
+        )
+    # V.on _bdry
+        ( \bdry1 -> a2 ## V.case_
+            # (\_ _ -> empty)
+            # V.on _bdry (\bdry2 -> matchBdry bdry1 bdry2 # runMatchM)
+        )
 
 matchAdjT :: forall d s. IsLanguage d s => MetaAdjT d () s () -> AdjT d () s () -> Maybe (AdjSubst d () s ())
 matchAdjT (l_ma %% kids_ma) at@(l_a %% kids_a) =
