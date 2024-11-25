@@ -17,13 +17,12 @@ import Data.Tuple (Tuple)
 import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
 import Data.Variant as V
-import Pantograph.Utility (todo)
 import Prim.Row (class Cons, class Nub)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RL
 import Prim.RowList as RowList
 import Record.Unsafe (unsafeGet)
-import Type.Prelude (Proxy(..))
+import Type.Proxy (Proxy(..))
 
 class Pretty a where
   pretty :: a -> String
@@ -70,7 +69,7 @@ instance Pretty (a -> b) where
 -- Record
 --------------------------------------------------------------------------------
 
-instance prettyRecord ::
+instance
   ( Nub rs rs
   , RL.RowToList rs ls
   , PrettyRecordFields ls rs
@@ -84,18 +83,14 @@ class PrettyRecordFields :: RL.RowList Type -> Row Type -> Constraint
 class PrettyRecordFields rowlist row where
   prettyRecordFields :: Proxy rowlist -> Record row -> String
 
-instance prettyRecordFieldsNil :: PrettyRecordFields RL.Nil row where
+instance PrettyRecordFields RL.Nil row where
   prettyRecordFields _ _ = ""
-else instance prettyRecordFieldsConsNil ::
-  ( IsSymbol key
-  , Pretty focus
-  ) =>
-  PrettyRecordFields (RL.Cons key focus RL.Nil) row where
+else instance (IsSymbol key, Pretty focus) => PrettyRecordFields (RL.Cons key focus RL.Nil) row where
   prettyRecordFields _ record = "\n- " <> key <> ": " <> indent 1 (pretty focus) <> " "
     where
     key = reflectSymbol (Proxy :: Proxy key)
     focus = unsafeGet key record :: focus
-else instance prettyRecordFieldsCons ::
+else instance
   ( IsSymbol key
   , PrettyRecordFields rowlistTail row
   , Pretty focus
@@ -112,7 +107,7 @@ else instance prettyRecordFieldsCons ::
 --------------------------------------------------------------------------------
 
 instance PrettyVariantR r => Pretty (Variant r) where
-  pretty = todo ""
+  pretty = prettyVariantR Proxy
 
 class PrettyVariantR r where
   prettyVariantR :: Proxy r -> Variant r -> String
@@ -134,7 +129,7 @@ instance
   ) =>
   PrettyVariantRL r' (RowList.Cons x a rl) where
   prettyVariantRL _ _ =
-    V.on (Proxy :: Proxy x) pretty
+    V.on (Proxy :: Proxy x) (\a -> "(" <> "@" <> reflectSymbol (Proxy :: Proxy x) <> " " <> pretty a <> ")")
       $ prettyVariantRL (Proxy :: Proxy r) (Proxy :: Proxy rl)
 
 --------------------------------------------------------------------------------
@@ -145,12 +140,11 @@ indent :: Int -> String -> String
 indent i str =
   let
     lines = str # String.split (String.Pattern "\n")
-    spaces = "  " # Array.replicate i # Array.fold
   in
     if Array.length lines < 2 then
       str
     else
-      lines # Array.foldMap (("\n" <> spaces) <> _)
+      lines # Array.foldMap (("\n" <> ("  " # Array.replicate i # Array.fold)) <> _)
 
 parens :: String -> String
 parens str = "(" <> str <> ")"
