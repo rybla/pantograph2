@@ -23,7 +23,7 @@ import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjR
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (brackets, pretty)
-import Pantograph.Utility (bug)
+import Pantograph.Utility (bug, todo)
 
 --------------------------------------------------------------------------------
 -- MetaVars
@@ -214,9 +214,9 @@ instance HasEditRules D S where
   editRules = List.fromFoldable
     [ EditRule
         { label: "lambda"
-        , input: ?a
-        , trans: ?a
-        , output: ?A
+        , input: todo ""
+        , trans: todo ""
+        , output: todo ""
         }
     ]
 

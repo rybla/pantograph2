@@ -27,7 +27,7 @@ import Pantograph.Config as Config
 import Pantograph.Debug as Debug
 import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
-import Pantograph.Pretty (class Pretty, brackets, indent, pretty)
+import Pantograph.Pretty (class Pretty, indent, pretty)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, expand1, todo, uniqueList, (##))
 import Type.Proxy (Proxy(..))
@@ -87,24 +87,24 @@ collectMVs =
 -- DerL
 --------------------------------------------------------------------------------
 
-type DerL d sl dl = (der :: Der d sl | dl)
+type DerL d dl s sl = (der :: Der d s sl | dl)
 
 _der = Proxy :: Proxy "der"
 
-data Der d sl = Der d (MV.Subst (TreeV sl))
+data Der d s sl = Der d (MV.Subst (TreeV (SortL s sl)))
 
-derive instance Generic (Der d sl) _
+derive instance Generic (Der d s sl) _
 
-instance (Eq d, Eq (Variant sl)) => Eq (Der d sl) where
+instance (Eq d, Eq (Variant (SortL s sl))) => Eq (Der d s sl) where
   eq x = genericEq x
 
-instance (Show d, Show (Variant sl)) => Show (Der d sl) where
+instance (Show d, Show (Variant (SortL s sl))) => Show (Der d s sl) where
   show x = genericShow x
 
 class PrettyTreeDerL d where
   prettyTreeDerL :: d -> MV.Subst String -> List String -> String
 
-instance (PrettyTreeDerL d, PrettyTreeL_R sl) => PrettyTreeL (Der d sl) where
+instance (PrettyTreeDerL d, PrettyTreeL_R (SortL s sl)) => PrettyTreeL (Der d s sl) where
   prettyTreeL (Der d sigma) kids = prettyTreeDerL d (sigma # map pretty) kids
 
 makeDer d sigma = V.inj _der $ Der d (sigma # Map.fromFoldable)
@@ -146,9 +146,9 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 -- AdjL
 --------------------------------------------------------------------------------
 
-type AdjL ch l = (bdry :: Bdry ch | l)
+type AdjL l_ch l = (bdry :: Bdry l_ch | l)
 
-data Bdry ch = Bdry BdryDir (TreeV ch)
+data Bdry l_ch = Bdry BdryDir (TreeV l_ch)
 
 derive instance Generic (Bdry ch) _
 
@@ -244,7 +244,7 @@ applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
 --------------------------------------------------------------------------------
 
 type MetaAdjT d s = TreeV (MetaAdjL d s)
-type MetaAdjL d s = MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
+type MetaAdjL d s = MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d () s (MetaL ())))
 
 class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
@@ -327,16 +327,16 @@ type SortSubst s = MV.Subst (TreeV (SortL s ()))
 type MetaSortSubst s = MV.Subst (TreeV (MetaL (SortL s ())))
 
 type MetaDerT d s = TreeV (MetaDerL d s)
-type DerT d s = TreeV (DerL d (SortL s ()) ())
+type DerT d s = TreeV (DerL d () s ())
 
-type MetaDerL d s = DerL d (MetaL (SortL s ())) ()
+type MetaDerL d s = DerL d () s (MetaL ())
 
-type MetaDer d s = Der d (MetaL (SortL s ()))
+type MetaDer d s = Der d s (MetaL ())
 
 type MetaChT s = TreeV (MetaL (ChangeL (SortL s ())))
 type ChT s = TreeV (ChangeL (SortL s ()))
 
-type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d () s ()))
 
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
@@ -392,7 +392,7 @@ matchCh (mch1 %% kids1) ch2@(chl2 %% kids2) =
       )
     # V.on _metaVar (\x -> setMetaVar_Ch x ch2)
 
-matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> MatchM d s
+matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d s () -> MatchM d s
 matchDer (Der md1 sigma1) (Der d2 sigma2) = do
   guard $ md1 == d2
   matchSortSubst sigma1 sigma2
@@ -403,8 +403,8 @@ matchDerT = todo "matchDerT"
 matchAdjL
   :: forall d s
    . IsLanguage d s
-  => Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d (MetaL (SortL s ())) ()))
-  -> Variant (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+  => Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d () s (MetaL ())))
+  -> Variant (AdjL (ChangeL (SortL s ())) (DerL d () s ()))
   -> Maybe (AdjSubst d s)
 matchAdjL a1 a2 =
   a1 # V.match

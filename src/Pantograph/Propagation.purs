@@ -49,7 +49,7 @@ propagateStep t0 = go mempty t0
   rules = adjRules :: AdjRules d s
 
   go
-    :: PathV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
+    :: PathV (AdjL (ChangeL (SortL s ())) (DerL d () s ()))
     -> AdjT d s
     -> MaybeT m (AdjT d s)
   go path t = case (\rule -> (rule /\ _) <$> rule `applyAdjRule` t) `tryFirst` rules of
