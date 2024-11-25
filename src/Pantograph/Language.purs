@@ -146,19 +146,19 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 -- AdjL
 --------------------------------------------------------------------------------
 
-type AdjL l_ch l = (bdry :: Bdry l_ch | l)
+type AdjL s l_ch l = (bdry :: Bdry s l_ch | l)
 
-data Bdry l_ch = Bdry BdryDir (TreeV l_ch)
+data Bdry s l_ch = Bdry BdryDir (TreeV (ChangeL (SortL s l_ch)))
 
-derive instance Generic (Bdry ch) _
+derive instance Generic (Bdry s l_ch) _
 
-instance Eq (Variant ch) => Eq (Bdry ch) where
+instance Eq (Variant (ChangeL (SortL s l_ch))) => Eq (Bdry s l_ch) where
   eq x = genericEq x
 
-instance Show (Variant ch) => Show (Bdry ch) where
+instance Show (Variant (ChangeL (SortL s l_ch))) => Show (Bdry s l_ch) where
   show x = genericShow x
 
-instance PrettyTreeL_R ch => PrettyTreeL (Bdry ch) where
+instance PrettyTreeL_R (ChangeL (SortL s l_ch)) => PrettyTreeL (Bdry s l_ch) where
   prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
   prettyTreeL (Bdry _ _) _ = bug "invalid Bdry"
 
@@ -183,17 +183,18 @@ makeAdjBdryDownMinus l ls kid rs = V.inj _minus (MinusChange $ Tooth (V.inj _sor
 infixl 2 makeAdjBdryDownPlus as %+
 infixl 2 makeAdjBdryDownMinus as %-
 
+applyFunction :: forall a b. (a -> b) -> a -> b
 applyFunction f a = f a
 
 infixl 2 applyFunction as <<
 infixl 2 applyFunction as >>
 
-makeAdjBdryDown :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
+makeAdjBdryDown :: forall d s. ChT s -> AdjT d s -> AdjT d s
 makeAdjBdryDown ch kid = V.inj _bdry (Bdry Down ch) % [ kid ]
 
 infix 2 makeAdjBdryDown as ↓
 
-makeAdjBdryUp :: forall l ch. TreeV ch -> TreeV (AdjL ch l) -> TreeV (AdjL ch l)
+makeAdjBdryUp :: forall d s. ChT s -> AdjT d s -> AdjT d s
 makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 
 infix 2 makeAdjBdryUp as ↑
@@ -244,7 +245,8 @@ applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
 --------------------------------------------------------------------------------
 
 type MetaAdjT d s = TreeV (MetaAdjL d s)
-type MetaAdjL d s = MetaL (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d () s (MetaL ())))
+-- type MetaAdjL d s = MetaL (AdjL s (MetaL ()) (DerL d () s (MetaL ())))
+type MetaAdjL d s = MetaL ((AdjL s (MetaL ())) (DerL d () s (MetaL ())))
 
 class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
@@ -336,7 +338,8 @@ type MetaDer d s = Der d s (MetaL ())
 type MetaChT s = TreeV (MetaL (ChangeL (SortL s ())))
 type ChT s = TreeV (ChangeL (SortL s ()))
 
-type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d () s ()))
+-- type AdjT d s = TreeV (AdjL s () (DerL d () s ()))
+type AdjT d s = TreeV (AdjL s () (DerL d () s ()))
 
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
@@ -403,8 +406,8 @@ matchDerT = todo "matchDerT"
 matchAdjL
   :: forall d s
    . IsLanguage d s
-  => Variant (AdjL (MetaL (ChangeL (SortL s ()))) (DerL d () s (MetaL ())))
-  -> Variant (AdjL (ChangeL (SortL s ())) (DerL d () s ()))
+  => Variant (AdjL s (MetaL ()) (DerL d () s (MetaL ())))
+  -> Variant (AdjL s () (DerL d () s ()))
   -> Maybe (AdjSubst d s)
 matchAdjL a1 a2 =
   a1 # V.match
