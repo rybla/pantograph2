@@ -335,24 +335,24 @@ type AdjT d s = TreeV (AdjL (ChangeL (SortL s ())) (DerL d (SortL s ()) ()))
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
 
-setSort :: forall d s. IsLanguage d s => MetaVar -> SortT s -> MatchM d s
-setSort x sort = do
+setMetaVar_Sort :: forall d s. IsLanguage d s => MetaVar -> SortT s -> MatchM d s
+setMetaVar_Sort x sort = do
   AdjSubst sigma <- get
   case sigma.sorts # Map.lookup x of
     Nothing -> put $ AdjSubst sigma { sorts = sigma.sorts # Map.insert x sort }
     Just sort' | sort == sort' -> pure unit
     Just _ | otherwise -> empty
 
-setCh :: forall d s. IsLanguage d s => MetaVar -> ChT s -> MatchM d s
-setCh x ch = do
+setMetaVar_Ch :: forall d s. IsLanguage d s => MetaVar -> ChT s -> MatchM d s
+setMetaVar_Ch x ch = do
   AdjSubst sigma <- get
   case sigma.chs # Map.lookup x of
     Nothing -> put $ AdjSubst sigma { chs = sigma.chs # Map.insert x ch }
     Just ch' | ch == ch' -> pure unit
     Just _ | otherwise -> empty
 
-setAdj :: forall d s. IsLanguage d s => MetaVar -> AdjT d s -> MatchM d s
-setAdj x adj = do
+setMetaVar_Adj :: forall d s. IsLanguage d s => MetaVar -> AdjT d s -> MatchM d s
+setMetaVar_Adj x adj = do
   AdjSubst sigma <- get
   case sigma.adjs # Map.lookup x of
     Nothing -> put $ AdjSubst sigma { adjs = sigma.adjs # Map.insert x adj }
@@ -367,7 +367,7 @@ matchSort (msl1 %% kids1) sort2@(sl2 %% kids2) =
           guard $ sl1 == sl2
           List.zip kids1 kids2 # traverse_ (uncurry matchSort)
       )
-    # V.on _metaVar (\x -> setSort x sort2)
+    # V.on _metaVar (\x -> setMetaVar_Sort x sort2)
 
 matchSortSubst :: forall d s. IsLanguage d s => MetaSortSubst s -> SortSubst s -> MatchM d s
 matchSortSubst mss1 ss2 =
@@ -384,7 +384,7 @@ matchCh (mch1 %% kids1) ch2@(chl2 %% kids2) =
           guard $ chl1 == chl2
           List.zip kids1 kids2 # traverse_ (uncurry matchCh)
       )
-    # V.on _metaVar (\x -> setCh x ch2)
+    # V.on _metaVar (\x -> setMetaVar_Ch x ch2)
 
 matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> MatchM d s
 matchDer (Der md1 sigma1) (Der d2 sigma2) = do
