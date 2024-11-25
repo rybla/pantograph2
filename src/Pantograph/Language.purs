@@ -146,19 +146,19 @@ class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
 -- AdjL
 --------------------------------------------------------------------------------
 
-type AdjL s l_ch l = (bdry :: Bdry s l_ch | l)
+type AdjL d l_d s l_s = (bdry :: Bdry s l_s | DerL d l_d s l_s)
 
-data Bdry s l_ch = Bdry BdryDir (TreeV (ChangeL (SortL s l_ch)))
+data Bdry s l_s = Bdry BdryDir (TreeV (ChangeL (SortL s l_s)))
 
-derive instance Generic (Bdry s l_ch) _
+derive instance Generic (Bdry s l_s) _
 
-instance Eq (Variant (ChangeL (SortL s l_ch))) => Eq (Bdry s l_ch) where
+instance Eq (Variant (ChangeL (SortL s l_s))) => Eq (Bdry s l_s) where
   eq x = genericEq x
 
-instance Show (Variant (ChangeL (SortL s l_ch))) => Show (Bdry s l_ch) where
+instance Show (Variant (ChangeL (SortL s l_s))) => Show (Bdry s l_s) where
   show x = genericShow x
 
-instance PrettyTreeL_R (ChangeL (SortL s l_ch)) => PrettyTreeL (Bdry s l_ch) where
+instance PrettyTreeL_R (ChangeL (SortL s l_s)) => PrettyTreeL (Bdry s l_s) where
   prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
   prettyTreeL (Bdry _ _) _ = bug "invalid Bdry"
 
@@ -200,7 +200,7 @@ makeAdjBdryUp ch kid = V.inj _bdry (Bdry Up ch) % [ kid ]
 infix 2 makeAdjBdryUp as ↑
 
 data AdjSubst d s = AdjSubst
-  { adjs :: MV.Subst (AdjT d s)
+  { adjs :: MV.Subst (AdjT d () s ())
   , chs :: MV.Subst (TreeV (ChangeL (SortL s ())))
   , sorts :: MV.Subst (TreeV (SortL s ()))
   }
@@ -244,9 +244,8 @@ applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
 -- AdjRules
 --------------------------------------------------------------------------------
 
-type MetaAdjT d s = TreeV (MetaAdjL d s)
--- type MetaAdjL d s = MetaL (AdjL s (MetaL ()) (DerL d () s (MetaL ())))
-type MetaAdjL d s = MetaL ((AdjL s (MetaL ())) (DerL d () s (MetaL ())))
+type MetaAdjT d l_d s l_s = TreeV (MetaAdjL d l_d s l_s)
+type MetaAdjL d l_d s l_s = MetaL ((AdjL s (MetaL l_s)) (DerL d l_d s (MetaL l_d)))
 
 class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
 
@@ -328,18 +327,17 @@ runMatchM = flip execStateT
 type SortSubst s = MV.Subst (TreeV (SortL s ()))
 type MetaSortSubst s = MV.Subst (TreeV (MetaL (SortL s ())))
 
-type MetaDerT d s = TreeV (MetaDerL d s)
-type DerT d s = TreeV (DerL d () s ())
+type MetaDerT d l_d s l_s = TreeV (MetaDerL d l_d s l_s)
+type DerT d l_d s l_s = TreeV (DerL d l_d s l_s)
 
-type MetaDerL d s = DerL d () s (MetaL ())
+type MetaDerL d l_d s l_s = DerL d l_d s (MetaL l_s)
 
-type MetaDer d s = Der d s (MetaL ())
+type MetaDer d l_s s = Der d s (MetaL l_s)
 
-type MetaChT s = TreeV (MetaL (ChangeL (SortL s ())))
-type ChT s = TreeV (ChangeL (SortL s ()))
+type MetaChT s l_s = TreeV (MetaL (ChangeL (SortL s l_s)))
+type ChT s l_s = TreeV (ChangeL (SortL s l_s))
 
--- type AdjT d s = TreeV (AdjL s () (DerL d () s ()))
-type AdjT d s = TreeV (AdjL s () (DerL d () s ()))
+type AdjT d l_d s l_s = TreeV (AdjL d l_s s l_s)
 
 type SortT s = TreeV (SortL s ())
 type MetaSortT s = TreeV (MetaL (SortL s ()))
@@ -406,8 +404,8 @@ matchDerT = todo "matchDerT"
 matchAdjL
   :: forall d s
    . IsLanguage d s
-  => Variant (AdjL s (MetaL ()) (DerL d () s (MetaL ())))
-  -> Variant (AdjL s () (DerL d () s ()))
+  => Variant (AdjL d () s (MetaL ()))
+  -> Variant (AdjL d () s ())
   -> Maybe (AdjSubst d s)
 matchAdjL a1 a2 =
   a1 # V.match
