@@ -29,7 +29,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, brackets, indent, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug, expand1, uniqueList, (##))
+import Pantograph.Utility (bug, expand1, todo, uniqueList, (##))
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ collectMVs =
 -- DerL
 --------------------------------------------------------------------------------
 
-type DerL d sl l = (der :: Der d sl | l)
+type DerL d sl dl = (der :: Der d sl | dl)
 
 _der = Proxy :: Proxy "der"
 
@@ -298,10 +298,16 @@ type EditRules d s = List (EditRule d s)
 
 data EditRule d s = EditRule
   { label :: String
-  , input :: MetaAdjT d s
+  , input :: MetaDerT d s
   , trans :: AdjSubst d s -> Maybe (AdjSubst d s)
   , output :: MetaAdjT d s
   }
+
+applyEditRule :: forall d s. IsLanguage d s => EditRule d s -> DerT d s -> Maybe (AdjT d s)
+applyEditRule (EditRule rule) dt = do
+  sigma <- matchDerT rule.input dt # runMatchM
+  sigma' <- rule.trans sigma
+  pure $ applyAdjSubst_AdjT sigma' rule.output
 
 --------------------------------------------------------------------------------
 -- match stuff
@@ -390,6 +396,9 @@ matchDer :: forall d s. IsLanguage d s => MetaDer d s -> Der d (SortL s ()) -> M
 matchDer (Der md1 sigma1) (Der d2 sigma2) = do
   guard $ md1 == d2
   matchSortSubst sigma1 sigma2
+
+matchDerT :: forall d s. IsLanguage d s => MetaDerT d s -> DerT d s -> MatchM d s
+matchDerT = todo "matchDerT"
 
 matchAdjL
   :: forall d s
