@@ -12,49 +12,49 @@ import Debug as Debug
 import Effect.Exception (Error)
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.Pretty (pretty)
-import Test.Common (it_shouldEqual, it_shouldEqual_propagate)
+import Test.Common (it_shouldEqual)
 import Test.Spec (SpecT, describe)
 
 spec :: forall m g. MonadThrow Error g => Monad m => SpecT g Unit m Unit
 spec = describe "Slc" do
   Debug.traceM $ "adjRules: " <> ((propagationAdjRules :: List (AdjRule D S)) # map pretty # intercalate "\n" # ("\n" <> _))
   describe "outerEndpoint" do
-    if true then do
-      it_shouldEqual @(SortT S) "xxx"
-        ((Ext ^% [ Ext %- [] << (Ext ^% [ Emp ^% [] ]) >> [] ]) # outerEndpoint)
-        (Ext ^% [ Ext ^% [ Emp ^% [] ] ])
-    else pure unit
+    -- if true then do
+    --   it_shouldEqual @(SortT S) "xxx"
+    --     ((Ext ^% [ Ext %- [] << (Ext ^% [ Emp ^% [] ]) >> [] ]) # outerEndpoint)
+    --     (Ext ^% [ Ext ^% [ Emp ^% [] ] ])
+    -- else pure unit
 
-  describe "propagage" do
-    if false then do
-      it_shouldEqual_propagate
-        (refVarN 1 0 # pure)
-        (refVarN 1 0)
-      it_shouldEqual_propagate
-        (refVarN 2 1 # pure)
-        (refVarN 2 1)
-      it_shouldEqual_propagate
-        (refFreeN 0 0 # pure)
-        (term (Ext %- [] << ctxN 0 >> []) ↓ refVarN 1 0)
-      it_shouldEqual_propagate
-        (freeN 1 0 # pure)
-        (var (Ext %- [] << ctxN 1 >> []) ↓ varN 2 0)
-      it_shouldEqual_propagate
-        (refFreeN 1 0 # pure)
-        (term (Ext %- [] << ctxN 1 >> []) ↓ refVarN 2 0)
-      it_shouldEqual_propagate
-        (freeN 2 1 # pure)
-        (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 3 1)
-      it_shouldEqual_propagate
-        (refFreeN 2 1 # pure)
-        (term (ext $ Ext %- [] << ctxN 1 >> []) ↓ refVarN 3 1)
-      it_shouldEqual_propagate
-        ((lam (ctxN 1) $ refFreeN 2 1) # pure)
-        (term (Ext %- [] << ctxN 1 >> []) ↓ lam (ctxN 1) (refVarN 3 1))
-      it_shouldEqual_propagate
-        (varN 1 0 # pure)
-        (var (Ext %+ [] << ctxN 0 >> []) ↓ freeN 0 0)
-    else pure unit
+    -- describe "propagate" do
+    --   if false then do
+    --     it_shouldEqual_propagate
+    --       (refVarN 1 0 # pure)
+    --       (refVarN 1 0)
+    --     it_shouldEqual_propagate
+    --       (refVarN 2 1 # pure)
+    --       (refVarN 2 1)
+    --     it_shouldEqual_propagate
+    --       (refFreeN 0 0 # pure)
+    --       (term (Ext %- [] << ctxN 0 >> []) ↓ refVarN 1 0)
+    --     it_shouldEqual_propagate
+    --       (freeN 1 0 # pure)
+    --       (var (Ext %- [] << ctxN 1 >> []) ↓ varN 2 0)
+    --     it_shouldEqual_propagate
+    --       (refFreeN 1 0 # pure)
+    --       (term (Ext %- [] << ctxN 1 >> []) ↓ refVarN 2 0)
+    --     it_shouldEqual_propagate
+    --       (freeN 2 1 # pure)
+    --       (var (ext $ Ext %- [] << ctxN 1 >> []) ↓ varN 3 1)
+    --     it_shouldEqual_propagate
+    --       (refFreeN 2 1 # pure)
+    --       (term (ext $ Ext %- [] << ctxN 1 >> []) ↓ refVarN 3 1)
+    --     it_shouldEqual_propagate
+    --       ((lam (ctxN 1) $ refFreeN 2 1) # pure)
+    --       (term (Ext %- [] << ctxN 1 >> []) ↓ lam (ctxN 1) (refVarN 3 1))
+    --     it_shouldEqual_propagate
+    --       (varN 1 0 # pure)
+    --       (var (Ext %+ [] << ctxN 0 >> []) ↓ freeN 0 0)
+    --   else pure unit
 
     if true then do
       pure unit

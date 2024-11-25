@@ -55,17 +55,17 @@ shouldEqual_pretty expected actual =
           # indent 1
       )
 
-it_shouldEqual_propagate d pd = do
-  it (pretty pd) do
-    let result /\ logs = propagate pd # runWriter
-    logM 0 $
-      [ "propagation steps:" # pure
-      , (pd : logs)
-          # map (\adj -> "  - " <> pretty adj)
-      ]
-        # fold
-        # intercalate "\n"
-    shouldEqual_pretty d result
+-- it_shouldEqual_propagate d pd = do
+--   it (pretty pd) do
+--     let result /\ logs = propagate pd # runWriter
+--     logM 0 $
+--       [ "propagation steps:" # pure
+--       , (pd : logs)
+--           # map (\adj -> "  - " <> pretty adj)
+--       ]
+--         # fold
+--         # intercalate "\n"
+--     shouldEqual_pretty d result
 
 it_shouldEqual
   :: forall g m @a

@@ -224,5 +224,5 @@ instance HasEditRules D S where
 -- IsEditLanguage
 --------------------------------------------------------------------------------
 
-instance IsEditLanguage D S
+-- instance IsEditLanguage D S
 
