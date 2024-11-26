@@ -25,29 +25,29 @@ type PropagationLog d l_d s l_s = AdjT d l_d s l_s
 propagate
   :: forall m d l_d s l_s
    . MonadWriter (List (PropagationLog d l_d s l_s)) m
-  => IsAdjLanguage d s
-  => AdjT d l_d s l_s
+  => IsLanguage d s
+  => AdjRules d s
+  -> AdjT d l_d s l_s
   -> m (AdjT d l_d s l_s \/ DerT d l_d s l_s)
-propagate t = propagateStep t # runMaybeT >>= case _ of
+propagate adjRules t = propagateStep adjRules t # runMaybeT >>= case _ of
   Nothing -> pure $ t # traverse
     ( V.case_
         # const pure
         # V.on _bdry (const (throwError t))
     )
-  Just t' -> propagate t'
+  Just t' -> propagate adjRules t'
 
 -- | Attempts to apply an `AdjRule` at a single point in a tree (or `empty` if
 -- | no possible applications).
 propagateStep
   :: forall d l_d s l_s m
    . MonadWriter (List (PropagationLog d l_d s l_s)) m
-  => IsAdjLanguage d s
-  => AdjT d l_d s l_s
+  => IsLanguage d s
+  => AdjRules d s
+  -> AdjT d l_d s l_s
   -> MaybeT m (AdjT d l_d s l_s)
-propagateStep t0 = go mempty t0
+propagateStep adjRules t0 = go mempty t0
   where
-  rules = adjRules :: AdjRules d s
-
   go
     :: PathV (AdjL d l_d s l_s)
     -> AdjT d l_d s l_s

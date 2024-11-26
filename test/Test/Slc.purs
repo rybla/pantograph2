@@ -17,7 +17,8 @@ import Test.Spec (SpecT, describe)
 
 spec :: forall m g. MonadThrow Error g => Monad m => SpecT g Unit m Unit
 spec = describe "Slc" do
-  Debug.traceM $ "adjRules: " <> ((propagationAdjRules :: List (AdjRule D S)) # map pretty # intercalate "\n" # ("\n" <> _))
+  let adjRules = propagationAdjRules derRules :: List (AdjRule D S)
+  Debug.traceM $ "adjRules: " <> (adjRules # map pretty # intercalate "\n" # ("\n" <> _))
   describe "outerEndpoint" do
     -- if true then do
     --   it_shouldEqual @(SortT S) "xxx"

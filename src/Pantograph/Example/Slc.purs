@@ -129,100 +129,80 @@ instance PrettyTreeDerL D where
 instance IsDerL D
 
 --------------------------------------------------------------------------------
--- HasDerRules
---------------------------------------------------------------------------------
 
-instance HasDerRules D S where
-  derRules = Map.fromFoldable
-    [ Free /\
-        ( []
-            |- (Var ^% [ g ])
-        )
-    , Zero /\
-        ( [] |-
-            (Var ^% [ Ext ^% [ g ] ])
-        )
-    , Suc /\
-        ( [ Var ^% [ g ] ] |-
-            (Var ^% [ Ext ^% [ g ] ])
-        )
-    , Ref /\
-        ( [ Var ^% [ g ] ] |-
-            (Term ^% [ g ])
-        )
-    , Lam /\
-        ( [ Term ^% [ Ext ^% [ g ] ] ] |-
-            (Term ^% [ g ])
-        )
-    , App /\
-        ( [ Term ^% [ g ]
-          , Term ^% [ g ]
-          ] |-
-            (Term ^% [ g ])
-        )
-    , Hole /\
-        ( [] |-
-            (Term ^% [ g ])
-        )
-    ]
+derRules :: DerRules D S
+derRules = Map.fromFoldable
+  [ Free /\
+      ( []
+          |- (Var ^% [ g ])
+      )
+  , Zero /\
+      ( [] |-
+          (Var ^% [ Ext ^% [ g ] ])
+      )
+  , Suc /\
+      ( [ Var ^% [ g ] ] |-
+          (Var ^% [ Ext ^% [ g ] ])
+      )
+  , Ref /\
+      ( [ Var ^% [ g ] ] |-
+          (Term ^% [ g ])
+      )
+  , Lam /\
+      ( [ Term ^% [ Ext ^% [ g ] ] ] |-
+          (Term ^% [ g ])
+      )
+  , App /\
+      ( [ Term ^% [ g ]
+        , Term ^% [ g ]
+        ] |-
+          (Term ^% [ g ])
+      )
+  , Hole /\
+      ( [] |-
+          (Term ^% [ g ])
+      )
+  ]
 
---------------------------------------------------------------------------------
--- IsLanguage
 --------------------------------------------------------------------------------
 
 instance IsLanguage D S
 
 --------------------------------------------------------------------------------
--- HasAdjRules
---------------------------------------------------------------------------------
 
-instance HasAdjRules D S where
-  adjRules = modifyAdjRules <> propagationAdjRules
-    where
+adjRules :: AdjRules D S
+adjRules = modifyAdjRules <> propagationAdjRules derRules
+  where
 
-    _g /\ g = defAndMakeMetaVar "g"
-    _g' /\ g' = defAndMakeMetaVar "g'"
-    _dg /\ dg = defAndMakeMetaVar "dg"
+  _g /\ g = defAndMakeMetaVar "g"
+  _g' /\ g' = defAndMakeMetaVar "g'"
+  _dg /\ dg = defAndMakeMetaVar "dg"
 
-    modifyAdjRules = List.fromFoldable
-      -- these really should be the only necessary rules since we don't have types
-      [ makeAdjRule
-          (Var ^% [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
-          (Free // [ _g /\ g' ] % [])
-          ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-              pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
-          )
-      , makeAdjRule
-          (Var ^% [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
-          (Zero // [ _g /\ g' ] % [])
-          ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-              pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
-          )
-      ]
-
---------------------------------------------------------------------------------
--- IsAdjLanguage
---------------------------------------------------------------------------------
-
-instance IsAdjLanguage D S
-
---------------------------------------------------------------------------------
--- HasEditRules
---------------------------------------------------------------------------------
-
-instance HasEditRules D S where
-  editRules = List.fromFoldable
-    [ EditRule
-        { label: "lambda"
-        , input: todo ""
-        , trans: todo ""
-        , output: todo ""
-        }
+  modifyAdjRules = List.fromFoldable
+    -- these really should be the only necessary rules since we don't have types
+    [ makeAdjRule
+        (Var ^% [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
+        (Free // [ _g /\ g' ] % [])
+        ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
+            pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
+        )
+    , makeAdjRule
+        (Var ^% [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
+        (Zero // [ _g /\ g' ] % [])
+        ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
+            pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
+        )
     ]
 
 --------------------------------------------------------------------------------
--- IsEditLanguage
+
+editRules = List.fromFoldable
+  [ EditRule
+      { label: "lambda"
+      , input: todo ""
+      , trans: todo ""
+      , output: todo ""
+      }
+  ]
+
 --------------------------------------------------------------------------------
-
--- instance IsEditLanguage D S
-

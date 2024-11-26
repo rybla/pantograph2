@@ -15,9 +15,9 @@ import Data.Variant as V
 import Pantograph.MetaVar (addPrefix, addSuffix)
 import Pantograph.MetaVar as MV
 
-propagationAdjRules :: forall d s. IsLanguage d s => AdjRules d s
-propagationAdjRules =
-  (derRules :: DerRules d s)
+propagationAdjRules :: forall d s. IsLanguage d s => DerRules d s -> AdjRules d s
+propagationAdjRules derRules =
+  derRules
     # (Map.toUnfoldable :: _ -> List _)
     # foldMap \(d /\ DerRule rule) -> List.fromFoldable
         let

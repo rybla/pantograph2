@@ -27,7 +27,7 @@ import Pantograph.Config as Config
 import Pantograph.Debug as Debug
 import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
-import Pantograph.Pretty (class Pretty, class PrettyVariant_R, indent, pretty)
+import Pantograph.Pretty (class Pretty, indent, pretty)
 import Pantograph.RevList as RevList
 import Pantograph.Utility (bug, expand1, unsafeCoerce_because, todo, uniqueList, (##))
 import Type.Proxy (Proxy(..))
@@ -120,9 +120,6 @@ class (Eq d, Ord d, Show d, PrettyTreeDerL d) <= IsDerL d
 
 type DerRules d s = Map d (DerRule s)
 
-class HasDerRules d s where
-  derRules :: DerRules d s
-
 data DerRule s = DerRule
   { sort :: TreeV (MetaL (SortL s ()))
   , kids :: List { sort :: TreeV (MetaL (SortL s ())) }
@@ -141,7 +138,7 @@ makeDerRuleFlipped = flip makeDerRule
 
 infix 1 makeDerRuleFlipped as |-
 
-class (IsDerL d, IsSortL s, HasDerRules d s) <= IsLanguage d s
+class (IsDerL d, IsSortL s) <= IsLanguage d s
 
 --------------------------------------------------------------------------------
 -- AdjL
@@ -268,11 +265,6 @@ applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
 type MetaAdjT d l_d s l_s = TreeV (MetaAdjL d l_d s l_s)
 type MetaAdjL d l_d s l_s = AdjL d (MetaL l_d) s (MetaL l_s)
 
-class (IsLanguage d s, HasAdjRules d s) <= IsAdjLanguage d s
-
-class HasAdjRules d s where
-  adjRules :: AdjRules d s
-
 type AdjRules d s = List (AdjRule d s)
 
 data AdjRule d s = AdjRule
@@ -318,21 +310,16 @@ applyAdjRule (AdjRule { input, output, trans }) adj = do
 -- EditRules
 --------------------------------------------------------------------------------
 
--- class (IsAdjLanguage d s, HasEditRules d s) <= IsEditLanguage d s
+type EditRules d l_d s l_s = List (EditRule d l_d s l_s)
 
-class HasEditRules d s where
-  editRules :: EditRules d s
-
-type EditRules d s = List (EditRule d s)
-
-data EditRule d s = EditRule
+data EditRule d l_d s l_s = EditRule
   { label :: String
-  , input :: MetaDerT d () s ()
-  , trans :: AdjSubst d () s () -> Maybe (AdjSubst d () s ())
-  , output :: MetaAdjT d () s ()
+  , input :: MetaDerT d l_d s l_s
+  , trans :: AdjSubst d l_d s l_s -> Maybe (AdjSubst d l_d s l_s)
+  , output :: MetaAdjT d l_d s l_s
   }
 
-applyEditRule :: forall d s. IsLanguage d s => EditRule d s -> DerT d () s () -> Maybe (AdjT d () s ())
+applyEditRule :: forall d l_d s l_s. IsLanguage d s => EditRule d l_d s l_s -> DerT d l_d s l_s -> Maybe (AdjT d l_d s l_s)
 applyEditRule (EditRule rule) dt = do
   sigma <- matchDerT rule.input dt # runMatchM
   sigma' <- rule.trans sigma
