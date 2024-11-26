@@ -11,9 +11,10 @@ import Data.Either.Nested (type (\/))
 import Data.List (List)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
-import Data.Tuple.Nested (type (/\), (/\))
+import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
 import Data.Variant as V
-import Pantograph.Utility (todo, tryFirst)
+import Pantograph.Utility (tryFirst)
 
 type PropagationLog d l_d s l_s = AdjT d l_d s l_s
 
@@ -25,8 +26,12 @@ type PropagationLog d l_d s l_s = AdjT d l_d s l_s
 propagate
   :: forall m d l_d s l_s
    . MonadWriter (List (PropagationLog d l_d s l_s)) m
+  => Eq (Variant l_d)
+  => Eq (Variant (SortL s l_s))
+  => Eq (Variant (SortChL s l_s))
+  => Eq (Variant (AdjL d l_d s l_s))
   => IsLanguage d s
-  => AdjRules d s
+  => AdjRules d l_d s l_s
   -> AdjT d l_d s l_s
   -> m (AdjT d l_d s l_s \/ DerT d l_d s l_s)
 propagate adjRules t = propagateStep adjRules t # runMaybeT >>= case _ of
@@ -42,8 +47,12 @@ propagate adjRules t = propagateStep adjRules t # runMaybeT >>= case _ of
 propagateStep
   :: forall d l_d s l_s m
    . MonadWriter (List (PropagationLog d l_d s l_s)) m
+  => Eq (Variant l_d)
+  => Eq (Variant (SortL s l_s))
+  => Eq (Variant (SortChL s l_s))
+  => Eq (Variant (AdjL d l_d s l_s))
   => IsLanguage d s
-  => AdjRules d s
+  => AdjRules d l_d s l_s
   -> AdjT d l_d s l_s
   -> MaybeT m (AdjT d l_d s l_s)
 propagateStep adjRules t0 = go mempty t0
@@ -52,10 +61,10 @@ propagateStep adjRules t0 = go mempty t0
     :: PathV (AdjL d l_d s l_s)
     -> AdjT d l_d s l_s
     -> MaybeT m (AdjT d l_d s l_s)
-  -- go path t = case (\rule -> (rule /\ _) <$> rule `applyAdjRule` t) `tryFirst` rules of
-  --   Just (_rule /\ t') -> do
-  --     let t'' = unPath path t'
-  --     tell $ pure t''
-  --     pure t''
-  --   Nothing -> (\(th /\ t') -> go (path `stepPath` th) t') `tryFirst` getTeeth t
-  go path t = todo "generalize applyAdjRule over l_d, l_s"
+  go path t = case (\rule -> (rule /\ _) <$> rule `applyAdjRule` t) `tryFirst` adjRules of
+    Just (_rule /\ t') -> do
+      let t'' = unPath path t'
+      tell $ pure t''
+      pure t''
+    Nothing -> (\(th /\ t') -> go (path `stepPath` th) t') `tryFirst` getTeeth t
+-- go path t = todo "generalize applyAdjRule over l_d, l_s"

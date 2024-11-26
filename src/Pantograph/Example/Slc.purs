@@ -18,6 +18,7 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
 import Debug as Debug
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.MetaVar ((!!))
@@ -168,7 +169,13 @@ derRules = Map.fromFoldable
 
 --------------------------------------------------------------------------------
 
-adjRules :: AdjRules D S
+adjRules
+  :: forall l_d l_s
+   . Eq (Variant l_d)
+  => Eq (Variant (SortL S l_s))
+  => Eq (Variant (SortChL S l_s))
+  => Eq (Variant (AdjL D l_d S l_s))
+  => AdjRules D l_d S l_s
 adjRules = modifyAdjRules <> propagationAdjRules derRules
   where
   _g /\ g = defAndMakeMetaVar "g"

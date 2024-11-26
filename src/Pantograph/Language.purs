@@ -265,45 +265,49 @@ applyAdjSubst_AdjT (sigma@(AdjSubst { adjs })) (l %% kids) =
 type MetaAdjT d l_d s l_s = TreeV (MetaAdjL d l_d s l_s)
 type MetaAdjL d l_d s l_s = AdjL d (MetaL l_d) s (MetaL l_s)
 
-type AdjRules d s = List (AdjRule d s)
+type AdjRules d l_d s l_s = List (AdjRule d l_d s l_s)
 
-data AdjRule d s = AdjRule
-  { input :: MetaAdjT d () s ()
-  , trans :: AdjSubst d () s () -> Maybe (AdjSubst d () s ())
-  , output :: MetaAdjT d () s ()
+data AdjRule d l_d s l_s = AdjRule
+  { input :: MetaAdjT d l_d s l_s
+  , trans :: AdjSubst d l_d s l_s -> Maybe (AdjSubst d l_d s l_s)
+  , output :: MetaAdjT d l_d s l_s
   }
 
-instance (Show d, Show s) => Show (AdjRule d s) where
+instance (Show d, Show s, Show (Variant (AdjL d l_d s l_s))) => Show (AdjRule d l_d s l_s) where
   show (AdjRule { input, trans: _, output }) =
-    "AdjRule { input: " <> show input <> ", output: " <> show output <> ", trans: <function>" <> " }"
+    -- "AdjRule { input: " <> show input <> ", output: " <> show output <> ", trans: <function>" <> " }"
+    todo ""
 
-instance (Show d, Show s, PrettyTreeDerL d, PrettyTreeL s) => Pretty (AdjRule d s) where
+instance (Show d, Show s, PrettyTreeDerL d, PrettyTreeL s) => Pretty (AdjRule d l_d s l_s) where
   pretty (AdjRule { input, trans: _, output }) =
-    pretty input <> "  ~~>  " <> pretty output <> "  with  <function>"
+    -- pretty input <> "  ~~>  " <> pretty output <> "  with  <function>"
+    todo ""
 
 makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
 makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
 
 applyAdjRule
-  :: forall d s
-   . Pretty (Variant (SortChL s ()))
-  => Pretty (Der d s ())
+  :: forall d l_d s l_s
+   . Eq (Variant l_d)
+  => Eq (Variant (SortL s l_s))
+  => Eq (Variant (SortChL s l_s))
+  => Eq (Variant (AdjL d l_d s l_s))
   => IsLanguage d s
-  => AdjRule d s
-  -> AdjT d () s ()
-  -> Maybe (AdjT d () s ())
+  => AdjRule d l_d s l_s
+  -> AdjT d l_d s l_s
+  -> Maybe (AdjT d l_d s l_s)
 applyAdjRule (AdjRule { input, output, trans }) adj = do
   sigma_input <- adj # matchAdjT input
   sigma_output <- trans sigma_input
   let output' = applyAdjSubst_AdjT sigma_output output
-  Debug.logM 0 $ intercalate "\n"
-    [ "applyAdjRule.try match"
-    , "  - input        = " <> pretty input
-    , "  - adj          = " <> pretty adj
-    , "  - output       = " <> pretty output
-    , "  - sigma_output = " <> indent 2 (pretty sigma_output)
-    , "  - output' = " <> pretty output'
-    ]
+  -- Debug.logM 0 $ intercalate "\n"
+  --   [ "applyAdjRule.try match"
+  --   , "  - input        = " <> pretty input
+  --   , "  - adj          = " <> pretty adj
+  --   , "  - output       = " <> pretty output
+  --   , "  - sigma_output = " <> indent 2 (pretty sigma_output)
+  --   , "  - output' = " <> pretty output'
+  --   ]
   pure output'
 
 --------------------------------------------------------------------------------
@@ -332,7 +336,7 @@ applyEditRule (EditRule rule) dt = do
 data Language d l_d s l_s = Language
   { name :: String
   , derRules :: DerRules d s
-  , adjRules :: AdjRules d s
+  , adjRules :: AdjRules d l_d s l_s
   , editRules :: EditRules d l_d s l_s
   }
 

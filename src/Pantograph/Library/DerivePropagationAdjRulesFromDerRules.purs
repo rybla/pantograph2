@@ -11,11 +11,17 @@ import Data.List (List)
 import Data.List as List
 import Data.Map as Map
 import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.MetaVar (addPrefix, addSuffix)
 import Pantograph.MetaVar as MV
 
-propagationAdjRules :: forall d s. IsLanguage d s => DerRules d s -> AdjRules d s
+propagationAdjRules
+  :: forall d l_d s l_s
+   . IsLanguage d s
+  => Eq (Variant (SortL s l_s))
+  => DerRules d s
+  -> AdjRules d l_d s l_s
 propagationAdjRules derRules =
   derRules
     # (Map.toUnfoldable :: _ -> List _)
