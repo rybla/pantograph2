@@ -128,6 +128,8 @@ instance PrettyTreeDerL D where
 
 instance IsDerL D
 
+instance IsLanguage D S
+
 --------------------------------------------------------------------------------
 
 derRules :: DerRules D S
@@ -166,14 +168,9 @@ derRules = Map.fromFoldable
 
 --------------------------------------------------------------------------------
 
-instance IsLanguage D S
-
---------------------------------------------------------------------------------
-
 adjRules :: AdjRules D S
 adjRules = modifyAdjRules <> propagationAdjRules derRules
   where
-
   _g /\ g = defAndMakeMetaVar "g"
   _g' /\ g' = defAndMakeMetaVar "g'"
   _dg /\ dg = defAndMakeMetaVar "dg"
