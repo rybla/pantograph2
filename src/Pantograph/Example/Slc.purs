@@ -196,6 +196,7 @@ adjRules = modifyAdjRules <> propagationAdjRules derRules
 
 --------------------------------------------------------------------------------
 
+editRules :: List (EditRule D () S ())
 editRules = List.fromFoldable
   [ EditRule
       { label: "lambda"
@@ -206,3 +207,11 @@ editRules = List.fromFoldable
   ]
 
 --------------------------------------------------------------------------------
+
+language :: Language D () S ()
+language = Language
+  { name: "SLC"
+  , derRules
+  , adjRules
+  , editRules
+  }

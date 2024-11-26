@@ -329,7 +329,7 @@ applyEditRule (EditRule rule) dt = do
 -- Language
 --------------------------------------------------------------------------------
 
-data Language d l_d s l_s = Spec
+data Language d l_d s l_s = Language
   { name :: String
   , derRules :: DerRules d s
   , adjRules :: AdjRules d s
