@@ -224,7 +224,7 @@ _adjs = Proxy :: Proxy "adjs"
 _chs = Proxy :: Proxy "chs"
 _sorts = Proxy :: Proxy "sorts"
 
-emptyAdjSubst :: AdjSubst _ _ _ _
+emptyAdjSubst :: forall d l_d s l_ds. AdjSubst d l_d s l_ds
 emptyAdjSubst = AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty }
 
 applyAdjSubst_SortT :: forall d l_d s l_s. AdjSubst d l_d s l_s -> MetaSortT s l_s -> SortT s l_s

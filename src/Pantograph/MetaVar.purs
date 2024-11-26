@@ -9,6 +9,7 @@ import Data.Map as Map
 import Data.Maybe (fromMaybe')
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
+import Data.Tuple.Nested (type (/\), (/\))
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.Tree (class PrettyTreeL)
 import Pantograph.Utility (bug)
@@ -52,3 +53,5 @@ addPrefix str1 (MetaVar str2) = MetaVar (str1 <> "_" <> str2)
 addSuffix :: String -> MetaVar -> MetaVar
 addSuffix str1 (MetaVar str2) = MetaVar (str2 <> "_" <> str1)
 
+id :: forall a. Map MetaVar a -> MetaVar -> MetaVar /\ a
+id sigma k = k /\ (sigma !! k)
