@@ -31,7 +31,13 @@ import Pantograph.Utility (bug, todo)
 --------------------------------------------------------------------------------
 
 _g = MV.MetaVar "g"
-g = makeMetaVar' "g"
+g = makeMetaVar _g
+_g' = MV.MetaVar "g'"
+g' = makeMetaVar _g'
+_dg = MV.MetaVar "dg"
+dg = makeMetaVar _dg
+_dg' = MV.MetaVar "dg'"
+dg' = makeMetaVar _dg'
 
 --------------------------------------------------------------------------------
 -- S
@@ -71,6 +77,12 @@ term g = Term ^% [ g ]
 ctxN n | n < 0 = bug $ "invalid: ctxN; n = " <> show n
 ctxN n | n == 0 = emp
 ctxN n = ext (ctxN (n - 1))
+
+--------------------------------------------------------------------------------
+-- L_S
+--------------------------------------------------------------------------------
+
+type L_S = ()
 
 --------------------------------------------------------------------------------
 -- D
@@ -132,6 +144,12 @@ instance IsDerL D
 instance IsLanguage D S
 
 --------------------------------------------------------------------------------
+-- L_D
+--------------------------------------------------------------------------------
+
+type L_D = ()
+
+--------------------------------------------------------------------------------
 
 derRules :: DerRules D S
 derRules = Map.fromFoldable
@@ -169,19 +187,9 @@ derRules = Map.fromFoldable
 
 --------------------------------------------------------------------------------
 
-adjRules
-  :: forall l_d l_s
-   . Eq (Variant l_d)
-  => Eq (Variant (SortL S l_s))
-  => Eq (Variant (SortChL S l_s))
-  => Eq (Variant (AdjL D l_d S l_s))
-  => AdjRules D l_d S l_s
+adjRules :: AdjRules D L_D S L_S
 adjRules = modifyAdjRules <> propagationAdjRules derRules
   where
-  _g /\ g = defAndMakeMetaVar "g"
-  _g' /\ g' = defAndMakeMetaVar "g'"
-  _dg /\ dg = defAndMakeMetaVar "dg"
-
   modifyAdjRules = List.fromFoldable
     -- these really should be the only necessary rules since we don't have types
     [ makeAdjRule
@@ -200,7 +208,7 @@ adjRules = modifyAdjRules <> propagationAdjRules derRules
 
 --------------------------------------------------------------------------------
 
-editRules :: forall l_d l_s. List (EditRule D l_d S l_s)
+editRules :: List (EditRule D L_D S L_S)
 editRules = List.fromFoldable
   [ EditRule
       { label: "lambda"
@@ -212,13 +220,7 @@ editRules = List.fromFoldable
 
 --------------------------------------------------------------------------------
 
-language
-  :: forall l_d l_s
-   . Eq (Variant l_d)
-  => Eq (Variant (SortL S l_s))
-  => Eq (Variant (SortChL S l_s))
-  => Eq (Variant (AdjL D l_d S l_s))
-  => Language D l_d S l_s
+language :: Language D L_D S L_S
 language = Language
   { name: "SLC"
   , derRules
