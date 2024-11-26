@@ -200,7 +200,7 @@ adjRules = modifyAdjRules <> propagationAdjRules derRules
 
 --------------------------------------------------------------------------------
 
-editRules :: List (EditRule D () S ())
+editRules :: forall l_d l_s. List (EditRule D l_d S l_s)
 editRules = List.fromFoldable
   [ EditRule
       { label: "lambda"
@@ -212,7 +212,13 @@ editRules = List.fromFoldable
 
 --------------------------------------------------------------------------------
 
-language :: Language D () S ()
+language
+  :: forall l_d l_s
+   . Eq (Variant l_d)
+  => Eq (Variant (SortL S l_s))
+  => Eq (Variant (SortChL S l_s))
+  => Eq (Variant (AdjL D l_d S l_s))
+  => Language D l_d S l_s
 language = Language
   { name: "SLC"
   , derRules
