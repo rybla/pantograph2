@@ -19,7 +19,9 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
+import Data.Variant as V
 import Debug as Debug
+import Pantograph.Library.Cursor (CursorL)
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
@@ -147,39 +149,39 @@ instance IsLanguage D S
 -- L_D
 --------------------------------------------------------------------------------
 
-type L_D = ()
+type L_D = CursorL ()
 
 --------------------------------------------------------------------------------
 
-derRules :: DerRules D S
+derRules :: DerRules D L_D S L_S
 derRules = Map.fromFoldable
-  [ Free /\
+  [ V.inj _der Free /\
       ( []
           |- (Var ^% [ g ])
       )
-  , Zero /\
+  , V.inj _der Zero /\
       ( [] |-
           (Var ^% [ Ext ^% [ g ] ])
       )
-  , Suc /\
+  , V.inj _der Suc /\
       ( [ Var ^% [ g ] ] |-
           (Var ^% [ Ext ^% [ g ] ])
       )
-  , Ref /\
+  , V.inj _der Ref /\
       ( [ Var ^% [ g ] ] |-
           (Term ^% [ g ])
       )
-  , Lam /\
+  , V.inj _der Lam /\
       ( [ Term ^% [ Ext ^% [ g ] ] ] |-
           (Term ^% [ g ])
       )
-  , App /\
+  , V.inj _der App /\
       ( [ Term ^% [ g ]
         , Term ^% [ g ]
         ] |-
           (Term ^% [ g ])
       )
-  , Hole /\
+  , V.inj _der Hole /\
       ( [] |-
           (Term ^% [ g ])
       )

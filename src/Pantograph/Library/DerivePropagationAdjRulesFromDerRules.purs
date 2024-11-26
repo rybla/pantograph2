@@ -20,7 +20,7 @@ propagationAdjRules
   :: forall d l_d s l_s
    . IsLanguage d s
   => Eq (Variant (SortL s l_s))
-  => DerRules d s
+  => DerRules d l_d s l_s
   -> AdjRules d l_d s l_s
 propagationAdjRules derRules =
   derRules
@@ -35,11 +35,11 @@ propagationAdjRules derRules =
           [ [ makeAdjRule
                 -- freshen each sort metavar in output sort as a new sort change metavar which will be matched against in the down change of the adjust boundary here
                 ( (rule.sort # map V.expand # renameMVs (addPrefix "ch")) ↓
-                    ( d // (sortMVs # map (\x -> x /\ makeMetaVar x)) %
+                    ( ?d // (sortMVs # map (\x -> x /\ makeMetaVar x)) %
                         (kidMVs # map (\x -> makeMetaVar x))
                     )
                 )
-                ( d // (sortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "outer"))) %
+                ( ?d // (sortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "outer"))) %
                     ( kidMVs `List.zip` rule.kids
                         # map
                             ( \(kidMV /\ { sort }) ->
@@ -59,7 +59,7 @@ propagationAdjRules derRules =
               # mapWithIndex
                   ( \i _ ->
                       makeAdjRule
-                        ( d // (sortMVs # map (\x -> x /\ makeMetaVar x)) %
+                        ( ?d // (sortMVs # map (\x -> x /\ makeMetaVar x)) %
                             ( kidMVs `List.zip` rule.kids
                                 # mapWithIndex
                                     ( \j (kidMV_j /\ { sort: sort_j }) ->
@@ -72,7 +72,7 @@ propagationAdjRules derRules =
                             )
                         )
                         ( (rule.sort # map V.expand # renameMVs (MV.addPrefix "ch")) ↑
-                            ( d // (sortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "inner"))) %
+                            ( ?d // (sortMVs # map (\x -> x /\ makeMetaVar (x # addSuffix "inner"))) %
                                 ( kidMVs `List.zip` rule.kids
                                     # mapWithIndex
                                         ( \j (kidMV_j /\ { sort: sort_j }) ->
