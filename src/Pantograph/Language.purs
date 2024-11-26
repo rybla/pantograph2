@@ -79,16 +79,20 @@ collectMVs =
 --------------------------------------------------------------------------------
 
 type Sort sr = Tree (SortL sr)
-type SortL sr = Variant sr
+type SortL sr = Variant (SortR sr)
+type SortR (sr :: Row Type) = sr
 
 type MetaSort sr = Tree (MetaSortL sr)
-type MetaSortL sr = SortL (MetaR sr)
+type MetaSortL sr = Variant (MetaSortR sr)
+type MetaSortR sr = MetaR sr
 
-type SortChange sr = Tree (SortChangeL sr)
-type SortChangeL sr = SortL (ChangeR sr)
+type ChangeSort sr = Tree (ChangeSortL sr)
+type ChangeSortL sr = Variant (ChangeSortR sr)
+type ChangeSortR sr = ChangeR sr
 
-type SortMetaChange sr = Tree (SortMetaChangeL sr)
-type SortMetaChangeL sr = SortL (MetaR (ChangeR sr))
+type MetaChangeSort sr = Tree (MetaChangeSortL sr)
+type MetaChangeSortL sr = Variant (MetaChangeSortR sr)
+type MetaChangeSortR sr = MetaR (ChangeR sr)
 
 --------------------------------------------------------------------------------
 -- BaseSortR
@@ -110,6 +114,9 @@ infix 3 makeBaseSort as ^%
 
 type Der dr sr = Tree (DerL dr sr)
 data DerL dr sr = DerL (Variant dr) (MV.Subst (Sort sr))
+
+type MetaDer dr sr = Tree (MetaDerL dr sr)
+type MetaDerL dr sr = DerL (MetaR dr) (MetaR sr)
 
 derive instance Generic (DerL dr sr) _
 
@@ -229,20 +236,22 @@ type MetaAdjL dr sr = AdjL (MetaR dr) (MetaR sr)
 
 _bdry = Proxy :: Proxy "bdry"
 
-data Bdry (sr :: Row Type) = Bdry BdryDir (SortChange sr)
+data Bdry (sr :: Row Type) = Bdry BdryDir (ChangeSort sr)
+
+type MetaBdry sr = Bdry (MetaR sr)
 
 derive instance Generic (Bdry sr) _
 
-instance Eq (SortChange sr) => Eq (Bdry sr) where
+instance Eq (ChangeSort sr) => Eq (Bdry sr) where
   eq x = genericEq x
 
-instance Show (SortChange sr) => Show (Bdry sr) where
+instance Show (ChangeSort sr) => Show (Bdry sr) where
   show x = genericShow x
 
-instance Pretty (SortChange sr) => Pretty (Bdry sr) where
+instance Pretty (ChangeSort sr) => Pretty (Bdry sr) where
   pretty (Bdry dir ch) = "{{ " <> pretty ch <> " " <> pretty dir <> " _ }}"
 
-instance Pretty (SortChange sr) => PrettyTreeL (Bdry sr) where
+instance Pretty (ChangeSort sr) => PrettyTreeL (Bdry sr) where
   prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
   prettyTreeL _ _ = bug "invalid Bdry"
 
@@ -278,12 +287,12 @@ makeAdjBdryDownMinus l ls kid rs =
 infixl 2 makeAdjBdryDownPlus as %+
 infixl 2 makeAdjBdryDownMinus as %-
 
-makeAdjBdryDown :: forall dr sr. SortChange sr -> Adj dr sr -> Adj dr sr
+makeAdjBdryDown :: forall dr sr. ChangeSort sr -> Adj dr sr -> Adj dr sr
 makeAdjBdryDown ch kid =
   DerL (V.inj _bdry (Bdry Down ch)) empty %
     [ kid ]
 
-makeAdjBdryUp :: forall dr sr. SortChange sr -> Adj dr sr -> Adj dr sr
+makeAdjBdryUp :: forall dr sr. ChangeSort sr -> Adj dr sr -> Adj dr sr
 makeAdjBdryUp ch kid =
   DerL (V.inj _bdry (Bdry Up ch)) empty %
     [ kid ]
@@ -293,13 +302,13 @@ infix 2 makeAdjBdryUp as ↑
 
 data AdjSubst dr sr = AdjSubst
   { adjs :: MV.Subst (Adj dr sr)
-  , chs :: MV.Subst (SortChange sr)
+  , chs :: MV.Subst (ChangeSort sr)
   , sorts :: MV.Subst (Sort sr)
   }
 
 instance
   ( Pretty (Adj dr sr)
-  , Pretty (SortChange sr)
+  , Pretty (ChangeSort sr)
   , Pretty (Sort sr)
   ) =>
   Pretty (AdjSubst dr sr) where
@@ -322,10 +331,10 @@ applyAdjSubst_Sort (sigma@(AdjSubst { sorts })) (l %% kids) =
     # (\_ l' -> l' %% (kids # map (applyAdjSubst_Sort sigma)))
     # V.on _metaVar (\x -> sorts MV.!! x)
 
-applyAdjSubst_SortChange :: forall dr sr. AdjSubst dr sr -> SortMetaChange sr -> SortChange sr
-applyAdjSubst_SortChange (sigma@(AdjSubst { chs })) (l %% kids) =
+applyAdjSubst_ChangeSort :: forall dr sr. AdjSubst dr sr -> MetaChangeSort sr -> ChangeSort sr
+applyAdjSubst_ChangeSort (sigma@(AdjSubst { chs })) (l %% kids) =
   l ## V.case_
-    # (\_ l' -> l' %% (kids # map (applyAdjSubst_SortChange sigma)))
+    # (\_ l' -> l' %% (kids # map (applyAdjSubst_ChangeSort sigma)))
     # V.on _metaVar (\x -> chs MV.!! x)
 
 applyAdjSubst_Adj :: forall dr sr. AdjSubst dr sr -> MetaAdj dr sr -> Adj dr sr
@@ -337,25 +346,22 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
       )
     # V.on _bdry
         ( \(Bdry dir ch) ->
-            DerL (V.inj _bdry (Bdry dir (ch # applyAdjSubst_SortChange sigma))) (sigma_d <#> applyAdjSubst_Sort sigma) %%
+            DerL (V.inj _bdry (Bdry dir (ch # applyAdjSubst_ChangeSort sigma))) (sigma_d <#> applyAdjSubst_Sort sigma) %%
               (kids # map (applyAdjSubst_Adj sigma))
         )
     # V.on _metaVar (\x -> adjs MV.!! x)
 
--- --------------------------------------------------------------------------------
--- -- AdjRules
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- AdjRules
+--------------------------------------------------------------------------------
 
--- type MetaAdj dr sr = Tree (MetaAdjR dr sr)
--- type MetaAdjR dr sr = AdjR d (MetaR dr) s (MetaR sr)
+type AdjRules dr sr = List (AdjRule dr sr)
 
--- type AdjRules dr sr = List (AdjRule dr sr)
-
--- data AdjRule dr sr = AdjRule
---   { input :: MetaAdj dr sr
---   , trans :: AdjSubst dr sr -> Maybe (AdjSubst dr sr)
---   , output :: MetaAdj dr sr
---   }
+data AdjRule dr sr = AdjRule
+  { input :: MetaAdj dr sr
+  , trans :: AdjSubst dr sr -> Maybe (AdjSubst dr sr)
+  , output :: MetaAdj dr sr
+  }
 
 -- instance (Show d, Show s, Show (AdjR dr sr)) => Show (AdjRule dr sr) where
 --   show (AdjRule { input, trans: _, output }) =
@@ -367,14 +373,14 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 --     -- pretty input <> "  ~~>  " <> pretty output <> "  with  <function>"
 --     todo ""
 
--- makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
--- makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
+makeAdjRule input output trans = AdjRule { input, trans: trans >>> map \{ sorts, adjs, chs } -> AdjSubst { sorts: Map.fromFoldable sorts, adjs: Map.fromFoldable adjs, chs: Map.fromFoldable chs }, output }
+makeSimpleAdjRule input output = AdjRule { input, trans: pure, output }
 
 -- applyAdjRule
 --   :: forall dr sr
 --    . Eq (Variant dr)
 --   => Eq (Variant (SortL s sr))
---   => Eq (Variant (SortChL s sr))
+--   => Eq (Variant (ChangeSortR s sr))
 --   => Eq (AdjR dr sr)
 --   => IsLanguage d s
 --   => AdjRule dr sr
@@ -394,145 +400,122 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 --   --   ]
 --   pure output'
 
--- --------------------------------------------------------------------------------
--- -- EditRules
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- EditRules
+--------------------------------------------------------------------------------
 
--- type EditRules dr sr = List (EditRule dr sr)
+type EditRules dr sr = List (EditRule dr sr)
 
--- data EditRule dr sr = EditRule
---   { label :: String
---   , input :: MetaDerT dr sr
---   , trans :: AdjSubst dr sr -> Maybe (AdjSubst dr sr)
---   , output :: MetaAdj dr sr
---   }
+data EditRule dr sr = EditRule
+  { label :: String
+  , input :: MetaDer dr sr
+  , trans :: AdjSubst dr sr -> Maybe (AdjSubst dr sr)
+  , output :: MetaAdj dr sr
+  }
 
--- applyEditRule :: forall dr sr. IsLanguage d s => EditRule dr sr -> DerT dr sr -> Maybe (Adj dr sr)
+-- applyEditRule :: forall dr sr. EditRule dr sr -> Der dr sr -> Maybe (Adj dr sr)
 -- applyEditRule (EditRule rule) dt = do
---   sigma <- matchDerT rule.input dt # runMatchM
+--   sigma <- matchDer rule.input dt # runMatchM
 --   sigma' <- rule.trans sigma
 --   pure $ applyAdjSubst_Adj sigma' rule.output
 
--- --------------------------------------------------------------------------------
--- -- Language
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Language
+--------------------------------------------------------------------------------
 
--- data Language dr sr = Language
---   { name :: String
---   , derRules :: DerRules dr sr
---   , adjRules :: AdjRules dr sr
---   , editRules :: EditRules dr sr
---   }
+data Language dr sr = Language
+  { name :: String
+  , derRules :: DerRules dr sr
+  , adjRules :: AdjRules dr sr
+  , editRules :: EditRules dr sr
+  }
 
--- --------------------------------------------------------------------------------
--- -- match stuff
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- match stuff
+--------------------------------------------------------------------------------
 
--- type MatchM dr sr = StateT (AdjSubst dr sr) Maybe Unit
+type SortSubst sr = MV.Subst (Sort sr)
+type MetaSortSubst sr = MV.Subst (MetaSort sr)
 
--- runMatchM :: forall dr sr. MatchM dr sr -> Maybe (AdjSubst dr sr)
--- runMatchM = flip execStateT
---   $ AdjSubst
---       { adjs: Map.empty
---       , chs: Map.empty
---       , sorts: Map.empty
---       }
+type MatchM dr sr = StateT (AdjSubst dr sr) Maybe Unit
 
--- type SortSubst s sr = MV.Subst (TreeV (SortL s sr))
--- type MetaSortSubst s sr = MV.Subst (TreeV (MetaR (SortL s sr)))
+runMatchM :: forall dr sr. MatchM dr sr -> Maybe (AdjSubst dr sr)
+runMatchM = flip execStateT
+  $ AdjSubst
+      { adjs: Map.empty
+      , chs: Map.empty
+      , sorts: Map.empty
+      }
 
--- type MetaDerT dr sr = Tree (MetaDerL dr sr)
--- type DerT dr sr = Tree (DerL dr sr)
+setMetaVar_Sort :: forall dr sr. Eq (Sort sr) => MetaVar -> Sort sr -> MatchM dr sr
+setMetaVar_Sort x sort = do
+  AdjSubst sigma <- get
+  case sigma.sorts # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { sorts = sigma.sorts # Map.insert x sort }
+    Just sort' | sort == sort' -> pure unit
+    Just _ | otherwise -> empty
 
--- type MetaDerL dr sr = DerL d dr s (MetaR sr)
+setMetaVar_ChangeSort :: forall dr sr. Eq (ChangeSort sr) => MetaVar -> ChangeSort sr -> MatchM dr sr
+setMetaVar_ChangeSort x ch = do
+  AdjSubst sigma <- get
+  case sigma.chs # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { chs = sigma.chs # Map.insert x ch }
+    Just ch' | ch == ch' -> pure unit
+    Just _ | otherwise -> empty
 
--- type SortMetaChange sr = TreeV (MetaR (ChangeL (SortL s sr)))
--- type MetaSortChL s sr = MetaR (SortChL s sr)
+setMetaVar_Adj :: forall dr sr. Eq (Adj dr sr) => MetaVar -> Adj dr sr -> MatchM dr sr
+setMetaVar_Adj x adj = do
+  AdjSubst sigma <- get
+  case sigma.adjs # Map.lookup x of
+    Nothing -> put $ AdjSubst sigma { adjs = sigma.adjs # Map.insert x adj }
+    Just adj' | adj == adj' -> pure unit
+    Just _ | otherwise -> empty
 
--- type SortChange sr = TreeV (SortChL s sr)
--- type SortChL s sr = ChangeL (SortL s sr)
+matchSort :: forall dr sr. Eq (Variant sr) => MetaSort sr -> Sort sr -> MatchM dr sr
+matchSort (msl1 %% kids1) sort2@(sl2 %% kids2) =
+  msl1 ## V.case_
+    #
+      ( \_ sl1 -> do
+          guard $ sl1 == sl2
+          List.zip kids1 kids2 # traverse_ (uncurry matchSort)
+      )
+    # V.on _metaVar (\x -> setMetaVar_Sort x sort2)
 
--- type Adj dr sr = Tree (AdjR dr sr)
+matchSortSubst :: forall dr sr. Eq (Sort sr) => Eq (Variant sr) => MetaSortSubst sr -> SortSubst sr -> MatchM dr sr
+matchSortSubst mss1 ss2 =
+  Map.keys mss1 `Set.union` Map.keys ss2 # traverse_ \x -> do
+    ms1 <- mss1 # Map.lookup x # lift
+    s2 <- ss2 # Map.lookup x # lift
+    matchSort ms1 s2
 
--- type Sort sr = TreeV (SortL s sr)
--- type MetaSort sr = TreeV (MetaR (SortL s sr))
+matchChangeSort :: forall dr sr. Eq (ChangeSort sr) => Eq (Variant (ChangeSortR sr)) => MetaChangeSort sr -> ChangeSort sr -> MatchM dr sr
+matchChangeSort (mch1 %% kids1) ch2@(chl2 %% kids2) =
+  mch1 ## V.case_
+    #
+      ( \_ chl1 -> do
+          guard $ chl1 == chl2
+          List.zip kids1 kids2 # traverse_ (uncurry matchChangeSort)
+      )
+    # V.on _metaVar (\x -> setMetaVar_ChangeSort x ch2)
 
--- setMetaVar_Sort :: forall dr sr. Eq (Variant (SortL s sr)) => IsLanguage d s => MetaVar -> Sort sr -> MatchM dr sr
--- setMetaVar_Sort x sort = do
---   AdjSubst sigma <- get
---   case sigma.sorts # Map.lookup x of
---     Nothing -> put $ AdjSubst sigma { sorts = sigma.sorts # Map.insert x sort }
---     Just sort' | sort == sort' -> pure unit
---     Just _ | otherwise -> empty
-
--- setMetaVar_SortCh :: forall dr sr. Eq (Variant (SortChL s sr)) => IsLanguage d s => MetaVar -> SortChange sr -> MatchM dr sr
--- setMetaVar_SortCh x ch = do
---   AdjSubst sigma <- get
---   case sigma.chs # Map.lookup x of
---     Nothing -> put $ AdjSubst sigma { chs = sigma.chs # Map.insert x ch }
---     Just ch' | ch == ch' -> pure unit
---     Just _ | otherwise -> empty
-
--- setMetaVar_Adj :: forall dr sr. Eq (AdjR dr sr) => IsLanguage d s => MetaVar -> Adj dr sr -> MatchM dr sr
--- setMetaVar_Adj x adj = do
---   AdjSubst sigma <- get
---   case sigma.adjs # Map.lookup x of
---     Nothing -> put $ AdjSubst sigma { adjs = sigma.adjs # Map.insert x adj }
---     Just adj' | adj == adj' -> pure unit
---     Just _ | otherwise -> empty
-
--- matchSort :: forall dr sr. Eq (Variant (SortL s sr)) => IsLanguage d s => MetaSort sr -> Sort sr -> MatchM dr sr
--- matchSort (msl1 %% kids1) sort2@(sl2 %% kids2) =
---   msl1 ## V.case_
---     #
---       ( \_ sl1 -> do
---           guard $ sl1 == sl2
---           List.zip kids1 kids2 # traverse_ (uncurry matchSort)
---       )
---     # V.on _metaVar (\x -> setMetaVar_Sort x sort2)
-
--- matchSortSubst :: forall dr sr. Eq (Variant (SortL s sr)) => IsLanguage d s => MetaSortSubst s sr -> SortSubst s sr -> MatchM dr sr
--- matchSortSubst mss1 ss2 =
---   Map.keys mss1 `Set.union` Map.keys ss2 # traverse_ \x -> do
---     ms1 <- mss1 # Map.lookup x # lift
---     s2 <- ss2 # Map.lookup x # lift
---     matchSort ms1 s2
-
--- matchSortCh :: forall dr sr. Eq (Variant (SortChL s sr)) => IsLanguage d s => SortMetaChange sr -> SortChange sr -> MatchM dr sr
--- matchSortCh (mch1 %% kids1) ch2@(chl2 %% kids2) =
---   mch1 ## V.case_
---     #
---       ( \_ chl1 -> do
---           guard $ chl1 == chl2
---           List.zip kids1 kids2 # traverse_ (uncurry matchSortCh)
---       )
---     # V.on _metaVar (\x -> setMetaVar_SortCh x ch2)
-
--- matchDer
---   :: forall dr sr
---    . Eq (Variant (SortL s sr))
---   => Eq (Variant (DL d dr))
---   => IsLanguage d s
---   => MetaDer dr sr
---   -> DerL dr sr
---   -> MatchM dr sr
+-- matchDer :: forall dr sr. Eq (Variant (MetaR dr)) => Eq (Variant sr) => MetaDerL dr sr -> DerL dr sr -> MatchM dr sr
 -- matchDer (DerL md1 sigma1) (DerL d2 sigma2) = do
---   guard $ md1 == d2
+--   guard $ md1 == ?d2
 --   matchSortSubst sigma1 sigma2
 
--- matchDerT :: forall dr sr. IsLanguage d s => MetaDerT dr sr -> DerT dr sr -> MatchM dr sr
--- matchDerT = todo "matchDerT"
+-- matchDer :: forall dr sr. MetaDer dr sr -> Der dr sr -> MatchM dr sr
+-- matchDer = todo "matchDer"
 
--- matchBdry :: forall dr sr. Eq (Variant (SortChL s sr)) => IsLanguage d s => MetaBdry s sr -> Bdry s sr -> MatchM dr sr
--- matchBdry (Bdry dir1 ch1) (Bdry dir2 ch2) = do
---   guard $ dir1 == dir2
---   matchSortCh ch1 ch2
+matchBdry :: forall dr sr. Eq (Variant (ChangeSortR sr)) => MetaBdry sr -> Bdry sr -> MatchM dr sr
+matchBdry (Bdry dir1 ch1) (Bdry dir2 ch2) = do
+  guard $ dir1 == dir2
+  matchChangeSort ch1 ch2
 
 -- matchAdjR
 --   :: forall dr sr
 --    . Eq (Variant dr)
 --   => Eq (Variant (SortL s sr))
---   => Eq (Variant (SortChL s sr))
+--   => Eq (Variant (ChangeSortR s sr))
 --   => IsLanguage d s
 --   => AdjR d dr s (MetaR sr)
 --   -> AdjR dr sr
@@ -565,7 +548,7 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 --   :: forall dr sr
 --    . Eq (Variant dr)
 --   => Eq (Variant (SortL s sr))
---   => Eq (Variant (SortChL s sr))
+--   => Eq (Variant (ChangeSortR s sr))
 --   => Eq (AdjR dr sr)
 --   => IsLanguage d s
 --   => MetaAdj dr sr
@@ -585,7 +568,7 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 -- union_AdjSubst
 --   :: forall dr sr
 --    . Eq (AdjR dr sr)
---   => Eq (Variant (SortChL s sr))
+--   => Eq (Variant (ChangeSortR s sr))
 --   => Eq (Variant (SortL s sr))
 --   => IsLanguage d s
 --   => AdjSubst dr sr
@@ -600,7 +583,7 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 -- unions_AdjSubst
 --   :: forall f dr sr
 --    . Eq (AdjR dr sr)
---   => Eq (Variant (SortChL s sr))
+--   => Eq (Variant (ChangeSortR s sr))
 --   => Eq (Variant (SortL s sr))
 --   => IsLanguage d s
 --   => Foldable f
@@ -608,9 +591,9 @@ applyAdjSubst_Adj (sigma@(AdjSubst { adjs })) (DerL l sigma_d %% kids) =
 --   -> Maybe (AdjSubst dr sr)
 -- unions_AdjSubst = foldM union_AdjSubst (AdjSubst { adjs: Map.empty, chs: Map.empty, sorts: Map.empty })
 
--- insertIfEq :: forall m k v. Monad m => Alternative m => Ord k => Eq v => Map k v -> k /\ v -> m (Map k v)
--- insertIfEq sigma (x /\ a) = case sigma # Map.lookup x of
---   Nothing -> pure $ sigma # Map.insert x a
---   Just a' -> do
---     guard $ a == a'
---     pure sigma
+insertIfEq :: forall m k v. Monad m => Alternative m => Ord k => Eq v => Map k v -> k /\ v -> m (Map k v)
+insertIfEq sigma (x /\ a) = case sigma # Map.lookup x of
+  Nothing -> pure $ sigma # Map.insert x a
+  Just a' -> do
+    guard $ a == a'
+    pure sigma
