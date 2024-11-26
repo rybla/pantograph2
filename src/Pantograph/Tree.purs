@@ -170,11 +170,11 @@ unPath (Path (th : ths)) t = unPath (Path ths) (unTooth th t)
 -- Change
 --------------------------------------------------------------------------------
 
-type ChangeL l =
-  ( plus :: PlusChange l
-  , minus :: MinusChange l
-  , replace :: ReplaceChange l
-  | l
+type ChangeR r =
+  ( plus :: PlusChange r
+  , minus :: MinusChange r
+  , replace :: ReplaceChange r
+  | r
   )
 
 _plus = Proxy :: Proxy "plus"
@@ -238,16 +238,16 @@ instance PrettyTreeL_R l => PrettyTreeL (ReplaceChange l) where
     parens (pretty t) <> " ~~> " <> parens (pretty t')
   prettyTreeL _ _ = bug "invalid "
 
-id :: forall l l_. Union l l_ (ChangeL l) => TreeV l -> TreeV (ChangeL l)
+id :: forall l l_. Union l l_ (ChangeR l) => TreeV l -> TreeV (ChangeR l)
 id = map V.expand
 
-composeChanges :: forall l. TreeV (ChangeL l) -> TreeV (ChangeL l) -> Maybe (TreeV (ChangeL l))
+composeChanges :: forall l. TreeV (ChangeR l) -> TreeV (ChangeR l) -> Maybe (TreeV (ChangeR l))
 composeChanges _ _ = todo "composeChanges"
 
-invertChange :: forall l. TreeV (ChangeL l) -> TreeV (ChangeL l)
+invertChange :: forall l. TreeV (ChangeR l) -> TreeV (ChangeR l)
 invertChange _ = todo "invertChange"
 
-innerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeL l) -> TreeV l
+innerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeR l) -> TreeV l
 innerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> innerEndpoint))
@@ -265,7 +265,7 @@ innerEndpoint (l %% kids) =
     # V.on _replace (\(ReplaceChange t0 _t1) -> t0)
     $ l
 
-outerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeL l) -> TreeV l
+outerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeR l) -> TreeV l
 outerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> outerEndpoint))
