@@ -326,6 +326,17 @@ applyEditRule (EditRule rule) dt = do
   pure $ applyAdjSubst_AdjT sigma' rule.output
 
 --------------------------------------------------------------------------------
+-- Language
+--------------------------------------------------------------------------------
+
+data Language d l_d s l_s = Spec
+  { name :: String
+  , derRules :: DerRules d s
+  , adjRules :: AdjRules d s
+  , editRules :: EditRules d l_d s l_s
+  }
+
+--------------------------------------------------------------------------------
 -- match stuff
 --------------------------------------------------------------------------------
 
