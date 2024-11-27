@@ -15,11 +15,15 @@ import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.MetaVar (addPrefix, addSuffix)
 import Pantograph.MetaVar as MV
-import Pantograph.Utility (todo)
+import Pantograph.Utility (expand1, todo, unsafeCoerce_because)
+import Prim.Row (class Lacks, class Nub)
+import Type.Prelude (Proxy(..))
 
 propagationAdjRules
   :: forall dr sr
-   . DerRules dr sr
+   . Lacks "bdry" dr
+  => Lacks "metaVar" dr
+  => DerRules dr sr
   -> AdjDerRules dr sr
 propagationAdjRules derRules =
   derRules
@@ -33,12 +37,15 @@ propagationAdjRules derRules =
           -- propagate down rules
           [ [ makeAdjDerRule
                 -- freshen each sort metavar in output sort as a new sort change metavar which will be matched against in the down change of the adjust boundary here
-                -- ( (rule.sort # map V.expand # renameMVs (addPrefix "ch")) ↓
-                --     ( ?d // (sortMVs # map (\x -> x /\ makeMetaVarSort x)) %
-                --         (kidMVs # map (\x -> makeMetaVarDer x))
-                --     )
-                -- )
-                (todo "")
+                ( ( rule.sort
+                      # map (expand1 (Proxy :: Proxy "minus") >>> expand1 (Proxy :: Proxy "plus") >>> expand1 (Proxy :: Proxy "replace"))
+                      # renameMVs (addPrefix "ch")
+                  ) ↓
+                    ( (d # expand1 (Proxy :: Proxy "bdry") >>> expand1 (Proxy :: Proxy "metaVar"))
+                        // (sortMVs <#> \x -> x /\ makeMetaVarSort x)
+                        % (kidMVs <#> makeMetaVarDer)
+                    )
+                )
                 -- ( ?d // (sortMVs # map (\x -> x /\ makeMetaVarSort (x # addSuffix "outer"))) %
                 --     ( kidMVs `List.zip` rule.kids
                 --         # map
