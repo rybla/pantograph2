@@ -296,28 +296,28 @@ infixl 2 applyFunction as >>
 
 makeSortChangePlus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
 makeSortChangePlus l ls kid rs =
-  V.inj _plus (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  V.inj (Proxy @"plus") (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeSortChangePlus as %+
 
 makeSortChangeMinus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
 makeSortChangeMinus l ls kid rs =
-  V.inj _minus (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  V.inj (Proxy @"minus") (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeSortChangeMinus as %-
 
 makeBaseSortChangePlus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr) -> f_r (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr)
 makeBaseSortChangePlus l ls kid rs =
-  V.inj _plus (PlusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  V.inj (Proxy @"plus") (PlusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeBaseSortChangePlus as .%+
 
 makeBaseSortChangeMinus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr) -> f_r (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr)
 makeBaseSortChangeMinus l ls kid rs =
-  V.inj _minus (MinusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  V.inj (Proxy @"minus") (MinusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeBaseSortChangeMinus as .%-
@@ -340,10 +340,6 @@ type AdjDerSubst dr sr =
   , changeSort :: MV.Subst (ChangeSort sr)
   , sort :: MV.Subst (Sort sr)
   }
-
-_adjs = Proxy @"adjs"
-_chs = Proxy @"chs"
-_sorts = Proxy @"sorts"
 
 applyAdjDerSubst_Sort :: forall dr sr. AdjDerSubst dr sr -> MetaSort sr -> Sort sr
 applyAdjDerSubst_Sort (sigma@{ sort }) (l %% kids) =

@@ -177,10 +177,6 @@ type ChangeR r =
   | r
   )
 
-_plus = Proxy @"plus"
-_minus = Proxy @"minus"
-_replace = Proxy @"replace"
-
 expand_ChangeR :: forall r. Variant r -> Variant (ChangeR r)
 expand_ChangeR = expand1' @"plus" >>> expand1' @"minus" >>> expand1' @"replace"
 
@@ -254,46 +250,43 @@ innerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeR l) -> TreeV l
 innerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> innerEndpoint))
-    # V.on _plus
-        ( \(PlusChange th) -> case kids of
+    # V.on (Proxy @"plus")
+        ( \(PlusChange _th) -> case kids of
             -- c : Nil -> c # innerEndpoint # minusTooth th # fromMaybe' \_ -> bug "invalid change since can't minusTooth when getting inner endpoint of a PlusChange"
             c : Nil -> c # innerEndpoint
             _ -> bug "invalid Change"
         )
-    # V.on _minus
+    # V.on (Proxy @"minus")
         ( \(MinusChange th) -> case kids of
             c : Nil -> unTooth th (c # innerEndpoint)
             _ -> bug "invalid Change"
         )
-    # V.on _replace (\(ReplaceChange t0 _t1) -> t0)
+    # V.on (Proxy @"replace") (\(ReplaceChange t0 _t1) -> t0)
     $ l
 
 outerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeR l) -> TreeV l
 outerEndpoint (l %% kids) =
   V.case_
     # (\_ l' -> l' %% (kids <#> outerEndpoint))
-    # V.on _plus
+    # V.on (Proxy @"plus")
         ( \(PlusChange th) -> case kids of
             c : Nil -> unTooth th (c # outerEndpoint)
             _ -> bug "invalid Change"
         )
-    # V.on _minus
-        ( \(MinusChange th) -> case kids of
+    # V.on (Proxy @"minus")
+        ( \(MinusChange _th) -> case kids of
             -- c : Nil -> c # outerEndpoint # minusTooth th # fromMaybe' \_ -> bug "invalid change since can't minusTooth when getting outer endpoint of a MinusChange"
             c : Nil -> c # outerEndpoint
             _ -> bug "invalid Change"
         )
-    # V.on _replace (\(ReplaceChange _t0 t1) -> t1)
+    # V.on (Proxy @"replace") (\(ReplaceChange _t0 t1) -> t1)
     $ l
 
 minusTooth :: forall l. Eq (Variant l) => ToothV l -> TreeV l -> Maybe (TreeV l)
 minusTooth (Tooth l ls rs) (l' %% ts) = do
   guard $ l == l'
-  Debug.traceM "l == l'"
   if not ((ls # length) < ((ts # length) - 1 :: Int)) then bug "invalid label since wrong number of kids" else pure unit
   guard $ List.zip (ls # List.fromFoldable) (ts # List.take (ls # length)) # List.all (uncurry eq)
-  Debug.traceM "ls ok"
-  Debug.traceM "rs ok"
   if not ((rs # length) < ((ts # length) - 1 :: Int)) then bug "invalid label since wrong number of kids" else pure unit
   guard $ List.zip rs (ts # List.takeEnd (rs # length)) # List.all (uncurry eq)
   let t = ts List.!! (ls # length) # fromMaybe' \_ -> bug "impossible"
