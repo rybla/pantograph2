@@ -8,14 +8,15 @@ import Data.Foldable (fold)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.Map as Map
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Data.Variant as V
 import Pantograph.MetaVar as MV
-import Pantograph.Utility (bug)
+import Pantograph.Utility (bug, emptyRecordOfMaps, todo)
 import Type.Proxy (Proxy(..))
 
-type CursorL l_d = (cursor :: Cursor | l_d)
+type CursorR dr = (cursor :: Cursor | dr)
 
 _cursor = Proxy :: Proxy "cursor"
 
@@ -39,11 +40,13 @@ instance PrettyTreeL Cursor where
   prettyTreeL SelectInner (kid : Nil) = "[>[ " <> kid <> " ]<]"
   prettyTreeL _ _ = bug "invalid cursor kids"
 
-point kid = V.inj _cursor Point % [ kid ]
-selectOuter kid = V.inj _cursor SelectOuter % [ kid ]
-selectInner kid = V.inj _cursor SelectInner % [ kid ]
+point :: forall dr sr. Der (CursorR dr) sr -> Der (CursorR dr) sr
+point kid = DerL (V.inj _cursor Point) Map.empty % [ kid ]
 
-adjRules :: forall d l_d s l_s. AdjRules d (CursorL l_d) s l_s
+selectOuter kid = DerL (V.inj _cursor SelectOuter) Map.empty % [ kid ]
+selectInner kid = DerL (V.inj _cursor SelectInner) Map.empty % [ kid ]
+
+adjRules :: forall dr sr. AdjDerRules (CursorR dr) sr
 adjRules = List.fromFoldable
   ( [ makePassthroughs point
     , makePassthroughs selectOuter
@@ -51,14 +54,18 @@ adjRules = List.fromFoldable
     ] # fold
   )
   where
-  _ch /\ ch = defAndMakeMetaVar "ch"
-  _kid /\ kid = defAndMakeMetaVar "kid"
+  _ch /\ ch = defAndMakeMetaVarSort "ch"
+  _kid /\ kid = defAndMakeMetaVarDer "kid"
 
   makePassthroughs wrap = [ makePassthroughDown wrap, makePassthroughUp wrap ]
   makePassthroughDown wrap =
-    makeAdjRule (ch ↓ (wrap kid)) (wrap (ch ↓ kid))
-      (\(AdjSubst { adjs, chs }) -> pure { adjs: [ MV.id adjs _kid ], chs: [ MV.id chs _ch ], sorts: [] })
+    makeAdjDerRule
+      (ch ↓ (wrap kid))
+      (wrap (ch ↓ kid))
+      (\sigma -> pure { adjDer: [ _kid # MV.id sigma.adjDer ], changeSort: [ _ch # MV.id sigma.changeSort ], sort: [] })
   makePassthroughUp wrap =
-    makeAdjRule (wrap (ch ↑ kid)) (ch ↑ (wrap kid))
-      (\(AdjSubst { adjs, chs }) -> pure { adjs: [ MV.id adjs _kid ], chs: [ MV.id chs _ch ], sorts: [] })
+    makeAdjDerRule
+      (wrap (ch ↑ kid))
+      (ch ↑ (wrap kid))
+      (\sigma -> pure { adjDer: [ _kid # MV.id sigma.adjDer ], changeSort: [ _ch # MV.id sigma.changeSort ], sort: [] })
 

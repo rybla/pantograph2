@@ -40,16 +40,27 @@ type MetaR r = (metaVar :: MetaVar | r)
 
 _metaVar = Proxy :: Proxy "metaVar"
 
-makeMetaVar :: forall r. MetaVar -> TreeV (metaVar :: MetaVar | r)
-makeMetaVar x = V.inj _metaVar x % []
+makeMetaVarDer :: forall dr sr. MetaVar -> Der (MetaR dr) sr
+makeMetaVarDer x = DerL (V.inj _metaVar x) Map.empty % []
 
-defAndMakeMetaVar :: forall r. String -> MetaVar /\ TreeV (metaVar :: MetaVar | r)
-defAndMakeMetaVar str = x /\ makeMetaVar x
+makeMetaVarDer' :: forall dr sr. String -> Der (MetaR dr) sr
+makeMetaVarDer' x = DerL (V.inj _metaVar (MV.MetaVar x)) Map.empty % []
+
+defAndMakeMetaVarDer :: forall dr sr. String -> MetaVar /\ Der (MetaR dr) sr
+defAndMakeMetaVarDer str = x /\ makeMetaVarDer x
   where
   x = MV.MetaVar str
 
-makeMetaVar' :: forall r. String -> TreeV (metaVar :: MetaVar | r)
-makeMetaVar' x = V.inj _metaVar (MV.MetaVar x) % []
+makeMetaVarSort :: forall sr. MetaVar -> MetaSort sr
+makeMetaVarSort x = V.inj _metaVar x % []
+
+makeMetaVarSort' :: forall sr. String -> MetaSort sr
+makeMetaVarSort' x = V.inj _metaVar (MV.MetaVar x) % []
+
+defAndMakeMetaVarSort :: forall sr. String -> MetaVar /\ MetaSort sr
+defAndMakeMetaVarSort str = x /\ makeMetaVarSort x
+  where
+  x = MV.MetaVar str
 
 renameMVs :: forall r. (MetaVar -> MetaVar) -> TreeV (MetaR r) -> TreeV (MetaR r)
 renameMVs f = map
