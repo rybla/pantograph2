@@ -40,6 +40,12 @@ instance PrettyTreeL Cursor where
   prettyTreeL SelectInner (kid : Nil) = "[>[ " <> kid <> " ]<]"
   prettyTreeL _ _ = bug "invalid cursor kids"
 
+instance PrettyDerL Cursor where
+  prettyDerL Point sigma (kid : Nil) | Map.isEmpty sigma = "[ " <> kid <> " ]"
+  prettyDerL SelectOuter sigma (kid : Nil) | Map.isEmpty sigma = "[<[ " <> kid <> " ]>]"
+  prettyDerL SelectInner sigma (kid : Nil) | Map.isEmpty sigma = "[>[ " <> kid <> " ]<]"
+  prettyDerL _ _ _ = bug "invalid DerL Cursor"
+
 point :: forall dr sr. Der (CursorR dr) sr -> Der (CursorR dr) sr
 point kid = DerL (V.inj _cursor Point) Map.empty % [ kid ]
 

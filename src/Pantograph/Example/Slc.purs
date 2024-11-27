@@ -21,7 +21,7 @@ import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
 import Data.Variant as V
 import Debug as Debug
-import Pantograph.Library.Cursor (CursorL)
+import Pantograph.Library.Cursor (CursorR)
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
@@ -33,13 +33,13 @@ import Pantograph.Utility (bug, todo)
 --------------------------------------------------------------------------------
 
 _g = MV.MetaVar "g"
-g = makeMetaVar _g
+g = makeMetaVarSort _g
 _g' = MV.MetaVar "g'"
-g' = makeMetaVar _g'
+g' = makeMetaVarSort _g'
 _dg = MV.MetaVar "dg"
-dg = makeMetaVar _dg
+dg = makeMetaVarSort _dg
 _dg' = MV.MetaVar "dg'"
-dg' = makeMetaVar _dg'
+dg' = makeMetaVarSort _dg'
 
 --------------------------------------------------------------------------------
 -- S
@@ -69,22 +69,20 @@ instance Eq S where
 instance Ord S where
   compare x = genericCompare x
 
-instance IsSortL S
-
-emp = Emp ^% []
-ext g = Ext ^% [ g ]
-var g = Var ^% [ g ]
-term g = Term ^% [ g ]
+emp = Emp .^% []
+ext g = Ext .^% [ g ]
+var g = Var .^% [ g ]
+term g = Term .^% [ g ]
 
 ctxN n | n < 0 = bug $ "invalid: ctxN; n = " <> show n
 ctxN n | n == 0 = emp
 ctxN n = ext (ctxN (n - 1))
 
 --------------------------------------------------------------------------------
--- L_S
+-- SR
 --------------------------------------------------------------------------------
 
-type L_S = ()
+type SR = (BaseSortR S ())
 
 --------------------------------------------------------------------------------
 -- D
@@ -99,13 +97,13 @@ data D
   | App
   | Hole
 
-free g = Free // [ _g /\ g ] % []
-zero g = Zero // [ _g /\ g ] % []
-suc g x = Suc // [ _g /\ g ] % [ x ]
-ref g x = Ref // [ _g /\ g ] % [ x ]
-lam g b = Lam // [ _g /\ g ] % [ b ]
-app g f a = App // [ _g /\ g ] % [ f, a ]
-hole g = Hole // [ _g /\ g ] % []
+free g = (Free .// [ _g /\ g ]) % []
+zero g = (Zero .// [ _g /\ g ]) % []
+suc g x = (Suc .// [ _g /\ g ]) % [ x ]
+ref g x = (Ref .// [ _g /\ g ]) % [ x ]
+lam g b = (Lam .// [ _g /\ g ]) % [ b ]
+app g f a = (App .// [ _g /\ g ]) % [ f, a ]
+hole g = (Hole .// [ _g /\ g ]) % []
 
 varN g n | n < 0 = bug $ "invalid: varN; n = " <> show n
 varN g 0 = zero (ctxN (g - 1))
@@ -131,86 +129,78 @@ instance Eq D where
 instance Ord D where
   compare x = genericCompare x
 
-instance PrettyTreeDerL D where
-  prettyTreeDerL Free sigma Nil = "F" <> brackets (sigma MV.!! _g)
-  prettyTreeDerL Zero sigma Nil = "Z" <> brackets (sigma MV.!! _g)
-  prettyTreeDerL Suc sigma (n : Nil) = "S" <> brackets (sigma MV.!! _g) <> n
-  prettyTreeDerL Ref sigma (x : Nil) = "#" <> brackets (sigma MV.!! _g) <> x
-  prettyTreeDerL Lam sigma (b : Nil) = "(λ" <> brackets (sigma MV.!! _g) <> " " <> b <> ")"
-  prettyTreeDerL App sigma (f : a : Nil) = "(" <> brackets (sigma MV.!! _g) <> " " <> f <> " " <> a <> ")"
-  prettyTreeDerL Hole sigma Nil = "?" <> brackets (sigma MV.!! _g)
-  prettyTreeDerL d sigma ss = bug $ "invalid D: " <> show d <> brackets (pretty sigma) <> "(" <> (ss # intercalate ", ") <> ")"
-
-instance IsDerL D
-
-instance IsLanguage D S
+instance PrettyDerL D where
+  prettyDerL Free sigma Nil = "F" <> brackets (sigma MV.!! _g)
+  prettyDerL Zero sigma Nil = "Z" <> brackets (sigma MV.!! _g)
+  prettyDerL Suc sigma (n : Nil) = "S" <> brackets (sigma MV.!! _g) <> n
+  prettyDerL Ref sigma (x : Nil) = "#" <> brackets (sigma MV.!! _g) <> x
+  prettyDerL Lam sigma (b : Nil) = "(λ" <> brackets (sigma MV.!! _g) <> " " <> b <> ")"
+  prettyDerL App sigma (f : a : Nil) = "(" <> brackets (sigma MV.!! _g) <> " " <> f <> " " <> a <> ")"
+  prettyDerL Hole sigma Nil = "?" <> brackets (sigma MV.!! _g)
+  prettyDerL d sigma ss = bug $ "invalid D: " <> show d <> brackets (pretty sigma) <> "(" <> (ss # intercalate ", ") <> ")"
 
 --------------------------------------------------------------------------------
--- L_D
+-- DR
 --------------------------------------------------------------------------------
 
-type L_D = CursorL ()
+type DR = CursorR (BaseDerR D ())
 
 --------------------------------------------------------------------------------
 
-derRules :: DerRules D L_D S L_S
+derRules :: DerRules DR SR
 derRules = Map.fromFoldable
-  [ V.inj _der Free /\
+  [ V.inj _baseDer Free /\
       ( []
-          |- (Var ^% [ g ])
+          |- (Var .^% [ g ])
       )
-  , V.inj _der Zero /\
+  , V.inj _baseDer Zero /\
       ( [] |-
-          (Var ^% [ Ext ^% [ g ] ])
+          (Var .^% [ Ext .^% [ g ] ])
       )
-  , V.inj _der Suc /\
-      ( [ Var ^% [ g ] ] |-
-          (Var ^% [ Ext ^% [ g ] ])
+  , V.inj _baseDer Suc /\
+      ( [ Var .^% [ g ] ] |-
+          (Var .^% [ Ext .^% [ g ] ])
       )
-  , V.inj _der Ref /\
-      ( [ Var ^% [ g ] ] |-
-          (Term ^% [ g ])
+  , V.inj _baseDer Ref /\
+      ( [ Var .^% [ g ] ] |-
+          (Term .^% [ g ])
       )
-  , V.inj _der Lam /\
-      ( [ Term ^% [ Ext ^% [ g ] ] ] |-
-          (Term ^% [ g ])
+  , V.inj _baseDer Lam /\
+      ( [ Term .^% [ Ext .^% [ g ] ] ] |-
+          (Term .^% [ g ])
       )
-  , V.inj _der App /\
-      ( [ Term ^% [ g ]
-        , Term ^% [ g ]
+  , V.inj _baseDer App /\
+      ( [ Term .^% [ g ]
+        , Term .^% [ g ]
         ] |-
-          (Term ^% [ g ])
+          (Term .^% [ g ])
       )
-  , V.inj _der Hole /\
+  , V.inj _baseDer Hole /\
       ( [] |-
-          (Term ^% [ g ])
+          (Term .^% [ g ])
       )
   ]
 
 --------------------------------------------------------------------------------
 
-adjRules :: AdjRules D L_D S L_S
+adjRules :: AdjDerRules DR SR
 adjRules = modifyAdjRules <> propagationAdjRules derRules
   where
   modifyAdjRules = List.fromFoldable
     -- these really should be the only necessary rules since we don't have types
-    [ makeAdjRule
-        (Var ^% [ Ext %- [] << dg >> [] ] ↓ Zero // [ _g /\ g ] % [])
-        (Free // [ _g /\ g' ] % [])
-        ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-            pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
-        )
-    , makeAdjRule
-        (Var ^% [ Ext %+ [] << dg >> [] ] ↓ Free // [ _g /\ g ] % [])
-        (Zero // [ _g /\ g' ] % [])
-        ( \(AdjSubst { sorts: _, chs, adjs: _ }) ->
-            pure { adjs: [], chs: [], sorts: [ _g' /\ (chs !! _dg # outerEndpoint) ] }
-        )
+    [ makeAdjDerRule
+        (Var .^% [ Ext .%- [] << dg >> [] ] ↓ Zero .// [ _g /\ g ] % [])
+        (Free .// [ _g /\ g' ] % [])
+        (\sigma -> setMetaVar_Sort _g' $ sigma.changeSort !! _dg # outerEndpoint)
+    , makeAdjDerRule
+        (Var .^% [ Ext .%+ [] << dg >> [] ] ↓ Free .// [ _g /\ g ] % [])
+        (Zero .// [ _g /\ g' ] % [])
+        (\sigma -> setMetaVar_Sort _g' $ sigma.changeSort !! _dg # outerEndpoint)
     ]
 
 --------------------------------------------------------------------------------
 
-editRules :: List (EditRule D L_D S L_S)
+editRules :: List (EditRule DR SR)
 editRules = List.fromFoldable
   [ EditRule
       { label: "lambda"
@@ -222,7 +212,7 @@ editRules = List.fromFoldable
 
 --------------------------------------------------------------------------------
 
-language :: Language D L_D S L_S
+language :: Language DR SR
 language = Language
   { name: "SLC"
   , derRules

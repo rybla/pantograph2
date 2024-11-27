@@ -26,7 +26,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, todo, uniqueList, unsafeCoerce_because, (##))
+import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, uniqueList, unsafeCoerce_because, (##))
 import Prim.Row (class Cons)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
@@ -108,10 +108,15 @@ type BaseSortR s r = (baseSort :: s | r)
 
 _baseSort = Proxy :: Proxy "baseSort"
 
+makeSort :: forall sr f. Foldable f => SortL sr -> f (Sort sr) -> Sort sr
+makeSort sl kids = sl % kids
+
+infix 3 makeSort as ^%
+
 makeBaseSort :: forall s sr f. Foldable f => s -> f (Sort (BaseSortR s sr)) -> Sort (BaseSortR s sr)
 makeBaseSort s kids = V.inj _baseSort s % kids
 
-infix 3 makeBaseSort as ^%
+infix 3 makeBaseSort as .^%
 
 --------------------------------------------------------------------------------
 -- Der
@@ -139,6 +144,10 @@ instance (PrettyDerL (Variant dr), Pretty (Sort sr)) => PrettyTreeL (DerL dr sr)
 
 class PrettyDerL dl where
   prettyDerL :: dl -> MV.Subst String -> List String -> String
+
+instance PrettyDerL MetaVar where
+  prettyDerL x sigma Nil | Map.isEmpty sigma = pretty x
+  prettyDerL _ _ _ = bug "invalid DerL MetaVar"
 
 instance PrettyDerL_R dr => PrettyDerL (Variant dr) where
   prettyDerL dl sigma kids = prettyDerL_R Proxy sigma kids dl
@@ -175,10 +184,13 @@ type BaseDerR d dr = (baseDer :: d | dr)
 
 _baseDer = Proxy :: Proxy "baseDer"
 
-makeBaseDerL :: forall d dr sr. d -> SortSubst sr -> DerL (BaseDerR d dr) sr
-makeBaseDerL d sigma = DerL (V.inj _baseDer d) sigma
+makeDerL dl sigma = DerL dl (Map.fromFoldable sigma)
 
-infix 3 makeBaseDerL as //
+infix 4 makeDerL as //
+
+makeBaseDerL d sigma = DerL (V.inj _baseDer d) (Map.fromFoldable sigma)
+
+infix 4 makeBaseDerL as .//
 
 --------------------------------------------------------------------------------
 -- DerRule
@@ -220,7 +232,7 @@ getSort_DerL (DerL dr sigma) derRules = applyMetaVarSubst_TreeV sigma sort
   where
   DerRule { sort } = derRules # getDerRule dr
 
-getSort_Der :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Tree (DerL dr sr) -> Map (Variant dr) (DerRule sr) -> Tree (Variant sr)
+getSort_Der :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Tree (DerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
 getSort_Der (derL %% _) = getSort_DerL derL
 
 getSort_AdjDerL :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => AdjDerL dr sr -> DerRules dr sr -> Sort sr
@@ -229,7 +241,7 @@ getSort_AdjDerL (DerL dr sigma) derRules =
     V.on _bdry (\(Bdry _ ch) -> ch # outerEndpoint)
       (\dr' -> getSort_DerL (DerL dr' sigma) derRules)
 
-getSort_AdjDer :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => Tree (AdjDerL dr sr) -> Map (Variant dr) (DerRule sr) -> Tree (Variant sr)
+getSort_AdjDer :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => Tree (AdjDerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
 getSort_AdjDer (adjL %% _) = getSort_AdjDerL adjL
 
 --------------------------------------------------------------------------------
@@ -259,9 +271,9 @@ instance Show (ChangeSort sr) => Show (Bdry sr) where
 instance Pretty (ChangeSort sr) => Pretty (Bdry sr) where
   pretty (Bdry dir ch) = "{{ " <> pretty ch <> " " <> pretty dir <> " _ }}"
 
-instance Pretty (ChangeSort sr) => PrettyTreeL (Bdry sr) where
-  prettyTreeL (Bdry dir ch) (kid : Nil) = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
-  prettyTreeL _ _ = bug "invalid Bdry"
+instance Pretty (ChangeSort sr) => PrettyDerL (Bdry sr) where
+  prettyDerL (Bdry dir ch) sigma (kid : Nil) | Map.isEmpty sigma = "{{ " <> pretty ch <> " " <> pretty dir <> " " <> kid <> " }}"
+  prettyDerL _ _ _ = bug "invalid DerL Bdry"
 
 data BdryDir = Up | Down
 
@@ -282,18 +294,33 @@ applyFunction f a = f a
 infixl 2 applyFunction as <<
 infixl 2 applyFunction as >>
 
-makeAdjDerBdryDownPlus :: forall sr dr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> AdjDer dr sr -> f_r (Sort sr) -> AdjDer dr sr
-makeAdjDerBdryDownPlus l ls kid rs =
-  DerL (V.inj _bdry $ Bdry Down $ (V.inj _plus (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs))) % [ todo "kid_sort" ]) Map.empty %
+makeSortChangePlus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
+makeSortChangePlus l ls kid rs =
+  V.inj _plus (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
-makeAdjDerBdryDownMinus :: forall sr dr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> AdjDer dr sr -> f_r (Sort sr) -> AdjDer dr sr
-makeAdjDerBdryDownMinus l ls kid rs =
-  DerL (V.inj _bdry $ Bdry Down $ (V.inj _minus (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs))) % [ todo "kid_sort" ]) Map.empty %
+infixl 2 makeSortChangePlus as %+
+
+makeSortChangeMinus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
+makeSortChangeMinus l ls kid rs =
+  V.inj _minus (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
-infixl 2 makeAdjDerBdryDownPlus as %+
-infixl 2 makeAdjDerBdryDownMinus as %-
+infixl 2 makeSortChangeMinus as %-
+
+makeBaseSortChangePlus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr) -> f_r (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr)
+makeBaseSortChangePlus l ls kid rs =
+  V.inj _plus (PlusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+    [ kid ]
+
+infixl 2 makeBaseSortChangePlus as .%+
+
+makeBaseSortChangeMinus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr) -> f_r (Sort (BaseSortR s sr)) -> ChangeSort (BaseSortR s sr)
+makeBaseSortChangeMinus l ls kid rs =
+  V.inj _minus (MinusChange $ Tooth (V.inj _baseSort l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+    [ kid ]
+
+infixl 2 makeBaseSortChangeMinus as .%-
 
 makeAdjDerBdryDown :: forall dr sr. ChangeSort sr -> AdjDer dr sr -> AdjDer dr sr
 makeAdjDerBdryDown ch kid =
@@ -455,14 +482,14 @@ matchDerL (DerL d1 sigma1) (DerL d2 sigma2) = do
   matchSortSubst sigma1 sigma2
 
 matchDer :: forall dr sr r. Eq (DerL dr sr) => Eq (Variant dr) => Eq (Variant (MetaR dr)) => Eq (Variant sr) => MetaDer dr sr -> Der dr sr -> MatchM (SubstDer dr sr (SubstSort sr r)) Unit
-matchDer (DerL dll1 sigma1 %% kids1) (dl2 %% kids2) = do
+matchDer (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
   dll1 ## V.case_
     #
       ( \_ dll1' -> do
           matchDerL (DerL dll1' sigma1) dl2
           List.zip kids1 kids2 # traverse_ (uncurry matchDer)
       )
-    # V.on _metaVar (\x -> setMetaVar_Der x (todo "d2"))
+    # V.on _metaVar (\x -> setMetaVar_Der x d2)
 
 setMetaVar_Sort :: forall sr r. Eq (Sort sr) => MetaVar -> Sort sr -> MatchM (SubstSort sr r) Unit
 setMetaVar_Sort x sort = do

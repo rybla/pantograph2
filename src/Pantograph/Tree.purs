@@ -60,12 +60,12 @@ instance Bind Tree where
 
 instance Monad Tree
 
-infixl 4 Tree as %%
+infixl 3 Tree as %%
 
 makeTree :: forall a f. Foldable f => a -> f (Tree a) -> Tree a
 makeTree a = Tree a <<< List.fromFoldable
 
-infixl 4 makeTree as %
+infixl 3 makeTree as %
 
 class PrettyTreeL a where
   prettyTreeL :: a -> List String -> String
