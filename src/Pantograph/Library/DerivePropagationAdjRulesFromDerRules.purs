@@ -60,7 +60,7 @@ propagationAdjRules derRules =
                 )
                 \sigma -> do
                   sigma.adjDer # traverseWithIndex_ \x a -> setMetaVar_AdjDer x a
-                  sortMVs # traverse_ \x -> setMetaVar_Sort (x # addSuffix "outer") ((sigma.changeSort MV.!! (x # addPrefix "ch")) # outerEndpoint)
+                  sortMVs # traverse_ \x -> setMetaVar_Sort (x # addSuffix "outer") ((sigma.changeSort MV.!! (x # addPrefix "ch")) # _outer)
 
             ]
           , rule.kids

@@ -27,6 +27,7 @@ import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (brackets, pretty)
 import Pantograph.Utility (bug, todo)
+import Type.Prelude (Proxy(..))
 
 --------------------------------------------------------------------------------
 -- MetaVars
@@ -69,10 +70,10 @@ instance Eq S where
 instance Ord S where
   compare x = genericCompare x
 
-emp = Emp .^% []
-ext g = Ext .^% [ g ]
-var g = Var .^% [ g ]
-term g = Term .^% [ g ]
+emp = Emp .% []
+ext g = Ext .% [ g ]
+var g = Var .% [ g ]
+term g = Term .% [ g ]
 
 ctxN n | n < 0 = bug $ "invalid: ctxN; n = " <> show n
 ctxN n | n == 0 = emp
@@ -82,7 +83,7 @@ ctxN n = ext (ctxN (n - 1))
 -- SR
 --------------------------------------------------------------------------------
 
-type SR = (BaseSortR S ())
+type SR = (BaseR S ())
 
 --------------------------------------------------------------------------------
 -- D
@@ -143,41 +144,44 @@ instance PrettyDerL D where
 -- DR
 --------------------------------------------------------------------------------
 
-type DR = CursorR (BaseDerR D ())
+type DR = CursorR (BaseR D ())
 
 --------------------------------------------------------------------------------
 
 derRules :: DerRules DR SR
 derRules = Map.fromFoldable
-  [ V.inj _baseDer Free /\
-      ( []
-          |- (Var .^% [ g ])
-      )
-  , V.inj _baseDer Zero /\
+  [ Free ./\
       ( [] |-
-          (Var .^% [ Ext .^% [ g ] ])
+          (Var .% [ g ])
       )
-  , V.inj _baseDer Suc /\
-      ( [ Var .^% [ g ] ] |-
-          (Var .^% [ Ext .^% [ g ] ])
+  , Zero ./\
+      ( [] |-
+          (Var .% [ Ext .% [ g ] ])
       )
-  , V.inj _baseDer Ref /\
-      ( [ Var .^% [ g ] ] |-
-          (Term .^% [ g ])
-      )
-  , V.inj _baseDer Lam /\
-      ( [ Term .^% [ Ext .^% [ g ] ] ] |-
-          (Term .^% [ g ])
-      )
-  , V.inj _baseDer App /\
-      ( [ Term .^% [ g ]
-        , Term .^% [ g ]
+  , Suc ./\
+      ( [ Var .% [ g ]
         ] |-
-          (Term .^% [ g ])
+          (Var .% [ Ext .% [ g ] ])
       )
-  , V.inj _baseDer Hole /\
+  , Ref ./\
+      ( [ Var .% [ g ]
+        ] |-
+          (Term .% [ g ])
+      )
+  , Lam ./\
+      ( [ Term .% [ Ext .% [ g ] ]
+        ] |-
+          (Term .% [ g ])
+      )
+  , App ./\
+      ( [ Term .% [ g ]
+        , Term .% [ g ]
+        ] |-
+          (Term .% [ g ])
+      )
+  , Hole ./\
       ( [] |-
-          (Term .^% [ g ])
+          (Term .% [ g ])
       )
   ]
 
@@ -189,13 +193,13 @@ adjRules = modifyAdjRules <> propagationAdjRules derRules
   modifyAdjRules = List.fromFoldable
     -- these really should be the only necessary rules since we don't have types
     [ makeAdjDerRule
-        (Var .^% [ Ext .%- [] << dg >> [] ] ↓ Zero .// [ _g /\ g ] % [])
+        (Var .% [ Ext .%- [] << dg >> [] ] ↓ Zero .// [ _g /\ g ] % [])
         (Free .// [ _g /\ g' ] % [])
-        (\sigma -> setMetaVar_Sort _g' $ sigma.changeSort !! _dg # outerEndpoint)
+        (\sigma -> setMetaVar_Sort _g' $ (sigma.changeSort !! _dg) # _outer)
     , makeAdjDerRule
-        (Var .^% [ Ext .%+ [] << dg >> [] ] ↓ Free .// [ _g /\ g ] % [])
+        (Var .% [ Ext .%+ [] << dg >> [] ] ↓ Free .// [ _g /\ g ] % [])
         (Zero .// [ _g /\ g' ] % [])
-        (\sigma -> setMetaVar_Sort _g' $ sigma.changeSort !! _dg # outerEndpoint)
+        (\sigma -> setMetaVar_Sort _g' $ (sigma.changeSort !! _dg) # _outer)
     ]
 
 --------------------------------------------------------------------------------

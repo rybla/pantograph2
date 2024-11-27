@@ -15,6 +15,7 @@ import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.Utility (tryFirst, (##))
+import Type.Prelude (Proxy(..))
 
 type PropagationLog dr sr = AdjDer dr sr
 
@@ -38,7 +39,7 @@ propagate adjRules t = propagateStep adjRules t # runMaybeT >>= case _ of
     ( \(DerL dl sigma) ->
         dl ## V.case_
           # (\_ dl' -> pure $ DerL dl' sigma)
-          # V.on _bdry (const (throwError t))
+          # V.on (Proxy @"bdry") (const (throwError t))
     )
   Just t' -> propagate adjRules t'
 

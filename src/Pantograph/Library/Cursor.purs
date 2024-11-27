@@ -18,8 +18,6 @@ import Type.Proxy (Proxy(..))
 
 type CursorR dr = (cursor :: Cursor | dr)
 
-_cursor = Proxy @"cursor"
-
 data Cursor
   = Point
   | SelectOuter
@@ -47,10 +45,10 @@ instance PrettyDerL Cursor where
   prettyDerL _ _ _ = bug "invalid DerL Cursor"
 
 point :: forall dr sr. Der (CursorR dr) sr -> Der (CursorR dr) sr
-point kid = DerL (V.inj _cursor Point) Map.empty % [ kid ]
+point kid = DerL (V.inj (Proxy @"cursor") Point) Map.empty % [ kid ]
 
-selectOuter kid = DerL (V.inj _cursor SelectOuter) Map.empty % [ kid ]
-selectInner kid = DerL (V.inj _cursor SelectInner) Map.empty % [ kid ]
+selectOuter kid = DerL (V.inj (Proxy @"cursor") SelectOuter) Map.empty % [ kid ]
+selectInner kid = DerL (V.inj (Proxy @"cursor") SelectInner) Map.empty % [ kid ]
 
 adjRules
   :: forall dr sr

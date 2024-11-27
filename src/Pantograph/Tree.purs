@@ -264,6 +264,8 @@ innerEndpoint (l %% kids) =
     # V.on (Proxy @"replace") (\(ReplaceChange t0 _t1) -> t0)
     $ l
 
+_inner = innerEndpoint
+
 outerEndpoint :: forall l. Eq (Variant l) => TreeV (ChangeR l) -> TreeV l
 outerEndpoint (l %% kids) =
   V.case_
@@ -281,6 +283,8 @@ outerEndpoint (l %% kids) =
         )
     # V.on (Proxy @"replace") (\(ReplaceChange _t0 t1) -> t1)
     $ l
+
+_outer = outerEndpoint
 
 minusTooth :: forall l. Eq (Variant l) => ToothV l -> TreeV l -> Maybe (TreeV l)
 minusTooth (Tooth l ls rs) (l' %% ts) = do
