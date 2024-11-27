@@ -22,7 +22,9 @@ import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.Row (class Cons, class Lacks)
 import Prim.RowList (class RowToList, RowList)
+import Prim.RowList as RL
 import Prim.RowList as RowList
+import Record as R
 import Record as Record
 import Type.Prelude (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -121,4 +123,31 @@ instance
 
 instance FromMapToRecord' () RowList.Nil a where
   fromMapToRecord' _ _ = pure {}
+
+--------------------------------------------------------------------------------
+-- IsRecordOfMaps 
+--------------------------------------------------------------------------------
+
+class IsRecordOfMaps r where
+  emptyRecordOfMaps :: Record r
+
+instance (RowToList r rl, IsRecordOfMaps_RL r rl) => IsRecordOfMaps r where
+  emptyRecordOfMaps = emptyRecordOfMaps_RL (Proxy :: Proxy rl) (Proxy :: Proxy r)
+
+class IsRecordOfMaps_RL (r :: Row Type) (rl :: RowList Type) | rl -> r where
+  emptyRecordOfMaps_RL :: Proxy rl -> Proxy r -> Record r
+
+instance IsRecordOfMaps_RL () RL.Nil where
+  emptyRecordOfMaps_RL _ _ = {}
+
+instance
+  ( IsSymbol x
+  , Lacks x r
+  , Cons x (Map k v) r r'
+  , IsRecordOfMaps_RL r rl
+  ) =>
+  IsRecordOfMaps_RL r' (RL.Cons x (Map k v) rl) where
+  emptyRecordOfMaps_RL _ _ =
+    R.insert (Proxy :: Proxy x) Map.empty
+      $ emptyRecordOfMaps_RL (Proxy :: Proxy rl) (Proxy :: Proxy r)
 
