@@ -65,6 +65,9 @@ uniqueList = Set.fromFoldable >>> Set.toUnfoldable
 expand1 :: forall x a l l'. Cons x a l l' => Proxy x -> Variant l -> Variant l'
 expand1 _ = unsafeCoerce
 
+expand1' :: forall @x a l l'. Cons x a l l' => Variant l -> Variant l'
+expand1' = unsafeCoerce
+
 --------------------------------------------------------------------------------
 -- FromObjectToRecord
 --------------------------------------------------------------------------------
@@ -73,7 +76,7 @@ class FromObjectToRecord a r where
   fromObjectToRecord :: Object a -> Maybe (Record r)
 
 instance (RowToList r rl, FromObjectToRecord' a r rl) => FromObjectToRecord a r where
-  fromObjectToRecord = fromObjectToRecord' (Proxy :: Proxy rl)
+  fromObjectToRecord = fromObjectToRecord' (Proxy @rl)
 
 class FromObjectToRecord' a r (rl :: RowList Type) | rl -> r where
   fromObjectToRecord' :: Proxy rl -> Object a -> Maybe (Record r)
@@ -86,9 +89,9 @@ instance
   ) =>
   FromObjectToRecord' a r' (RowList.Cons k v rl_) where
   fromObjectToRecord' _ o = do
-    v <- o # Object.lookup (reflectSymbol (Proxy :: Proxy k))
-    r :: Record r <- fromObjectToRecord' (Proxy :: Proxy rl_) o
-    pure $ Record.insert (Proxy :: Proxy k) v r
+    v <- o # Object.lookup (reflectSymbol (Proxy @k))
+    r :: Record r <- fromObjectToRecord' (Proxy @rl_) o
+    pure $ Record.insert (Proxy @k) v r
 
 instance FromObjectToRecord' a () RowList.Nil where
   fromObjectToRecord' _ _ = pure {}
@@ -115,10 +118,10 @@ instance
     case m # Map.lookup k of
       Nothing -> throwError k
       Just v -> do
-        r <- fromMapToRecord' (Proxy :: Proxy rl_) m
+        r <- fromMapToRecord' (Proxy @rl_) m
         r # Record.insert _k v # pure
     where
-    _k = (Proxy :: Proxy k)
+    _k = (Proxy @k)
     k = reflectSymbol _k
 
 instance FromMapToRecord' () RowList.Nil a where
@@ -132,7 +135,7 @@ class IsRecordOfMaps r where
   emptyRecordOfMaps :: Record r
 
 instance (RowToList r rl, IsRecordOfMaps_RL r rl) => IsRecordOfMaps r where
-  emptyRecordOfMaps = emptyRecordOfMaps_RL (Proxy :: Proxy rl) (Proxy :: Proxy r)
+  emptyRecordOfMaps = emptyRecordOfMaps_RL (Proxy @rl) (Proxy @r)
 
 class IsRecordOfMaps_RL (r :: Row Type) (rl :: RowList Type) | rl -> r where
   emptyRecordOfMaps_RL :: Proxy rl -> Proxy r -> Record r
@@ -148,6 +151,6 @@ instance
   ) =>
   IsRecordOfMaps_RL r' (RL.Cons x (Map k v) rl) where
   emptyRecordOfMaps_RL _ _ =
-    R.insert (Proxy :: Proxy x) Map.empty
-      $ emptyRecordOfMaps_RL (Proxy :: Proxy rl) (Proxy :: Proxy r)
+    R.insert (Proxy @x) Map.empty
+      $ emptyRecordOfMaps_RL (Proxy @rl) (Proxy @r)
 

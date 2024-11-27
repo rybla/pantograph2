@@ -38,7 +38,7 @@ import Type.Proxy (Proxy(..))
 
 type MetaR r = (metaVar :: MetaVar | r)
 
-_metaVar = Proxy :: Proxy "metaVar"
+_metaVar = Proxy @"metaVar"
 
 makeMetaVarDer :: forall dr sr. MetaVar -> Der (MetaR dr) sr
 makeMetaVarDer x = DerL (V.inj _metaVar x) Map.empty % []
@@ -65,7 +65,7 @@ defAndMakeMetaVarSort str = x /\ makeMetaVarSort x
 renameMVs :: forall r. (MetaVar -> MetaVar) -> TreeV (MetaR r) -> TreeV (MetaR r)
 renameMVs f = map
   ( V.case_
-      # (\_ l -> expand1 (Proxy :: Proxy "metaVar") l)
+      # (\_ l -> expand1 (Proxy @"metaVar") l)
       # V.on _metaVar (\x -> V.inj _metaVar (f x))
   )
 
@@ -106,7 +106,7 @@ type MetaChangeSortR sr = MetaR (ChangeR sr)
 type BaseSortR :: Type -> Row Type -> Row Type
 type BaseSortR s r = (baseSort :: s | r)
 
-_baseSort = Proxy :: Proxy "baseSort"
+_baseSort = Proxy @"baseSort"
 
 makeSort :: forall sr f. Foldable f => SortL sr -> f (Sort sr) -> Sort sr
 makeSort sl kids = sl % kids
@@ -156,7 +156,7 @@ class PrettyDerL_R dr where
   prettyDerL_R :: Proxy dr -> MV.Subst String -> List String -> Variant dr -> String
 
 instance (RowToList dr drl, PrettyDerL_RL dr drl) => PrettyDerL_R dr where
-  prettyDerL_R = prettyDerL_RL (Proxy :: Proxy drl)
+  prettyDerL_R = prettyDerL_RL (Proxy @drl)
 
 class PrettyDerL_RL dr (drl :: RowList Type) | drl -> dr where
   prettyDerL_RL :: Proxy drl -> Proxy dr -> MV.Subst String -> List String -> Variant dr -> String
@@ -172,8 +172,8 @@ instance
   ) =>
   PrettyDerL_RL r' (RowList.Cons x a rl) where
   prettyDerL_RL _ _ sigma kids =
-    prettyDerL_RL (Proxy :: Proxy rl) (Proxy :: Proxy r) sigma kids
-      # V.on (Proxy :: Proxy x) (\a -> prettyDerL a sigma kids)
+    prettyDerL_RL (Proxy @rl) (Proxy @r) sigma kids
+      # V.on (Proxy @x) (\a -> prettyDerL a sigma kids)
 
 --------------------------------------------------------------------------------
 -- BaseDerR 
@@ -182,7 +182,7 @@ instance
 type BaseDerR :: Type -> Row Type -> Row Type
 type BaseDerR d dr = (baseDer :: d | dr)
 
-_baseDer = Proxy :: Proxy "baseDer"
+_baseDer = Proxy @"baseDer"
 
 makeDerL dl sigma = DerL dl (Map.fromFoldable sigma)
 
@@ -203,8 +203,8 @@ data DerRule sr = DerRule
   , kids :: List (Sort (MetaR sr))
   }
 
-_sort = Proxy :: Proxy "sort"
-_kids = Proxy :: Proxy "kids"
+_sort = Proxy @"sort"
+_kids = Proxy @"kids"
 
 makeDerRule :: forall sr f. Foldable f => Sort (MetaR sr) -> f (Sort (MetaR sr)) -> DerRule sr
 makeDerRule sort kids = DerRule
@@ -254,7 +254,7 @@ type AdjDerL dr sr = DerL (bdry :: Bdry sr | dr) sr
 type MetaAdjDer dr sr = Tree (MetaAdjDerL dr sr)
 type MetaAdjDerL dr sr = AdjDerL (MetaR dr) (MetaR sr)
 
-_bdry = Proxy :: Proxy "bdry"
+_bdry = Proxy @"bdry"
 
 data Bdry (sr :: Row Type) = Bdry BdryDir (ChangeSort sr)
 
@@ -341,9 +341,9 @@ type AdjDerSubst dr sr =
   , sort :: MV.Subst (Sort sr)
   }
 
-_adjs = Proxy :: Proxy "adjs"
-_chs = Proxy :: Proxy "chs"
-_sorts = Proxy :: Proxy "sorts"
+_adjs = Proxy @"adjs"
+_chs = Proxy @"chs"
+_sorts = Proxy @"sorts"
 
 applyAdjDerSubst_Sort :: forall dr sr. AdjDerSubst dr sr -> MetaSort sr -> Sort sr
 applyAdjDerSubst_Sort (sigma@{ sort }) (l %% kids) =

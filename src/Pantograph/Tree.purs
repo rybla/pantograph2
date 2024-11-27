@@ -21,7 +21,7 @@ import Debug as Debug
 import Pantograph.Pretty (class Pretty, braces, parens, pretty)
 import Pantograph.RevList (RevList)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (bug, todo)
+import Pantograph.Utility (bug, expand1', todo)
 import Prim.Row (class Cons, class Union)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
@@ -71,13 +71,13 @@ class PrettyTreeL a where
   prettyTreeL :: a -> List String -> String
 
 instance PrettyTreeL_R l => PrettyTreeL (Variant l) where
-  prettyTreeL = prettyTreeL_Row (Proxy :: Proxy l)
+  prettyTreeL = prettyTreeL_Row (Proxy @l)
 
 class PrettyTreeL_R (l :: Row Type) where
   prettyTreeL_Row :: Proxy l -> Variant l -> List String -> String
 
 instance (RowToList l rl, PrettyTreeL_RL l rl) => PrettyTreeL_R l where
-  prettyTreeL_Row p_l = prettyTreeL_RowList p_l (Proxy :: Proxy rl)
+  prettyTreeL_Row p_l = prettyTreeL_RowList p_l (Proxy @rl)
 
 class PrettyTreeL_RL (l :: Row Type) (rl :: RowList Type) | rl -> l where
   prettyTreeL_RowList :: Proxy l -> Proxy rl -> Variant l -> List String -> String
@@ -90,8 +90,8 @@ instance
   ) =>
   PrettyTreeL_RL l' (RowList.Cons x a rl) where
   prettyTreeL_RowList _ _ =
-    V.on (Proxy :: Proxy x) prettyTreeL
-      $ prettyTreeL_RowList (Proxy :: Proxy l) (Proxy :: Proxy rl)
+    V.on (Proxy @x) prettyTreeL
+      $ prettyTreeL_RowList (Proxy @l) (Proxy @rl)
 
 instance PrettyTreeL_RL () RowList.Nil where
   prettyTreeL_RowList _ _ = V.case_
@@ -177,9 +177,12 @@ type ChangeR r =
   | r
   )
 
-_plus = Proxy :: Proxy "plus"
-_minus = Proxy :: Proxy "minus"
-_replace = Proxy :: Proxy "replace"
+_plus = Proxy @"plus"
+_minus = Proxy @"minus"
+_replace = Proxy @"replace"
+
+expand_ChangeR :: forall r. Variant r -> Variant (ChangeR r)
+expand_ChangeR = expand1' @"plus" >>> expand1' @"minus" >>> expand1' @"replace"
 
 data PlusChange l = PlusChange (Tooth (Variant l))
 

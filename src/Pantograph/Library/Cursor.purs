@@ -18,7 +18,7 @@ import Type.Proxy (Proxy(..))
 
 type CursorR dr = (cursor :: Cursor | dr)
 
-_cursor = Proxy :: Proxy "cursor"
+_cursor = Proxy @"cursor"
 
 data Cursor
   = Point

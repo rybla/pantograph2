@@ -75,7 +75,7 @@ instance
   , PrettyRecordFields ls rs
   ) =>
   Pretty (Record rs) where
-  pretty record = "[record]" <> prettyRecordFields (Proxy :: Proxy ls) record
+  pretty record = "[record]" <> prettyRecordFields (Proxy @ls) record
 
 -- | A class for records where all fields have `Pretty` instances, used to
 -- | implement the `Pretty` instance for records.
@@ -88,7 +88,7 @@ instance PrettyRecordFields RL.Nil row where
 else instance (IsSymbol key, Pretty focus) => PrettyRecordFields (RL.Cons key focus RL.Nil) row where
   prettyRecordFields _ record = "\n- " <> key <> ": " <> indent 1 (pretty focus) <> " "
     where
-    key = reflectSymbol (Proxy :: Proxy key)
+    key = reflectSymbol (Proxy @key)
     focus = unsafeGet key record :: focus
 else instance
   ( IsSymbol key
@@ -98,9 +98,9 @@ else instance
   PrettyRecordFields (RL.Cons key focus rowlistTail) row where
   prettyRecordFields _ record = "\n- " <> key <> ": " <> indent 1 (pretty focus) <> tail
     where
-    key = reflectSymbol (Proxy :: Proxy key)
+    key = reflectSymbol (Proxy @key)
     focus = unsafeGet key record :: focus
-    tail = prettyRecordFields (Proxy :: Proxy rowlistTail) record
+    tail = prettyRecordFields (Proxy @rowlistTail) record
 
 --------------------------------------------------------------------------------
 -- Variant
@@ -113,7 +113,7 @@ class PrettyVariant_R r where
   prettyVariant_R :: Proxy r -> Variant r -> String
 
 instance (RowToList r rl, PrettyVariant_RL r rl) => PrettyVariant_R r where
-  prettyVariant_R p_r = prettyVariant_RL p_r (Proxy :: Proxy rl)
+  prettyVariant_R p_r = prettyVariant_RL p_r (Proxy @rl)
 
 class PrettyVariant_RL r (rl :: RowList Type) | rl -> r where
   prettyVariant_RL :: Proxy r -> Proxy rl -> Variant r -> String
@@ -129,8 +129,8 @@ instance
   ) =>
   PrettyVariant_RL r' (RowList.Cons x a rl) where
   prettyVariant_RL _ _ =
-    V.on (Proxy :: Proxy x) (\a -> "(" <> "@" <> reflectSymbol (Proxy :: Proxy x) <> " " <> pretty a <> ")")
-      $ prettyVariant_RL (Proxy :: Proxy r) (Proxy :: Proxy rl)
+    V.on (Proxy @x) (\a -> "(" <> "@" <> reflectSymbol (Proxy @x) <> " " <> pretty a <> ")")
+      $ prettyVariant_RL (Proxy @r) (Proxy @rl)
 
 --------------------------------------------------------------------------------
 -- Utilities
