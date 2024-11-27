@@ -4,7 +4,7 @@ import Pantograph.Tree
 import Prelude
 
 import Control.Alternative (class Alternative)
-import Control.Monad.State (StateT, get, put, runStateT)
+import Control.Monad.State (StateT, execStateT, get, put, runStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (guard)
 import Data.Eq.Generic (genericEq)
@@ -364,8 +364,19 @@ instance (Pretty (MetaAdjDer dr sr)) => Pretty (AdjDerRule dr sr) where
   pretty (AdjDerRule { input, trans: _, output }) =
     pretty input <> "  ~~>  " <> pretty output <> "  with  <function>"
 
-makeAdjDerRule input output trans = AdjDerRule { input, trans: trans >>> map \{ sort, adjDer, changeSort } -> { sort: Map.fromFoldable sort, adjDer: Map.fromFoldable adjDer, changeSort: Map.fromFoldable changeSort }, output }
-makeSimpleAdjDerRule input output = AdjDerRule { input, trans: pure, output }
+makeAdjDerRule
+  :: forall dr sr
+   . MetaAdjDer dr sr
+  -> MetaAdjDer dr sr
+  -> ( Record (SubstAdjDer dr sr (SubstChangeSort sr (SubstSort sr ())))
+       -> StateT (Record (SubstAdjDer dr sr (SubstChangeSort sr (SubstSort sr ())))) Maybe Unit
+     )
+  -> AdjDerRule dr sr
+makeAdjDerRule input output trans = AdjDerRule
+  { input
+  , output
+  , trans: \sigma -> execStateT (trans sigma) emptyRecordOfMaps
+  }
 
 applyAdjDerRule
   :: forall dr sr

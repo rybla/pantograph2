@@ -13,7 +13,7 @@ import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Data.Variant as V
 import Pantograph.MetaVar as MV
-import Pantograph.Utility (bug, emptyRecordOfMaps, todo)
+import Pantograph.Utility (bug)
 import Type.Proxy (Proxy(..))
 
 type CursorR dr = (cursor :: Cursor | dr)
@@ -46,7 +46,11 @@ point kid = DerL (V.inj _cursor Point) Map.empty % [ kid ]
 selectOuter kid = DerL (V.inj _cursor SelectOuter) Map.empty % [ kid ]
 selectInner kid = DerL (V.inj _cursor SelectInner) Map.empty % [ kid ]
 
-adjRules :: forall dr sr. AdjDerRules (CursorR dr) sr
+adjRules
+  :: forall dr sr
+   . Eq (AdjDer (CursorR dr) sr)
+  => Eq (ChangeSort sr)
+  => AdjDerRules (CursorR dr) sr
 adjRules = List.fromFoldable
   ( [ makePassthroughs point
     , makePassthroughs selectOuter
@@ -62,10 +66,15 @@ adjRules = List.fromFoldable
     makeAdjDerRule
       (ch ↓ (wrap kid))
       (wrap (ch ↓ kid))
-      (\sigma -> pure { adjDer: [ _kid # MV.id sigma.adjDer ], changeSort: [ _ch # MV.id sigma.changeSort ], sort: [] })
+      \sigma -> do
+        _kid `setMetaVar_AdjDer` (sigma.adjDer MV.!! _kid)
+        _ch `setMetaVar_ChangeSort` (sigma.changeSort MV.!! _ch)
+
   makePassthroughUp wrap =
     makeAdjDerRule
       (wrap (ch ↑ kid))
       (ch ↑ (wrap kid))
-      (\sigma -> pure { adjDer: [ _kid # MV.id sigma.adjDer ], changeSort: [ _ch # MV.id sigma.changeSort ], sort: [] })
+      \sigma -> do
+        _kid `setMetaVar_AdjDer` (sigma.adjDer MV.!! _kid)
+        _ch `setMetaVar_ChangeSort` (sigma.changeSort MV.!! _ch)
 
