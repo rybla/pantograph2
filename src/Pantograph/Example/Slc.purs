@@ -22,7 +22,7 @@ import Data.Variant (Variant)
 import Data.Variant as V
 import Debug as Debug
 import Pantograph.Library.Cursor (CursorR)
-import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
+import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (derive_propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (brackets, pretty)
@@ -188,8 +188,9 @@ derRules = Map.fromFoldable
 --------------------------------------------------------------------------------
 
 adjRules :: AdjDerRules DR SR
-adjRules = modifyAdjRules <> propagationAdjRules derRules
+adjRules = modifyAdjRules <> propagationAdjRules
   where
+  propagationAdjRules = derive_propagationAdjRules derRules
   modifyAdjRules = List.fromFoldable
     -- these really should be the only necessary rules since we don't have types
     [ makeAdjDerRule

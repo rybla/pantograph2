@@ -11,6 +11,7 @@ import Data.List as List
 import Data.Map as Map
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
 import Data.Variant as V
 import Pantograph.MetaVar as MV
 import Pantograph.Utility (bug)
@@ -50,6 +51,22 @@ point kid = DerL (V.inj (Proxy @"cursor") Point) Map.empty % [ kid ]
 selectOuter kid = DerL (V.inj (Proxy @"cursor") SelectOuter) Map.empty % [ kid ]
 selectInner kid = DerL (V.inj (Proxy @"cursor") SelectInner) Map.empty % [ kid ]
 
+derRules
+  :: forall dr sr
+   . Ord (Variant (CursorR dr))
+  => DerRules (CursorR dr) sr
+derRules = Map.fromFoldable
+  [ V.inj (Proxy @"cursor") Point /\
+      ([ s ] |- s)
+  , V.inj (Proxy @"cursor") SelectInner /\
+      ([ s ] |- s)
+  , V.inj (Proxy @"cursor") SelectOuter /\
+      ([ s ] |- s)
+  ]
+  where
+  s = makeMetaVarSort $ MV.MetaVar "s"
+
+-- TODO: pretty sure that `derive_propagationAdjRules` subsumes this
 adjRules
   :: forall dr sr
    . Eq (AdjDer (CursorR dr) sr)

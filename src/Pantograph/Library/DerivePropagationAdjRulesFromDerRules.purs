@@ -18,7 +18,7 @@ import Pantograph.MetaVar as MV
 import Pantograph.Utility (expand1')
 import Prim.Row (class Lacks)
 
-propagationAdjRules
+derive_propagationAdjRules
   :: forall dr sr
    . Lacks "bdry" dr
   => Lacks "metaVar" dr
@@ -27,7 +27,7 @@ propagationAdjRules
   => Eq (AdjDer dr sr)
   => DerRules dr sr
   -> AdjDerRules dr sr
-propagationAdjRules derRules =
+derive_propagationAdjRules derRules =
   derRules
     # (Map.toUnfoldable :: _ -> List _)
     # foldMap \(d /\ DerRule rule) -> List.fromFoldable
