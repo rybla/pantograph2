@@ -427,6 +427,7 @@ data EditRule dr sr = EditRule
   , output :: MetaAdjDer dr sr
   }
 
+-- TODO
 -- applyEditRule :: forall dr sr. EditRule dr sr -> Der dr sr -> Maybe (AdjDer dr sr)
 -- applyEditRule (EditRule rule) dt = do
 --   sigma <- matchDer rule.input dt # runMatchAdjDerSubstM
