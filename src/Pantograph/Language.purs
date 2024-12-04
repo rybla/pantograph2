@@ -8,13 +8,14 @@ import Control.Monad.State (StateT, execStateT, get, put, runStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.MonadPlus (guard)
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (class Foldable, fold, foldM, traverse_)
+import Data.Foldable (class Foldable, fold, foldM, length, traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe')
+import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Symbol (class IsSymbol)
@@ -26,7 +27,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, uniqueList, unsafeCoerce_because, (##))
+import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, todo, uniqueList, unsafeCoerce_because, (##))
 import Prim.Row (class Cons)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
@@ -124,6 +125,18 @@ data DerL dr sr = DerL (Variant dr) (SortSubst sr)
 type MetaDer dr sr = Tree (MetaDerL dr sr)
 type MetaDerL dr sr = DerL (MetaR dr) (MetaR sr)
 
+type PatDer dr sr = Tree (PatDerL dr sr)
+type PatDerL dr sr = DerL (PatR (MetaR dr) (MetaR sr)) (MetaR sr)
+type PatR dr sr =
+  ( sorted :: TreeV sr -- matches against sort of a derivation
+  | dr
+  )
+
+sorted :: forall dr sr. PatDer dr sr -> MetaSort sr -> PatDer dr sr
+sorted d s = V.inj (Proxy @"sorted") s // [] % [ d ]
+
+infix 3 sorted as ::%
+
 type SortSubst sr = MV.Subst (Sort sr)
 type MetaSortSubst sr = SortSubst (MetaR sr)
 
@@ -210,8 +223,8 @@ makeDerRuleFlipped = flip makeDerRule
 
 infix 1 makeDerRuleFlipped as |-
 
-getDerRule :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Variant dr -> DerRules dr sr -> DerRule sr
-getDerRule d derRules = derRules # Map.lookup d # fromMaybe' \_ -> bug $ "unknown derivation label: " <> pretty d
+getDerRule :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Variant dr -> DerRules dr sr -> DerRule sr
+getDerRule d derRules = derRules # Map.lookup d # fromMaybe' \_ -> bug $ "unknown derivation label: " <> show d
 
 applyMetaVarSubst_TreeV :: forall r. MV.Subst (TreeV r) -> TreeV (MetaR r) -> TreeV r
 applyMetaVarSubst_TreeV sigma (l %% kids) =
@@ -219,21 +232,21 @@ applyMetaVarSubst_TreeV sigma (l %% kids) =
     # (\_ l' -> l' %% (kids <#> applyMetaVarSubst_TreeV sigma))
     # V.on (Proxy @"metaVar") (sigma MV.!! _)
 
-getSort_DerL :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => DerL dr sr -> DerRules dr sr -> Sort sr
-getSort_DerL (DerL dr sigma) derRules = applyMetaVarSubst_TreeV sigma sort
+getSort_DerL :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => DerRules dr sr -> DerL dr sr -> Sort sr
+getSort_DerL derRules (DerL dr sigma) = applyMetaVarSubst_TreeV sigma sort
   where
   DerRule { sort } = derRules # getDerRule dr
 
-getSort_Der :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Tree (DerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
-getSort_Der (derL %% _) = getSort_DerL derL
+getSort_Der :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Map (Variant dr) (DerRule sr) -> Tree (DerL dr sr) -> Sort sr
+getSort_Der derRules (derL %% _) = getSort_DerL derRules derL
 
-getSort_AdjDerL :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => AdjDerL dr sr -> DerRules dr sr -> Sort sr
+getSort_AdjDerL :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => AdjDerL dr sr -> DerRules dr sr -> Sort sr
 getSort_AdjDerL (DerL dr sigma) derRules =
   dr #
     V.on (Proxy @"bdry") (\(Bdry _ ch) -> ch # _outer)
-      (\dr' -> getSort_DerL (DerL dr' sigma) derRules)
+      (\dr' -> getSort_DerL derRules (DerL dr' sigma))
 
-getSort_AdjDer :: forall dr sr. Pretty (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => Tree (AdjDerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
+getSort_AdjDer :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => Tree (AdjDerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
 getSort_AdjDer (adjL %% _) = getSort_AdjDerL adjL
 
 --------------------------------------------------------------------------------
@@ -241,7 +254,8 @@ getSort_AdjDer (adjL %% _) = getSort_AdjDerL adjL
 --------------------------------------------------------------------------------
 
 type AdjDer dr sr = Tree (AdjDerL dr sr)
-type AdjDerL dr sr = DerL (bdry :: Bdry sr | dr) sr
+type AdjDerL dr sr = DerL (AdjDerL_DR dr sr) sr
+type AdjDerL_DR dr sr = (bdry :: Bdry sr | dr)
 
 type MetaAdjDer dr sr = Tree (MetaAdjDerL dr sr)
 type MetaAdjDerL dr sr = AdjDerL (MetaR dr) (MetaR sr)
@@ -254,6 +268,9 @@ derive instance Generic (Bdry sr) _
 
 instance Eq (ChangeSort sr) => Eq (Bdry sr) where
   eq x = genericEq x
+
+instance (Eq (ChangeSort sr), Ord (ChangeSort sr)) => Ord (Bdry sr) where
+  compare x = genericCompare x
 
 instance Show (ChangeSort sr) => Show (Bdry sr) where
   show x = genericShow x
@@ -270,6 +287,8 @@ data BdryDir = Up | Down
 derive instance Generic BdryDir _
 
 derive instance Eq BdryDir
+
+derive instance Ord BdryDir
 
 instance Show BdryDir where
   show x = genericShow x
@@ -358,6 +377,27 @@ applyAdjDerSubst_AdjDer (sigma@{ adjDer }) (DerL l sigma_d %% kids) =
     # V.on (Proxy @"metaVar") (\x -> adjDer MV.!! x)
 
 --------------------------------------------------------------------------------
+-- AdjDerSubstTrans
+--------------------------------------------------------------------------------
+
+type AdjDerSubstTrans dr sr = AdjDerSubst dr sr -> Maybe (AdjDerSubst dr sr)
+
+-- TODO: deep embedding of AdjDerSubstTrans so that can informatively show/render
+-- data AdjDerSubstTrans dr sr
+--   = Shallow_AdjDerSubstTrans (AdjDerSubst dr sr -> Maybe (AdjDerSubst dr sr))
+--   | Deep_AdjDerSubstTrans (forall a. MV.Subst a -> MV.Subst (TransExpr a))
+
+-- data TransExpr a
+--   = Inject_TransExpr a
+--   | Op_TransExpr TransExprOp (Array (TransExpr a))
+
+-- data TransExprOp = InnerEndpoint_TransExprOp
+
+-- instance (Show (MetaAdjDer dr sr)) => Show (AdjDerSubstTrans dr sr) where
+--   show (Shallow_AdjDerSubstTrans _) = "<function>"
+--   show (Deep_AdjDerSubstTrans _) = todo "TODO: (Show (AdjDerSubstTrans dr sr)).show"
+
+--------------------------------------------------------------------------------
 -- AdjDerRules
 --------------------------------------------------------------------------------
 
@@ -365,7 +405,7 @@ type AdjDerRules dr sr = List (AdjDerRule dr sr)
 
 data AdjDerRule dr sr = AdjDerRule
   { input :: MetaAdjDer dr sr
-  , trans :: AdjDerSubst dr sr -> Maybe (AdjDerSubst dr sr)
+  , trans :: AdjDerSubstTrans dr sr
   , output :: MetaAdjDer dr sr
   }
 
@@ -388,7 +428,7 @@ makeAdjDerRule
 makeAdjDerRule input output trans = AdjDerRule
   { input
   , output
-  , trans: \sigma -> execStateT (trans sigma) emptyRecordOfMaps
+  , trans: \sigma -> flip execStateT emptyRecordOfMaps $ trans sigma
   }
 
 applyAdjDerRule
@@ -422,8 +462,9 @@ type EditRules dr sr = List (EditRule dr sr)
 
 data EditRule dr sr = EditRule
   { label :: String
-  , input :: MetaDer dr sr
-  , trans :: AdjDerSubst dr sr -> Maybe (AdjDerSubst dr sr)
+  -- , input :: MetaDer dr sr
+  , input :: PatDer dr sr
+  , trans :: AdjDerSubstTrans dr sr
   , output :: MetaAdjDer dr sr
   }
 
@@ -477,6 +518,37 @@ matchDer (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
           List.zip kids1 kids2 # traverse_ (uncurry matchDer)
       )
     # V.on (Proxy @"metaVar") (\x -> setMetaVar_Der x d2)
+
+matchDer_Pat
+  :: forall dr sr r
+   . Show (Variant dr)
+  => Eq (Variant dr)
+  => Ord (Variant dr)
+  => Eq (Variant sr)
+  => Eq (DerL dr sr)
+  => DerRules dr sr
+  -> PatDer dr sr
+  -> Der dr sr
+  -> MatchM (SubstDer dr sr (SubstSort sr r)) Unit
+matchDer_Pat derRules (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
+  dll1 ## V.case_
+    #
+      ( \_ dll1' -> do
+          matchDerL (DerL dll1' sigma1) dl2
+          if (kids1 # length :: Int) /= (kids2 # length) then bug "PatDer and Der of same label have different numbers of kids" else pure unit
+          List.zip kids1 kids2 # traverse_ (uncurry (matchDer_Pat derRules))
+      )
+    # V.on (Proxy @"sorted")
+        ( \sort_pat -> do
+            if (kids1 # length) /= 1 then bug "sorted label of PatDer has non-1 kids" else pure unit
+            matchSort sort_pat (d2 # getSort_Der derRules)
+            List.zip kids1 kids2 # traverse_ (uncurry (matchDer_Pat derRules))
+        )
+    # V.on (Proxy @"metaVar")
+        ( \x -> do
+            if (kids1 # length) /= 0 then bug "metavar label of PatDer has non-0 kids" else pure unit
+            setMetaVar_Der x d2
+        )
 
 setMetaVar_Sort :: forall sr r. Eq (Sort sr) => MetaVar -> Sort sr -> MatchM (SubstSort sr r) Unit
 setMetaVar_Sort x sort = do

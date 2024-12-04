@@ -10,14 +10,14 @@ import Data.Foldable (intercalate)
 import Data.List (List)
 import Debug as Debug
 import Effect.Exception (Error)
-import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (propagationAdjRules)
+import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (derive_propagationAdjRules)
 import Pantograph.Pretty (pretty)
 import Test.Common (it_shouldEqual)
 import Test.Spec (SpecT, describe)
 
 spec :: forall m g. MonadThrow Error g => Monad m => SpecT g Unit m Unit
 spec = describe "Slc" do
-  let adjRules = propagationAdjRules derRules :: List (AdjDerRule DR SR)
+  let adjRules = derive_propagationAdjRules derRules :: List (AdjDerRule DR SR)
   Debug.traceM $ "adjRules: " <> (adjRules # map pretty # intercalate "\n" # ("\n" <> _))
   describe "outerEndpoint" do
     -- if true then do

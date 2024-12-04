@@ -8,6 +8,7 @@ import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.List as List
 import Data.Maybe (Maybe)
+import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
 import Data.Tuple.Nested (type (/\))
@@ -21,6 +22,9 @@ instance Show a => Show (RevList a) where
 
 instance Eq a => Eq (RevList a) where
   eq x = genericEq x
+
+instance Ord a => Ord (RevList a) where
+  compare x = genericCompare x
 
 derive instance Functor RevList
 derive instance Foldable RevList

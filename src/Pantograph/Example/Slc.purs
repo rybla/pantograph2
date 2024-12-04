@@ -10,6 +10,8 @@ import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 
+import Control.Alternative (guard)
+import Control.Monad.State (execStateT)
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), intercalate, (:))
@@ -18,13 +20,17 @@ import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
+import Data.Variant as V
 import Pantograph.Library.Cursor (CursorR)
 import Pantograph.Library.Cursor as Cursor
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (derive_propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (brackets, pretty)
-import Pantograph.Utility (bug, todo)
+import Pantograph.Utility (bug, emptyRecordOfMaps, todo, (##))
+import Prim.Row (class Lacks)
+import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
 -- MetaVars
@@ -38,6 +44,9 @@ _dg = MV.MetaVar "dg"
 dg = makeMetaVarSort _dg
 _dg' = MV.MetaVar "dg'"
 dg' = makeMetaVarSort _dg'
+
+_d = MV.MetaVar "d"
+d = makeMetaVarDer _d
 
 --------------------------------------------------------------------------------
 -- S
@@ -138,14 +147,21 @@ instance PrettyDerL D where
   prettyDerL d sigma ss = bug $ "invalid D: " <> show d <> brackets (pretty sigma) <> "(" <> (ss # intercalate ", ") <> ")"
 
 --------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+getTermContext :: forall dr sr. Der dr sr -> Sort sr
+getTermContext (DerL _ sigma %% _) = sigma MV.!! _g
+
+--------------------------------------------------------------------------------
 -- DR
 --------------------------------------------------------------------------------
 
-type DR = CursorR (BaseR D ())
+type DR dr = CursorR (BaseR D dr)
 
 --------------------------------------------------------------------------------
 
-derRules :: DerRules DR SR
+derRules :: forall dr. Ord (Variant (DR dr)) => DerRules (DR dr) SR
 derRules = Map.unions
   [ Map.fromFoldable
       [ Free ./\
@@ -187,7 +203,13 @@ derRules = Map.unions
 
 --------------------------------------------------------------------------------
 
-adjRules :: AdjDerRules DR SR
+adjRules
+  :: forall dr
+   . Lacks "bdry" dr
+  => Lacks "metaVar" dr
+  => Eq (Variant (AdjDerL_DR (DR dr) SR))
+  => Ord (Variant (DR dr))
+  => AdjDerRules (DR dr) SR
 adjRules = modifyAdjRules <> propagationAdjRules
   where
   propagationAdjRules = derive_propagationAdjRules derRules
@@ -196,28 +218,63 @@ adjRules = modifyAdjRules <> propagationAdjRules
     [ makeAdjDerRule
         (Var .% [ Ext .%- [] << dg >> [] ] ↓ Zero .// [ _g /\ g ] % [])
         (Free .// [ _g /\ g' ] % [])
-        (\sigma -> setMetaVar_Sort _g' $ (sigma.changeSort !! _dg) # _outer)
+        (\sigma -> _g' `setMetaVar_Sort` ((sigma.changeSort !! _dg) # _outer))
     , makeAdjDerRule
         (Var .% [ Ext .%+ [] << dg >> [] ] ↓ Free .// [ _g /\ g ] % [])
         (Zero .// [ _g /\ g' ] % [])
-        (\sigma -> setMetaVar_Sort _g' $ (sigma.changeSort !! _dg) # _outer)
+        (\sigma -> _g' `setMetaVar_Sort` ((sigma.changeSort !! _dg) # _outer))
     ]
 
 --------------------------------------------------------------------------------
 
-editRules :: List (EditRule DR SR)
+editRules
+  :: forall dr
+   . Lacks "bdry" dr
+  => Lacks "metaVar" dr
+  => Eq (Variant (AdjDerL_DR (DR dr) SR))
+  => Ord (Variant (AdjDerL_DR (DR dr) SR))
+  => Show (Variant (AdjDerL_DR (DR dr) SR))
+  => Ord (Variant (DR dr))
+  => EditRules (DR dr) SR
 editRules = List.fromFoldable
-  [ EditRule
+  [ {- not using sorted pattern
+  EditRule
+    { label: "lambda"
+    -- , input: d
+    , input: d ::% (Term .% [ g ])
+    , trans: \sigma -> flip execStateT emptyRecordOfMaps do
+        guard $
+          derRules
+            # getSort_Der (sigma.adjDer !! _d)
+            # getLabel
+            # V.on (Proxy @"base") (_ == Term) (const false)
+        _d `setMetaVar_AdjDer` (sigma.adjDer !! _d)
+        _g `setMetaVar_Sort` ((sigma.adjDer !! _d) # getTermContext)
+    , output: lam g (Term .% [ Ext .%+ [] << g >> [] ] ↓ d)
+    }
+  -}
+    -- using sorted pattern
+    EditRule
       { label: "lambda"
-      , input: todo ""
-      , trans: todo ""
-      , output: todo ""
+      , input: d ::% (Term .% [ g ])
+      , trans: \sigma -> flip execStateT emptyRecordOfMaps do
+          _d `setMetaVar_AdjDer` (sigma.adjDer !! _d)
+          _g `setMetaVar_Sort` (sigma.sort !! _g)
+      , output: lam g (Term .% [ Ext .%+ [] << g >> [] ] ↓ d)
       }
   ]
 
 --------------------------------------------------------------------------------
 
-language :: Language DR SR
+language
+  :: forall dr
+   . Lacks "bdry" dr
+  => Lacks "metaVar" dr
+  => Eq (Variant (AdjDerL_DR (DR dr) SR))
+  => Ord (Variant (AdjDerL_DR (DR dr) SR))
+  => Show (Variant (AdjDerL_DR (DR dr) SR))
+  => Ord (Variant (DR dr))
+  => Language (DR dr) SR
 language = Language
   { name: "SLC"
   , derRules

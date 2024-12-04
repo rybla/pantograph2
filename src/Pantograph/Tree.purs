@@ -10,6 +10,7 @@ import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe, fromMaybe')
+import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Symbol (class IsSymbol)
 import Data.Traversable (class Traversable, foldl)
@@ -41,6 +42,9 @@ instance Show a => Show (Tree a) where
 
 instance Eq a => Eq (Tree a) where
   eq x = genericEq x
+
+instance Ord a => Ord (Tree a) where
+  compare x = genericCompare x
 
 instance PrettyTreeL l => Pretty (Tree l) where
   pretty (l %% kids) = prettyTreeL l (pretty <$> kids)
@@ -96,6 +100,12 @@ instance
 instance PrettyTreeL_RL () RowList.Nil where
   prettyTreeL_RowList _ _ = V.case_
 
+getLabel :: forall a. Tree a -> a
+getLabel (x %% _) = x
+
+getKids :: forall a. Tree a -> List (Tree a)
+getKids (_ %% kids) = kids
+
 --------------------------------------------------------------------------------
 -- Tooth
 --------------------------------------------------------------------------------
@@ -116,6 +126,9 @@ prettyToothS (Tooth a kids_l kids_r) str = prettyTreeL a ((kids_l # map pretty #
 
 instance Eq a => Eq (Tooth a) where
   eq x = genericEq x
+
+instance Ord a => Ord (Tooth a) where
+  compare x = genericCompare x
 
 derive instance Functor Tooth
 derive instance Foldable Tooth
@@ -189,6 +202,9 @@ instance Show (Variant l) => Show (PlusChange l) where
 
 derive instance Eq (Variant l) => Eq (PlusChange l)
 
+instance (Eq (Variant l), Ord (Variant l), Ord (Tooth (Variant l))) => Ord (PlusChange l) where
+  compare x = genericCompare x
+
 instance PrettyTreeL_R l => PrettyTreeL (PlusChange l) where
   prettyTreeL (PlusChange (Tooth a ls rs)) (kid : Nil) =
     "+" <>
@@ -211,6 +227,9 @@ instance Show (Variant l) => Show (MinusChange l) where
 
 derive instance Eq (Variant l) => Eq (MinusChange l)
 
+instance (Eq (Variant l), Ord (Variant l), Ord (Tooth (Variant l))) => Ord (MinusChange l) where
+  compare x = genericCompare x
+
 instance PrettyTreeL_R l => PrettyTreeL (MinusChange l) where
   prettyTreeL (MinusChange (Tooth a ls rs)) (kid : Nil) =
     "-" <>
@@ -231,6 +250,9 @@ instance Show (Variant l) => Show (ReplaceChange l) where
   show x = genericShow x
 
 derive instance Eq (Variant l) => Eq (ReplaceChange l)
+
+instance (Eq (Variant l), Ord (Variant l)) => Ord (ReplaceChange l) where
+  compare x = genericCompare x
 
 instance PrettyTreeL_R l => PrettyTreeL (ReplaceChange l) where
   prettyTreeL (ReplaceChange t t') Nil =
