@@ -22,6 +22,7 @@ import Data.Variant (Variant)
 import Data.Variant as V
 import Debug as Debug
 import Pantograph.Library.Cursor (CursorR)
+import Pantograph.Library.Cursor as Cursor
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (derive_propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
@@ -149,40 +150,43 @@ type DR = CursorR (BaseR D ())
 --------------------------------------------------------------------------------
 
 derRules :: DerRules DR SR
-derRules = Map.fromFoldable
-  [ Free ./\
-      ( [] |-
-          (Var .% [ g ])
-      )
-  , Zero ./\
-      ( [] |-
-          (Var .% [ Ext .% [ g ] ])
-      )
-  , Suc ./\
-      ( [ Var .% [ g ]
-        ] |-
-          (Var .% [ Ext .% [ g ] ])
-      )
-  , Ref ./\
-      ( [ Var .% [ g ]
-        ] |-
-          (Term .% [ g ])
-      )
-  , Lam ./\
-      ( [ Term .% [ Ext .% [ g ] ]
-        ] |-
-          (Term .% [ g ])
-      )
-  , App ./\
-      ( [ Term .% [ g ]
-        , Term .% [ g ]
-        ] |-
-          (Term .% [ g ])
-      )
-  , Hole ./\
-      ( [] |-
-          (Term .% [ g ])
-      )
+derRules = Map.unions
+  [ Map.fromFoldable
+      [ Free ./\
+          ( [] |-
+              (Var .% [ g ])
+          )
+      , Zero ./\
+          ( [] |-
+              (Var .% [ Ext .% [ g ] ])
+          )
+      , Suc ./\
+          ( [ Var .% [ g ]
+            ] |-
+              (Var .% [ Ext .% [ g ] ])
+          )
+      , Ref ./\
+          ( [ Var .% [ g ]
+            ] |-
+              (Term .% [ g ])
+          )
+      , Lam ./\
+          ( [ Term .% [ Ext .% [ g ] ]
+            ] |-
+              (Term .% [ g ])
+          )
+      , App ./\
+          ( [ Term .% [ g ]
+            , Term .% [ g ]
+            ] |-
+              (Term .% [ g ])
+          )
+      , Hole ./\
+          ( [] |-
+              (Term .% [ g ])
+          )
+      ]
+  , Cursor.derRules
   ]
 
 --------------------------------------------------------------------------------
