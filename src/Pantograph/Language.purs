@@ -2,6 +2,7 @@ module Pantograph.Language where
 
 import Pantograph.Tree
 import Prelude
+import Pantograph.Utility
 
 import Control.Alternative (class Alternative)
 import Control.Monad.State (StateT, execStateT, get, put, runStateT)
@@ -27,7 +28,6 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, uniqueList, unsafeCoerce_because, (##))
 import Prim.Row (class Cons)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
@@ -40,10 +40,10 @@ import Type.Proxy (Proxy(..))
 type MetaR r = (metaVar :: MetaVar | r)
 
 makeMetaVarDer :: forall dr sr. MetaVar -> Der (MetaR dr) sr
-makeMetaVarDer x = DerL (V.inj (Proxy @"metaVar") x) Map.empty % []
+makeMetaVarDer x = DerL (inj @"metaVar" x) Map.empty % []
 
 makeMetaVarDer' :: forall dr sr. String -> Der (MetaR dr) sr
-makeMetaVarDer' x = DerL (V.inj (Proxy @"metaVar") (MV.MetaVar x)) Map.empty % []
+makeMetaVarDer' x = DerL (inj @"metaVar" (MV.MetaVar x)) Map.empty % []
 
 defAndMakeMetaVarDer :: forall dr sr. String -> MetaVar /\ Der (MetaR dr) sr
 defAndMakeMetaVarDer str = x /\ makeMetaVarDer x
@@ -51,10 +51,10 @@ defAndMakeMetaVarDer str = x /\ makeMetaVarDer x
   x = MV.MetaVar str
 
 makeMetaVarSort :: forall sr. MetaVar -> MetaSort sr
-makeMetaVarSort x = V.inj (Proxy @"metaVar") x % []
+makeMetaVarSort x = inj @"metaVar" x % []
 
 makeMetaVarSort' :: forall sr. String -> MetaSort sr
-makeMetaVarSort' x = V.inj (Proxy @"metaVar") (MV.MetaVar x) % []
+makeMetaVarSort' x = inj @"metaVar" (MV.MetaVar x) % []
 
 defAndMakeMetaVarSort :: forall sr. String -> MetaVar /\ MetaSort sr
 defAndMakeMetaVarSort str = x /\ makeMetaVarSort x
@@ -65,7 +65,7 @@ renameMVs :: forall r. (MetaVar -> MetaVar) -> TreeV (MetaR r) -> TreeV (MetaR r
 renameMVs f = map
   ( V.case_
       # (\_ l -> expand1 (Proxy @"metaVar") l)
-      # V.on (Proxy @"metaVar") (\x -> V.inj (Proxy @"metaVar") (f x))
+      # on @"metaVar" (\x -> inj @"metaVar" (f x))
   )
 
 collectMVs :: forall r. TreeV (MetaR r) -> List MetaVar
@@ -73,7 +73,7 @@ collectMVs =
   map
     ( V.case_
         # mempty
-        # V.on (Proxy @"metaVar") pure
+        # on @"metaVar" pure
     )
     >>> fold
     >>> uniqueList
@@ -111,7 +111,7 @@ type BaseR :: Type -> Row Type -> Row Type
 type BaseR a r = (base :: a | r)
 
 makeTreeBaseR :: forall f a r. Foldable f => a -> f (TreeV (BaseR a r)) -> TreeV (BaseR a r)
-makeTreeBaseR s kids = V.inj (Proxy @"base") s % kids
+makeTreeBaseR s kids = inj @"base" s % kids
 
 infix 3 makeTreeBaseR as .%
 
@@ -133,7 +133,7 @@ type PatR dr sr =
   )
 
 sorted :: forall dr sr. PatDer dr sr -> MetaSort sr -> PatDer dr sr
-sorted d s = V.inj (Proxy @"sorted") s // [] % [ d ]
+sorted d s = inj @"sorted" s // [] % [ d ]
 
 infix 3 sorted as ::%
 
@@ -182,7 +182,7 @@ instance
   PrettyDerL_RL r' (RowList.Cons x a rl) where
   prettyDerL_RL _ _ sigma kids =
     prettyDerL_RL (Proxy @rl) (Proxy @r) sigma kids
-      # V.on (Proxy @x) (\a -> prettyDerL a sigma kids)
+      # on @x \a -> prettyDerL a sigma kids
 
 makeDerL dl sigma = DerL dl (Map.fromFoldable sigma)
 
@@ -192,7 +192,7 @@ infix 4 makeDerL as //
 -- BaseDerR 
 --------------------------------------------------------------------------------
 
-makeBaseDerL d sigma = DerL (V.inj (Proxy @"base") d) (Map.fromFoldable sigma)
+makeBaseDerL d sigma = DerL (inj @"base" d) (Map.fromFoldable sigma)
 
 infix 4 makeBaseDerL as .//
 
@@ -207,7 +207,7 @@ data DerRule sr = DerRule
   , kids :: List (Sort (MetaR sr))
   }
 
-makeTupleBaseDerAndDerRule d rule = V.inj (Proxy @"base") d /\ rule
+makeTupleBaseDerAndDerRule d rule = inj @"base" d /\ rule
 
 infix 0 makeTupleBaseDerAndDerRule as ./\
 
@@ -230,7 +230,7 @@ applyMetaVarSubst_TreeV :: forall r. MV.Subst (TreeV r) -> TreeV (MetaR r) -> Tr
 applyMetaVarSubst_TreeV sigma (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids <#> applyMetaVarSubst_TreeV sigma))
-    # V.on (Proxy @"metaVar") (sigma MV.!! _)
+    # on @"metaVar" (sigma MV.!! _)
 
 getSort_DerL :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => DerRules dr sr -> DerL dr sr -> Sort sr
 getSort_DerL derRules (DerL dr sigma) = applyMetaVarSubst_TreeV sigma sort
@@ -243,7 +243,7 @@ getSort_Der derRules (derL %% _) = getSort_DerL derRules derL
 getSort_AdjDerL :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => AdjDerL dr sr -> DerRules dr sr -> Sort sr
 getSort_AdjDerL (DerL dr sigma) derRules =
   dr #
-    V.on (Proxy @"bdry") (\(Bdry _ ch) -> ch # _outer)
+    on @"bdry" (\(Bdry _ ch) -> ch # _outer)
       (\dr' -> getSort_DerL derRules (DerL dr' sigma))
 
 getSort_AdjDer :: forall dr sr. Show (Variant dr) => Ord (Variant dr) => Eq (Variant sr) => Tree (AdjDerL dr sr) -> Map (Variant dr) (DerRule sr) -> Sort sr
@@ -305,40 +305,40 @@ infixl 2 applyFunction as >>
 
 makeSortChangePlus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
 makeSortChangePlus l ls kid rs =
-  V.inj (Proxy @"plus") (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  inj @"plus" (PlusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeSortChangePlus as %+
 
 makeSortChangeMinus :: forall sr f_l f_r. Foldable f_l => Foldable f_r => SortL sr -> f_l (Sort sr) -> ChangeSort sr -> f_r (Sort sr) -> ChangeSort sr
 makeSortChangeMinus l ls kid rs =
-  V.inj (Proxy @"minus") (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  inj @"minus" (MinusChange $ Tooth l (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeSortChangeMinus as %-
 
 makeTreeBaseRChangePlus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseR s sr)) -> ChangeSort (BaseR s sr) -> f_r (Sort (BaseR s sr)) -> ChangeSort (BaseR s sr)
 makeTreeBaseRChangePlus l ls kid rs =
-  V.inj (Proxy @"plus") (PlusChange $ Tooth (V.inj (Proxy @"base") l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  inj @"plus" (PlusChange $ Tooth (inj @"base" l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeTreeBaseRChangePlus as .%+
 
 makeTreeBaseRChangeMinus :: forall s sr f_l f_r. Foldable f_l => Foldable f_r => s -> f_l (Sort (BaseR s sr)) -> ChangeSort (BaseR s sr) -> f_r (Sort (BaseR s sr)) -> ChangeSort (BaseR s sr)
 makeTreeBaseRChangeMinus l ls kid rs =
-  V.inj (Proxy @"minus") (MinusChange $ Tooth (V.inj (Proxy @"base") l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
+  inj @"minus" (MinusChange $ Tooth (inj @"base" l) (RevList.fromFoldable ls) (List.fromFoldable rs)) %
     [ kid ]
 
 infixl 2 makeTreeBaseRChangeMinus as .%-
 
 makeAdjDerBdryDown :: forall dr sr. ChangeSort sr -> AdjDer dr sr -> AdjDer dr sr
 makeAdjDerBdryDown ch kid =
-  DerL (V.inj (Proxy @"bdry") (Bdry Down ch)) Map.empty %
+  DerL (inj @"bdry" (Bdry Down ch)) Map.empty %
     [ kid ]
 
 makeAdjDerBdryUp :: forall dr sr. ChangeSort sr -> AdjDer dr sr -> AdjDer dr sr
 makeAdjDerBdryUp ch kid =
-  DerL (V.inj (Proxy @"bdry") (Bdry Up ch)) Map.empty %
+  DerL (inj @"bdry" (Bdry Up ch)) Map.empty %
     [ kid ]
 
 infix 2 makeAdjDerBdryDown as ↓
@@ -355,13 +355,13 @@ applyAdjDerSubst_Sort :: forall dr sr. AdjDerSubst dr sr -> MetaSort sr -> Sort 
 applyAdjDerSubst_Sort (sigma@{ sort }) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjDerSubst_Sort sigma)))
-    # V.on (Proxy @"metaVar") (\x -> sort MV.!! x)
+    # on @"metaVar" (\x -> sort MV.!! x)
 
 applyAdjDerSubst_ChangeSort :: forall dr sr. AdjDerSubst dr sr -> MetaChangeSort sr -> ChangeSort sr
 applyAdjDerSubst_ChangeSort (sigma@{ changeSort }) (l %% kids) =
   l ## V.case_
     # (\_ l' -> l' %% (kids # map (applyAdjDerSubst_ChangeSort sigma)))
-    # V.on (Proxy @"metaVar") (\x -> changeSort MV.!! x)
+    # on @"metaVar" (\x -> changeSort MV.!! x)
 
 applyAdjDerSubst_AdjDer :: forall dr sr. AdjDerSubst dr sr -> MetaAdjDer dr sr -> AdjDer dr sr
 applyAdjDerSubst_AdjDer (sigma@{ adjDer }) (DerL l sigma_d %% kids) =
@@ -370,12 +370,12 @@ applyAdjDerSubst_AdjDer (sigma@{ adjDer }) (DerL l sigma_d %% kids) =
       ( \_ l' -> DerL (unsafeCoerce_because "constant expansion of sr" l') (sigma_d <#> applyAdjDerSubst_Sort sigma) %%
           (kids # map (applyAdjDerSubst_AdjDer sigma))
       )
-    # V.on (Proxy @"bdry")
+    # on @"bdry"
         ( \(Bdry dir ch) ->
-            DerL (V.inj (Proxy @"bdry") (Bdry dir (ch # applyAdjDerSubst_ChangeSort sigma))) (sigma_d <#> applyAdjDerSubst_Sort sigma) %%
+            DerL (inj @"bdry" (Bdry dir (ch # applyAdjDerSubst_ChangeSort sigma))) (sigma_d <#> applyAdjDerSubst_Sort sigma) %%
               (kids # map (applyAdjDerSubst_AdjDer sigma))
         )
-    # V.on (Proxy @"metaVar") (\x -> adjDer MV.!! x)
+    # on @"metaVar" (\x -> adjDer MV.!! x)
 
 --------------------------------------------------------------------------------
 -- AdjDerSubstTrans
@@ -543,7 +543,7 @@ matchDer (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
           matchDerL (DerL dll1' sigma1) dl2
           List.zip kids1 kids2 # traverse_ (uncurry matchDer)
       )
-    # V.on (Proxy @"metaVar") (\x -> setMetaVar_Der x d2)
+    # on @"metaVar" (\x -> setMetaVar_Der x d2)
 
 matchDer_Pat
   :: forall dr sr r
@@ -564,13 +564,13 @@ matchDer_Pat derRules (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
           if (kids1 # length :: Int) /= (kids2 # length) then bug "PatDer and Der of same label have different numbers of kids" else pure unit
           List.zip kids1 kids2 # traverse_ (uncurry (matchDer_Pat derRules))
       )
-    # V.on (Proxy @"sorted")
+    # on @"sorted"
         ( \sort_pat -> do
             if (kids1 # length) /= 1 then bug "sorted label of PatDer has non-1 kids" else pure unit
             matchSort sort_pat (d2 # getSort_Der derRules)
             List.zip kids1 kids2 # traverse_ (uncurry (matchDer_Pat derRules))
         )
-    # V.on (Proxy @"metaVar")
+    # on @"metaVar"
         ( \x -> do
             if (kids1 # length) /= 0 then bug "metavar label of PatDer has non-0 kids" else pure unit
             setMetaVar_Der x d2
@@ -641,7 +641,7 @@ matchSort (sl1 %% kids1) sort2@(sl2 %% kids2) =
           guard $ sl1' == sl2
           List.zip kids1 kids2 # traverse_ (uncurry matchSort)
       )
-    # V.on (Proxy @"metaVar") (\x -> setMetaVar_Sort x sort2)
+    # on @"metaVar" (\x -> setMetaVar_Sort x sort2)
 
 matchSortSubst
   :: forall sr r
@@ -664,7 +664,7 @@ matchChangeSort (mch1 %% kids1) ch2@(chl2 %% kids2) =
           guard $ chl1 == chl2
           List.zip kids1 kids2 # traverse_ (uncurry matchChangeSort)
       )
-    # V.on (Proxy @"metaVar") (\x -> setMetaVar_ChangeSort x ch2)
+    # on @"metaVar" (\x -> setMetaVar_ChangeSort x ch2)
 
 matchBdry
   :: forall sr r
@@ -689,12 +689,12 @@ matchAdjDerL (DerL l1 sigma1) (DerL l2 sigma2) = do
     #
       ( \_ l1' -> l2 ## V.case_
           # (\_ l2' -> guard $ (l1' :: Variant dr) == l2')
-          # V.on (Proxy @"bdry") (\_bdry2 -> pure unit)
+          # on @"bdry" (\_bdry2 -> pure unit)
       )
-    # V.on (Proxy @"bdry")
+    # on @"bdry"
         ( \bdry1 -> l2 ## V.case_
             # (\_ _ -> pure unit)
-            # V.on (Proxy @"bdry") (\bdry2 -> matchBdry bdry1 bdry2)
+            # on @"bdry" (\bdry2 -> matchBdry bdry1 bdry2)
         )
   matchSortSubst sigma1 sigma2
 
@@ -714,7 +714,7 @@ matchAdjDer (DerL l1 sigma1 %% kids1) a2@(l2 %% kids2) =
           matchAdjDerL (DerL l1' sigma1) l2
           List.zip kids1 kids2 # traverse_ (uncurry matchAdjDer)
       )
-    # V.on (Proxy @"metaVar") (\x -> setMetaVar_AdjDer x a2)
+    # on @"metaVar" (\x -> setMetaVar_AdjDer x a2)
 
 union_AdjDerSubst
   :: forall dr sr

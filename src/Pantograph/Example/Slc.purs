@@ -10,7 +10,6 @@ import Pantograph.Language
 import Pantograph.Tree
 import Prelude
 
-import Control.Alternative (guard)
 import Control.Monad.State (execStateT)
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
@@ -21,16 +20,14 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
-import Data.Variant as V
 import Pantograph.Library.Cursor (CursorR)
 import Pantograph.Library.Cursor as Cursor
 import Pantograph.Library.DerivePropagationAdjRulesFromDerRules (derive_propagationAdjRules)
 import Pantograph.MetaVar ((!!))
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (brackets, pretty)
-import Pantograph.Utility (bug, emptyRecordOfMaps, todo, (##))
+import Pantograph.Utility (bug, emptyRecordOfMaps)
 import Prim.Row (class Lacks)
-import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
 -- MetaVars

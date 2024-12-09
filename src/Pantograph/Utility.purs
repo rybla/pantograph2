@@ -17,6 +17,7 @@ import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Symbol (class IsSymbol, reflectSymbol)
 import Data.Variant (Variant)
+import Data.Variant as V
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafeCrashWith)
@@ -28,6 +29,17 @@ import Record as R
 import Record as Record
 import Type.Prelude (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
+
+-- using explicit type application
+on :: forall @x a b r1 r2. Cons x a r1 r2 => IsSymbol x => (a -> b) -> (Variant r1 -> b) -> Variant r2 -> b
+on = V.on (Proxy @x)
+
+-- using explicit type application
+inj :: forall @x a r1 r2. Cons x a r1 r2 => IsSymbol x => a -> Variant r2
+inj = V.inj (Proxy @x)
+
+case_ :: forall a. Variant () -> a
+case_ = V.case_
 
 infixr 1 Function.apply as $$
 
