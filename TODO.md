@@ -6,6 +6,7 @@
 - [ ] basic interface for interactively performing edits
   - make sure to keep frontend and backend _entirely_ separate!! the backend should only need specify basic syntax rendering
 - [ ] think about how to do _real-time updating_ mouse controls efficiently
+- [ ] figure out how to propagate changes properly around a polymorphic function application
 
 ## Laws
 
