@@ -27,7 +27,7 @@ import Pantograph.MetaVar (MetaVar)
 import Pantograph.MetaVar as MV
 import Pantograph.Pretty (class Pretty, pretty)
 import Pantograph.RevList as RevList
-import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, todo, uniqueList, unsafeCoerce_because, (##))
+import Pantograph.Utility (class IsRecordOfMaps, bug, emptyRecordOfMaps, expand1, uniqueList, unsafeCoerce_because, (##))
 import Prim.Row (class Cons)
 import Prim.RowList (class RowToList, RowList)
 import Prim.RowList as RowList
@@ -345,7 +345,8 @@ infix 2 makeAdjDerBdryDown as ↓
 infix 2 makeAdjDerBdryUp as ↑
 
 type AdjDerSubst dr sr =
-  { adjDer :: MV.Subst (AdjDer dr sr)
+  { der :: MV.Subst (Der dr sr)
+  , adjDer :: MV.Subst (AdjDer dr sr)
   , changeSort :: MV.Subst (ChangeSort sr)
   , sort :: MV.Subst (Sort sr)
   }
@@ -421,8 +422,8 @@ makeAdjDerRule
   :: forall dr sr
    . MetaAdjDer dr sr
   -> MetaAdjDer dr sr
-  -> ( Record (SubstAdjDer dr sr (SubstChangeSort sr (SubstSort sr ())))
-       -> StateT (Record (SubstAdjDer dr sr (SubstChangeSort sr (SubstSort sr ())))) Maybe Unit
+  -> ( Record (SubstAdjDer dr sr (SubstDer dr sr (SubstChangeSort sr (SubstSort sr ()))))
+       -> StateT (Record (SubstAdjDer dr sr (SubstDer dr sr (SubstChangeSort sr (SubstSort sr ()))))) Maybe Unit
      )
   -> AdjDerRule dr sr
 makeAdjDerRule input output trans = AdjDerRule
@@ -468,12 +469,23 @@ data EditRule dr sr = EditRule
   , output :: MetaAdjDer dr sr
   }
 
--- TODO
--- applyEditRule :: forall dr sr. EditRule dr sr -> Der dr sr -> Maybe (AdjDer dr sr)
--- applyEditRule (EditRule rule) dt = do
---   sigma <- matchDer rule.input dt # runMatchAdjDerSubstM
---   sigma' <- rule.trans sigma
---   pure $ applyAdjDerSubst_AdjDer sigma' rule.output
+applyEditRule
+  :: forall dr sr
+   . Show (Variant sr)
+  => Eq (Variant sr)
+  => Ord (Variant sr)
+  => Show (Variant dr)
+  => Eq (Variant dr)
+  => Ord (Variant dr)
+  => DerRules dr sr
+  -> EditRule dr sr
+  -> Der dr sr
+  -> Maybe (AdjDer dr sr)
+applyEditRule derRules (EditRule rule) dt = do
+  _ /\ sigma_input <- dt # matchDer_Pat derRules rule.input # runMatchM
+  sigma_output <- rule.trans sigma_input
+  let output' = applyAdjDerSubst_AdjDer sigma_output rule.output
+  pure output'
 
 --------------------------------------------------------------------------------
 -- Language
@@ -504,12 +516,26 @@ type SubstSort sr r = (sort :: MV.Subst (Sort sr) | r)
 -- MatchDerSubstM
 --------------------------------------------------------------------------------
 
-matchDerL :: forall dr sr r. Eq (Variant dr) => Eq (Variant sr) => DerL dr (MetaR sr) -> DerL dr sr -> MatchM (SubstSort sr r) Unit
+matchDerL
+  :: forall dr sr r
+   . Eq (Variant dr)
+  => Eq (Variant sr)
+  => DerL dr (MetaR sr)
+  -> DerL dr sr
+  -> MatchM (SubstSort sr r) Unit
 matchDerL (DerL d1 sigma1) (DerL d2 sigma2) = do
   guard $ d1 == d2
   matchSortSubst sigma1 sigma2
 
-matchDer :: forall dr sr r. Eq (DerL dr sr) => Eq (Variant dr) => Eq (Variant (MetaR dr)) => Eq (Variant sr) => MetaDer dr sr -> Der dr sr -> MatchM (SubstDer dr sr (SubstSort sr r)) Unit
+matchDer
+  :: forall dr sr r
+   . Eq (DerL dr sr)
+  => Eq (Variant dr)
+  => Eq (Variant (MetaR dr))
+  => Eq (Variant sr)
+  => MetaDer dr sr
+  -> Der dr sr
+  -> MatchM (SubstDer dr sr (SubstSort sr r)) Unit
 matchDer (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
   dll1 ## V.case_
     #
@@ -550,7 +576,12 @@ matchDer_Pat derRules (DerL dll1 sigma1 %% kids1) d2@(dl2 %% kids2) = do
             setMetaVar_Der x d2
         )
 
-setMetaVar_Sort :: forall sr r. Eq (Sort sr) => MetaVar -> Sort sr -> MatchM (SubstSort sr r) Unit
+setMetaVar_Sort
+  :: forall sr r
+   . Eq (Sort sr)
+  => MetaVar
+  -> Sort sr
+  -> MatchM (SubstSort sr r) Unit
 setMetaVar_Sort x sort = do
   sigma <- get
   case sigma.sort # Map.lookup x of
@@ -558,7 +589,12 @@ setMetaVar_Sort x sort = do
     Just sort' | sort == sort' -> pure unit
     Just _ | otherwise -> pure unit
 
-setMetaVar_ChangeSort :: forall sr r. Eq (ChangeSort sr) => MetaVar -> ChangeSort sr -> MatchM (SubstChangeSort sr r) Unit
+setMetaVar_ChangeSort
+  :: forall sr r
+   . Eq (ChangeSort sr)
+  => MetaVar
+  -> ChangeSort sr
+  -> MatchM (SubstChangeSort sr r) Unit
 setMetaVar_ChangeSort x ch = do
   sigma <- get
   case sigma.changeSort # Map.lookup x of
@@ -566,7 +602,12 @@ setMetaVar_ChangeSort x ch = do
     Just ch' | ch == ch' -> pure unit
     Just _ | otherwise -> pure unit
 
-setMetaVar_Der :: forall dr sr r. Eq (Der dr sr) => MetaVar -> Der dr sr -> MatchM (SubstDer dr sr r) Unit
+setMetaVar_Der
+  :: forall dr sr r
+   . Eq (Der dr sr)
+  => MetaVar
+  -> Der dr sr
+  -> MatchM (SubstDer dr sr r) Unit
 setMetaVar_Der x adj = do
   sigma <- get
   case sigma.der # Map.lookup x of
@@ -574,7 +615,12 @@ setMetaVar_Der x adj = do
     Just adj' | adj == adj' -> pure unit
     Just _ | otherwise -> pure unit
 
-setMetaVar_AdjDer :: forall dr sr r. Eq (AdjDer dr sr) => MetaVar -> AdjDer dr sr -> MatchM (SubstAdjDer dr sr r) Unit
+setMetaVar_AdjDer
+  :: forall dr sr r
+   . Eq (AdjDer dr sr)
+  => MetaVar
+  -> AdjDer dr sr
+  -> MatchM (SubstAdjDer dr sr r) Unit
 setMetaVar_AdjDer x adj = do
   sigma <- get
   case sigma.adjDer # Map.lookup x of
@@ -582,7 +628,12 @@ setMetaVar_AdjDer x adj = do
     Just adj' | adj == adj' -> pure unit
     Just _ | otherwise -> pure unit
 
-matchSort :: forall sr r. Eq (Variant sr) => MetaSort sr -> Sort sr -> MatchM (SubstSort sr r) Unit
+matchSort
+  :: forall sr r
+   . Eq (Variant sr)
+  => MetaSort sr
+  -> Sort sr
+  -> MatchM (SubstSort sr r) Unit
 matchSort (sl1 %% kids1) sort2@(sl2 %% kids2) =
   sl1 ## V.case_
     #
@@ -592,7 +643,13 @@ matchSort (sl1 %% kids1) sort2@(sl2 %% kids2) =
       )
     # V.on (Proxy @"metaVar") (\x -> setMetaVar_Sort x sort2)
 
-matchSortSubst :: forall sr r. Eq (Sort sr) => Eq (Variant sr) => MetaSortSubst sr -> SortSubst sr -> MatchM (SubstSort sr r) Unit
+matchSortSubst
+  :: forall sr r
+   . Eq (Sort sr)
+  => Eq (Variant sr)
+  => MetaSortSubst sr
+  -> SortSubst sr
+  -> MatchM (SubstSort sr r) Unit
 matchSortSubst ss1 ss2 =
   Map.keys ss1 `Set.union` Map.keys ss2 # traverse_ \x -> do
     ms1 <- ss1 # Map.lookup x # lift
@@ -609,7 +666,12 @@ matchChangeSort (mch1 %% kids1) ch2@(chl2 %% kids2) =
       )
     # V.on (Proxy @"metaVar") (\x -> setMetaVar_ChangeSort x ch2)
 
-matchBdry :: forall sr r. Eq (Variant (ChangeSortR sr)) => MetaBdry sr -> Bdry sr -> MatchM (SubstChangeSort sr r) Unit
+matchBdry
+  :: forall sr r
+   . Eq (Variant (ChangeSortR sr))
+  => MetaBdry sr
+  -> Bdry sr
+  -> MatchM (SubstChangeSort sr r) Unit
 matchBdry (Bdry dir1 ch1) (Bdry dir2 ch2) = do
   guard $ dir1 == dir2
   matchChangeSort ch1 ch2
@@ -657,6 +719,7 @@ matchAdjDer (DerL l1 sigma1 %% kids1) a2@(l2 %% kids2) =
 union_AdjDerSubst
   :: forall dr sr
    . Eq (AdjDerL dr sr)
+  => Eq (Der dr sr)
   => Eq (Variant sr)
   => Eq (Variant (ChangeR sr))
   => AdjDerSubst dr sr
@@ -664,13 +727,15 @@ union_AdjDerSubst
   -> Maybe (AdjDerSubst dr sr)
 union_AdjDerSubst sigma1 sigma2 = do
   adjDer <- sigma1.adjDer # Map.toUnfoldable # List.foldM insertIfEq sigma2.adjDer
+  der <- sigma1.der # Map.toUnfoldable # List.foldM insertIfEq sigma2.der
   changeSort <- sigma1.changeSort # Map.toUnfoldable # List.foldM insertIfEq sigma2.changeSort
   sort <- sigma1.sort # Map.toUnfoldable # List.foldM insertIfEq sigma2.sort
-  pure { adjDer, changeSort, sort }
+  pure { adjDer, changeSort, sort, der }
 
 unions_AdjDerSubst
   :: forall dr sr f
    . Eq (AdjDerL dr sr)
+  => Eq (Variant dr)
   => Eq (Variant sr)
   => Eq (Variant (ChangeR sr))
   => Foldable f
