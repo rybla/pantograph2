@@ -1,3 +1,3 @@
 # TODO
 
-- [ ] example EditRule for Slc
+- [x] example EditRule for Slc

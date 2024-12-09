@@ -255,6 +255,7 @@ editRules = List.fromFoldable
   -}
     -- using sorted pattern
     EditRule
+      -- (d :: Term g) ~~> (Lam g {{ Term (+[ Ext << g >> ]) ↓ d }})
       { label: "lambda"
       , input: d ::% (Term .% [ g ])
       , trans: \sigma -> flip execStateT emptyRecordOfMaps do
